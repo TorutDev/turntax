@@ -4,7 +4,14 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # Major upgrades (TypeScript, @types/node beyond the supported Node line) are done by hand.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
