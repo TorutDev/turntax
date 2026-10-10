@@ -1,0 +1,44 @@
+{
+  "name": "turntax",
+  "version": "0.1.0",
+  "description": "Measure the per-turn token tax your AI coding-agent instruction files (CLAUDE.md, AGENTS.md, Cursor/Copilot/Windsurf rules) add to every agent turn.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "turntax": "dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:web": "esbuild src/web/main.ts --bundle --minify --format=esm --target=es2022 --outfile=web/app.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "claude-code",
+    "agents-md",
+    "codex",
+    "cursor",
+    "copilot",
+    "gemini-cli",
+    "windsurf",
+    "tokens",
+    "context",
+    "cli"
+  ],
+  "dependencies": {
+    "gpt-tokenizer": "4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.2"
+  }
+}

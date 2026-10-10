@@ -1,0 +1,5 @@
+---
+description: Database migration conventions
+alwaysApply: false
+---
+Write reversible migrations and never edit an applied migration file.

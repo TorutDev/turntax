@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>turntax</title>
+<meta name="description" content="Measure the token tax your AI coding-agent instruction files add to every turn. Runs in your browser.">
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1d1c1a; --muted: #6b6760; --line: #e3e0da; --panel: #ffffff;
+    --accent: #2f5bd3; --high: #b3261e; --medium: #a15c00; --low: #4b6b3a;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514; --fg: #ecebe8; --muted: #a29e96; --line: #2f2e2b; --panel: #1d1d1b;
+      --accent: #8aa8ff; --high: #ff8a80; --medium: #f0b45c; --low: #9cc48a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151514; --fg: #ecebe8; --muted: #a29e96; --line: #2f2e2b; --panel: #1d1d1b;
+    --accent: #8aa8ff; --high: #ff8a80; --medium: #f0b45c; --low: #9cc48a;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 18px; margin: 32px 0 12px; }
+  p { margin: 0 0 12px; }
+  code { font: 13px/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; }
+  .muted { color: var(--muted); }
+  .lede { color: var(--muted); max-width: 70ch; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  #drop { border: 2px dashed var(--line); border-radius: 10px; padding: 28px 16px; text-align: center; }
+  #drop.over { border-color: var(--accent); }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+  label.button, button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  label.button:hover, button:hover { border-color: var(--accent); }
+  button.link { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13px; }
+  input[type="file"] { display: none; }
+  input[type="text"], input[type="number"], textarea { width: 100%; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  textarea { font: 13px/1.4 ui-monospace, Consolas, monospace; min-height: 120px; }
+  #models label { display: block; margin: 2px 0; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; white-space: nowrap; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .mode { font-size: 12px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); }
+  .mode-always { color: var(--high); }
+  .mode-on-demand { color: var(--low); }
+  #advice { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  #advice li { border-left: 3px solid var(--line); padding: 4px 0 4px 12px; }
+  #advice p { margin: 4px 0 0; }
+  .sev-high { border-color: var(--high) !important; }
+  .sev-medium { border-color: var(--medium) !important; }
+  .sev-low { border-color: var(--low) !important; }
+  .tag { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  #file-list { padding-left: 18px; margin: 8px 0; }
+  footer { margin-top: 48px; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>turntax</h1>
+  <p class="lede">Coding agents re-send their instruction files (CLAUDE.md, AGENTS.md, Cursor, Copilot and Windsurf rules) with every turn. Drop a repository folder to see that per-turn token cost for <span id="tool-count"></span> tools, and where to cut it.</p>
+  <p class="muted">Runs entirely in your browser with the offline o200k tokenizer. Nothing is uploaded.</p>
+
+  <div class="grid">
+    <section class="panel">
+      <div id="drop">
+        <strong>Drop a repository folder here</strong>
+        <div class="muted">Only agent instruction files are read; node_modules, .git and build folders are skipped.</div>
+        <div class="buttons">
+          <label class="button">Choose folder<input id="pick-folder" type="file" webkitdirectory multiple></label>
+          <label class="button">Choose files<input id="pick-files" type="file" multiple accept=".md,.mdc,.cursorrules,.windsurfrules"></label>
+        </div>
+      </div>
+      <h2>Or paste a file</h2>
+      <label for="paste-name" class="muted">Path in the repository</label>
+      <input id="paste-name" type="text" value="CLAUDE.md" list="paste-names">
+      <datalist id="paste-names">
+        <option value="CLAUDE.md"><option value="AGENTS.md"><option value="GEMINI.md">
+        <option value=".github/copilot-instructions.md"><option value=".cursor/rules/main.mdc"><option value=".windsurfrules">
+      </datalist>
+      <label for="paste-text" class="muted">Contents</label>
+      <textarea id="paste-text"></textarea>
+      <div class="buttons"><button id="paste-add" type="button">Add file</button></div>
+    </section>
+    <section class="panel">
+      <h2 style="margin-top:0">Models</h2>
+      <div id="models"></div>
+      <h2>Turns</h2>
+      <input id="turns" type="number" min="1" value="100" aria-label="Turns for the cost projection">
+      <div id="loaded" hidden>
+        <h2>Loaded files</h2>
+        <ul id="file-list"></ul>
+        <button id="clear" type="button">Clear</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="results" hidden>
+    <h2>Per-turn cost</h2>
+    <div class="table-wrap"><table id="summary"></table></div>
+    <p class="muted">o200k = OpenAI o200k_base, counted offline: exact for GPT-5.x and gpt-oss, an estimate for newer GPT models. Claude and Gemini tokenizers are not public, so their counts need the CLI with your own API key. "Cached" assumes every turn reads the context from the prompt cache.</p>
+
+    <h2>Advice</h2>
+    <ul id="advice"></ul>
+
+    <h2>Files</h2>
+    <div class="table-wrap"><table id="files"></table></div>
+
+    <h2>Badge</h2>
+    <textarea id="badge" readonly rows="2"></textarea>
+    <div class="buttons" style="justify-content:flex-start">
+      <button id="copy-badge" type="button">Copy badge</button>
+      <button id="download-md" type="button">Download Markdown report</button>
+    </div>
+  </div>
+
+  <footer class="muted">
+    CLI: <code>npx turntax</code> · Prices and loading rules are dated and sourced in the project repository. MIT licensed.
+  </footer>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

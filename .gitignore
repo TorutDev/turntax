@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+web/app.js
+*.tgz
+.env
+.env.*
+.notes/
+!test/fixtures/mixed/node_modules/

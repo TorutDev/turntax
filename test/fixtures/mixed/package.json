@@ -1,0 +1,1 @@
+{ "name": "fixture-mixed", "private": true, "scripts": { "test": "vitest", "build": "tsc" } }
