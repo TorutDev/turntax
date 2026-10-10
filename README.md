@@ -80,6 +80,8 @@ Offline by default: no network calls, no telemetry. File contents are sent only 
 
 [`web/`](web) is a static page that runs the same engine in the browser with the offline tokenizer only. Drop a repository folder or paste files; nothing is uploaded.
 
+Try it: https://torutdev.github.io/turntax/
+
 ```bash
 npm run build:web
 ```
