@@ -86,6 +86,20 @@ describe('Claude Code', () => {
   });
 });
 
+describe('line endings', () => {
+  it('treats CRLF files like LF files', () => {
+    const lf = 'Line one.\n\nLine two.\n';
+    const units = classify([
+      { path: 'CLAUDE.md', text: lf.replace(/\n/g, '\r\n') },
+      { path: 'pkg/CLAUDE.md', text: lf.replace(/\n/g, '\r\n') },
+    ]);
+    const claude = find(units, 'claude-code', 'CLAUDE.md')!;
+    expect(claude.text).toBe(lf);
+    expect(claude.notes).toEqual([]);
+    expect(find(units, 'claude-code', 'pkg/CLAUDE.md')!.text).toBe(find(units, 'cursor', 'pkg/CLAUDE.md')!.text);
+  });
+});
+
 describe('nested rule folders', () => {
   it('apply only when the agent works in that subdirectory', () => {
     const files = [

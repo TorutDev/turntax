@@ -3,7 +3,9 @@ import { TOOLS, type FileRule, type ToolSpec } from './tools.js';
 import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
 
 /** Works out which files each tool loads, when, and with what text. */
-export function classify(files: RepoFile[], toolIds?: ToolId[]): LoadedUnit[] {
+export function classify(input: RepoFile[], toolIds?: ToolId[]): LoadedUnit[] {
+  // Same text on every platform: a CRLF checkout must not count or compare differently.
+  const files = input.map((f) => ({ path: f.path, text: f.text.replace(/\r\n/g, '\n') }));
   const byPath = new Map(files.map((f) => [f.path, f]));
   const tools = toolIds ? TOOLS.filter((t) => toolIds.includes(t.id)) : TOOLS;
   const units: LoadedUnit[] = [];
