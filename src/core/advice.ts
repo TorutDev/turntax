@@ -222,7 +222,12 @@ const DIRECTIVES: DirectivePattern[] = [
 ];
 
 /** Matches a negation right before a directive: "never use", "do not use", "don't prefer". */
-const NEGATED = /\b(?:never|not|don'?t|avoid|no)\s+(?:\w+\s+)?$/i;
+const NEGATED = /\b(?:never|not|don['’]?t|avoid|no)\s+(?:\w+\s+)?$/i;
+
+/** Words after "for"/"in" that do not name a language or file type, so they do not scope a style rule. */
+const NOT_A_SCOPE = new Set(
+  'indentation indent this the all every each any code files file everything general new our your my repo repository project here it them'.split(' '),
+);
 
 function directivesIn(line: string): Array<{ topic: string; value: string }> {
   const found: Array<{ topic: string; value: string }> = [];
@@ -231,7 +236,10 @@ function directivesIn(line: string): Array<{ topic: string; value: string }> {
       let value = d.value(m);
       if (!value.startsWith('not ') && NEGATED.test(line.slice(0, m.index))) value = `not ${value}`;
       const rest = line.slice((m.index ?? 0) + m[0].length);
-      const scope = d.scoped ? /^[^.;]{0,25}?\b(?:for|in)\s+([A-Za-z][\w.+#-]*)/.exec(rest)?.[1] : undefined;
+      const word = d.scoped
+        ? /^[^.;]{0,25}?\b(?:for|in)\s+([A-Za-z][\w.+#-]*)/.exec(rest)?.[1]?.replace(/[.-]+$/, '')
+        : undefined;
+      const scope = word && !NOT_A_SCOPE.has(word.toLowerCase()) ? word : undefined;
       found.push({ topic: scope ? `${d.topic} (${scope.toLowerCase()})` : d.topic, value });
     }
   }

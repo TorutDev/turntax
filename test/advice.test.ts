@@ -68,6 +68,16 @@ describe('contradictions', () => {
     expect(buildAdvice(classify(files, ['cursor']), files).filter((a) => a.kind === 'contradiction')).toHaveLength(1);
   });
 
+  it('still compares rules whose "for" phrase is not a language, and handles curly apostrophes', () => {
+    const files = [
+      { path: '.cursor/rules/a.mdc', text: '---\nalwaysApply: true\n---\nIndent with tabs.\nDon’t use semicolons.' },
+      { path: 'AGENTS.md', text: 'Use 2 spaces for indentation.\nNo semicolons.' },
+    ];
+    const c = buildAdvice(classify(files, ['cursor']), files).filter((a) => a.kind === 'contradiction');
+    expect(c).toHaveLength(1);
+    expect(c[0]!.message).toMatch(/indentation/);
+  });
+
   it('keeps per-language style rules apart', () => {
     const files = [{ path: 'AGENTS.md', text: 'Use 4 spaces for Python files.\nUse 2 spaces for TypeScript files.' }];
     expect(buildAdvice(classify(files, ['codex']), files).filter((a) => a.kind === 'contradiction')).toHaveLength(0);
