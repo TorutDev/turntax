@@ -64,10 +64,18 @@ function applyRule(tool: ToolSpec, rule: FileRule, files: RepoFile[], byPath: Ma
           const d = rule.decide(frontmatter);
           const notes = d.note ? [d.note] : [];
           const problem = d.problem;
-          if (!d.descriptionOnly) return [unit(tool.id, f.path, d.mode, d.trigger, body, { notes, problem })];
+          // A rule folder inside a subdirectory only applies when the agent works there.
+          const nestedIn = rule.rootPrefixes.some((p) => f.path.startsWith(p)) ? null : f.path.slice(0, f.path.indexOf('/.') + 1);
+          const scoped = (mode: LoadMode, trigger: string): [LoadMode, string] =>
+            nestedIn && mode === 'always' ? ['on-demand', `when working in ${nestedIn}`] : [mode, trigger];
+          if (!d.descriptionOnly) {
+            const [mode, trigger] = scoped(d.mode, d.trigger);
+            return [unit(tool.id, f.path, mode, trigger, body, { notes, problem })];
+          }
           const description = String(frontmatter.description ?? '');
+          const [descMode, descTrigger] = scoped('always', 'description shown to the agent');
           return [
-            unit(tool.id, f.path, 'always', 'description shown to the agent', description, { part: 'description', notes }),
+            unit(tool.id, f.path, descMode, descTrigger, description, { part: 'description', notes }),
             unit(tool.id, f.path, d.mode, d.trigger, body, { part: 'body' }),
           ];
         });
@@ -115,8 +123,8 @@ function applyHierarchical(
   let conditionFails: string | null = null;
   if (rule.condition === 'claude-reads-agents-md' && files.some(isRootClaudeMd))
     conditionFails = 'CLAUDE.md exists at the root, so Claude Code reads it instead of AGENTS.md (default setting).';
-  if (rule.condition === 'copilot-no-agents-md' && files.some((f) => basename(f.path) === 'AGENTS.md'))
-    conditionFails = 'AGENTS.md exists, which Copilot uses instead.';
+  if (rule.condition === 'copilot-no-agents-md' && files.some((f) => f.path === 'AGENTS.md'))
+    conditionFails = 'A root AGENTS.md exists, which Copilot uses instead.';
 
   const winners = new Map<string, RepoFile>();
   const out: LoadedUnit[] = [];

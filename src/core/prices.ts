@@ -154,6 +154,9 @@ export function validateModels(input: unknown): string[] {
     if (typeof m?.checkedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(m.checkedAt))
       problems.push(`${at}: checkedAt must be YYYY-MM-DD`);
     if (!['o200k-exact', 'o200k-proxy', 'none'].includes(String(m?.offline))) problems.push(`${at}: bad offline`);
+    // Claude and Gemini tokenizers are not public: an offline count must never be labelled as theirs.
+    if ((m?.family === 'claude' || m?.family === 'gemini') && m?.offline !== 'none')
+      problems.push(`${at}: ${m.family} models must use offline "none" (counted only through the vendor API)`);
   });
   return problems;
 }

@@ -7,3 +7,4 @@ web/app.js
 .env.*
 .notes/
 !test/fixtures/mixed/node_modules/
+.claude/

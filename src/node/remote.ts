@@ -50,16 +50,19 @@ export function anthropicCounter(apiKey: string, fetchFn: Fetch = fetch): Counte
     async count(model: ModelInfo, texts: string[]): Promise<TokenCount[]> {
       if (!model.apiModel) return texts.map(() => ({ tokens: null, method: 'unavailable', reason: 'no API model id' }));
       const apiModel = model.apiModel;
-      if (!baselines.has(apiModel))
-        baselines.set(
-          apiModel,
-          postJson(fetchFn, ANTHROPIC_URL, headers, { model: apiModel, messages: PROBE }).then((r) => r.input_tokens),
-        );
+      const baseline = () => {
+        if (!baselines.has(apiModel))
+          baselines.set(
+            apiModel,
+            postJson(fetchFn, ANTHROPIC_URL, headers, { model: apiModel, messages: PROBE }).then((r) => r.input_tokens),
+          );
+        return baselines.get(apiModel)!;
+      };
       return mapLimited(texts, 4, async (text): Promise<TokenCount> => {
         if (!text.trim()) return { tokens: 0, method: 'api' };
         try {
           const [base, full] = await Promise.all([
-            baselines.get(apiModel)!,
+            baseline(),
             postJson(fetchFn, ANTHROPIC_URL, headers, { model: apiModel, system: text, messages: PROBE }),
           ]);
           return { tokens: Math.max(0, full.input_tokens - base), method: 'api' };
@@ -105,6 +108,7 @@ export async function translateToEnglish(apiKey: string, text: string, fetchFn: 
       messages: [{ role: 'user', content: text }],
     },
   );
+  if (r.stop_reason === 'max_tokens') throw new Error('translation was cut off (file too long)');
   return (r.content ?? [])
     .filter((b: { type: string }) => b.type === 'text')
     .map((b: { text: string }) => b.text)

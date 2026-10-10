@@ -45,6 +45,13 @@ describe('anthropic counter', () => {
     expect(JSON.parse(String(init.body)).model).toBe('claude-sonnet-5-5');
   });
 
+  it('sends nothing when there is nothing to count', async () => {
+    const fetchFn = vi.fn();
+    const r = await anthropicCounter('k', fetchFn as unknown as typeof fetch).count(model('claude-opus-5.5'), ['', '  ']);
+    expect(r).toEqual([{ tokens: 0, method: 'api' }, { tokens: 0, method: 'api' }]);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   it('reports failures without echoing response bodies', async () => {
     const fetchFn = vi.fn(async () => jsonResponse({ error: 'secret text echoed' }, 401));
     const [r] = await anthropicCounter('k', fetchFn as unknown as typeof fetch).count(model('claude-opus-5.5'), ['x']);
@@ -60,6 +67,13 @@ describe('translateToEnglish', () => {
     const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://api.anthropic.com/v1/messages');
     expect(JSON.parse(String(init.body)).messages[0].content).toBe('Merhaba');
+  });
+});
+
+describe('translateToEnglish truncation', () => {
+  it('refuses a translation that hit max_tokens', async () => {
+    const fetchFn = vi.fn(async () => jsonResponse({ stop_reason: 'max_tokens', content: [{ type: 'text', text: 'Half' }] }));
+    await expect(translateToEnglish('k', 'Uzun metin', fetchFn as unknown as typeof fetch)).rejects.toThrow(/cut off/);
   });
 });
 

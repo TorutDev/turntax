@@ -33,7 +33,8 @@ export interface LoadedUnit {
   problem?: string;
 }
 
-export type CountMethod = 'offline-exact' | 'offline-proxy' | 'api' | 'unavailable';
+/** 'none-loaded': the tool loads nothing every turn, so there is nothing to count. */
+export type CountMethod = 'offline-exact' | 'offline-proxy' | 'api' | 'unavailable' | 'none-loaded';
 
 export interface ModelInfo {
   id: string;

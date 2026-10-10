@@ -90,9 +90,9 @@ npm run build:web
 npx turntax --badge
 ```
 
-[![context tax](https://img.shields.io/badge/context%20tax-297%20tokens%2Fturn-brightgreen)](https://github.com/TorutDev/turntax)
+[![context tax (o200k)](https://img.shields.io/badge/context%20tax%20(o200k)-297%20tokens%2Fturn-brightgreen)](https://github.com/TorutDev/turntax)
 
-The badge shows the largest always-loaded o200k total among the tools found.
+The badge shows the largest always-loaded total among the tools found, counted with o200k_base.
 
 ## Limits
 
@@ -100,13 +100,9 @@ The badge shows the largest always-loaded o200k total among the tools found.
 - Counts instruction files only, not the agent's own system prompt, tool definitions or MCP servers.
 - Loading rules change. Each rule cites the vendor page and the date it was checked; please open an issue when one is out of date.
 
-## Development
+## Contributing
 
-```bash
-npm install
-npm test
-npm run build
-```
+Loading rules and prices go out of date. Corrections with a link to the vendor's page are the most useful contribution; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

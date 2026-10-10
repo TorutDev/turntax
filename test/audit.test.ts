@@ -56,6 +56,12 @@ describe('audit', () => {
     expect(calls).toBeLessThan(counted);
   });
 
+  it('labels a tool with nothing always loaded as such, not as an exact count', async () => {
+    const files = [{ path: 'pkg/CLAUDE.md', text: 'Nested only.' }];
+    const report = await audit(files, { tools: ['claude-code'], models: pick('claude-sonnet-5.5') });
+    expect(report.tools[0]!.models[0]).toMatchObject({ perTurn: 0, method: 'none-loaded' });
+  });
+
   it('renders text, markdown and a badge', async () => {
     const report = await audit(MIXED, { models: pick('claude-sonnet-5.5', 'gpt-6.1-sol') });
     const text = renderText(report, '/repo');
@@ -64,7 +70,7 @@ describe('audit', () => {
     expect(text).toContain('checked 2026-10-10');
     const md = renderMarkdown(report);
     expect(md).toContain('| Tool | Model | Tokens / turn |');
-    expect(md).toContain('img.shields.io/badge/context%20tax-');
-    expect(badgeUrl(report)).toMatch(/^https:\/\/img\.shields\.io\/badge\/context%20tax-\d+%20tokens%2Fturn-brightgreen$/);
+    expect(md).toContain('img.shields.io/badge/context%20tax%20(o200k)-');
+    expect(badgeUrl(report)).toMatch(/^https:\/\/img\.shields\.io\/badge\/context%20tax%20\(o200k\)-\d+%20tokens%2Fturn-brightgreen$/);
   });
 });

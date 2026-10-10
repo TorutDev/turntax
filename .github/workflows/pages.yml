@@ -1,8 +1,7 @@
 name: Pages
 
+# Run manually once GitHub Pages is enabled for the repository (Settings > Pages > Source: GitHub Actions).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

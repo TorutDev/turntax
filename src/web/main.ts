@@ -1,7 +1,7 @@
 import { audit, type Report } from '../core/audit.js';
 import { addImports, isInstructionFile, isSkippedDir } from '../core/files.js';
 import { DEFAULT_MODEL_IDS, MODELS } from '../core/prices.js';
-import { badgeMarkdown, fmtTokens, fmtUsd, renderMarkdown } from '../core/render.js';
+import { METHOD_LABEL, badgeMarkdown, fmtTokens, fmtUsd, renderMarkdown } from '../core/render.js';
 import { TOOLS } from '../core/tools.js';
 import type { RepoFile } from '../core/types.js';
 
@@ -138,7 +138,7 @@ function renderReport(report: Report): void {
         ? ['(no selected model)', '', '', '', '']
         : m.perTurn === null
           ? [m.label, '-', m.model.startsWith('claude') || m.model.startsWith('gemini') ? 'CLI with API key only' : m.reason ?? '', '-', '-']
-          : [m.label, fmtTokens(m.perTurn), m.method === 'offline-proxy' ? 'estimate (o200k proxy)' : 'exact (offline)', fmtUsd(m.uncached), fmtUsd(m.cached)];
+          : [m.label, fmtTokens(m.perTurn), METHOD_LABEL[m.method], fmtUsd(m.uncached), fmtUsd(m.cached)];
       rows.push(el('tr', {}, ...[...lead, ...rest].map((c) => el('td', {}, c))));
     });
   }

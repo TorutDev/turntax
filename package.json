@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Measure the per-turn token tax your AI coding-agent instruction files (CLAUDE.md, AGENTS.md, Cursor/Copilot/Windsurf rules) add to every agent turn.",
   "license": "MIT",
+  "author": "TORUT LTD",
+  "homepage": "https://github.com/TorutDev/turntax#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TorutDev/turntax.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TorutDev/turntax/issues"
+  },
   "type": "module",
   "bin": {
     "turntax": "dist/bin.js"

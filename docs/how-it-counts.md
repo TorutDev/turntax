@@ -9,6 +9,8 @@
 
 Skills and description-driven rules are split in two: the short description is always in context, the body loads on demand.
 
+Rule folders inside a subdirectory (for example `packages/api/.claude/rules/` or `packages/api/.cursor/rules/`) are counted as on-demand: they apply only when the agent works in that folder.
+
 The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-10-10.
 
 ## Claude Code

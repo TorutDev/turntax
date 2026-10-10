@@ -1,11 +1,12 @@
 import type { Report } from './audit.js';
 import type { CountMethod } from './types.js';
 
-const METHOD_LABEL: Record<CountMethod, string> = {
+export const METHOD_LABEL: Record<CountMethod, string> = {
   'offline-exact': 'exact (offline tokenizer)',
   'offline-proxy': 'estimate (o200k_base proxy)',
   api: 'vendor API count',
   unavailable: 'not counted',
+  'none-loaded': 'nothing always loaded',
 };
 
 export function fmtTokens(n: number): string {
@@ -149,9 +150,9 @@ export function badgeUrl(report: Report): string {
   const n = headlineTokens(report);
   const value = n >= 1000 ? `${(n / 1000).toFixed(1)}k tokens/turn` : `${n} tokens/turn`;
   const color = n < 2000 ? 'brightgreen' : n < 5000 ? 'yellow' : n < 10000 ? 'orange' : 'red';
-  return `https://img.shields.io/badge/${shieldsEscape('context tax')}-${shieldsEscape(value)}-${color}`;
+  return `https://img.shields.io/badge/${shieldsEscape('context tax (o200k)')}-${shieldsEscape(value)}-${color}`;
 }
 
 export function badgeMarkdown(report: Report): string {
-  return `[![context tax](${badgeUrl(report)})](https://github.com/TorutDev/turntax)`;
+  return `[![context tax (o200k)](${badgeUrl(report)})](https://github.com/TorutDev/turntax)`;
 }

@@ -86,6 +86,26 @@ describe('Claude Code', () => {
   });
 });
 
+describe('nested rule folders', () => {
+  it('apply only when the agent works in that subdirectory', () => {
+    const files = [
+      { path: 'pkg/.claude/rules/a.md', text: 'Nested Claude rule.' },
+      { path: 'pkg/.cursor/rules/a.mdc', text: '---\nalwaysApply: true\n---\nNested Cursor rule.' },
+      { path: 'pkg/.windsurf/rules/a.md', text: '---\ntrigger: always_on\n---\nNested Windsurf rule.' },
+    ];
+    const u = classify(files);
+    for (const [tool, path] of [
+      ['claude-code', 'pkg/.claude/rules/a.md'],
+      ['cursor', 'pkg/.cursor/rules/a.mdc'],
+      ['windsurf', 'pkg/.windsurf/rules/a.md'],
+    ] as const) {
+      const unit = find(u, tool, path)!;
+      expect(unit.mode).toBe('on-demand');
+      expect(unit.trigger).toBe('when working in pkg/');
+    }
+  });
+});
+
 describe('Codex', () => {
   it('prefers AGENTS.override.md and truncates at 32 KiB', () => {
     const big = 'a'.repeat(40 * 1024);

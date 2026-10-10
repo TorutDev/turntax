@@ -46,6 +46,8 @@ export type FileRule =
       kind: 'frontmatter';
       /** Matches repo-relative paths. */
       pattern: RegExp;
+      /** Rule folders at the root; copies in subdirectories only apply when the agent works there. */
+      rootPrefixes: string[];
       decide: (fm: Frontmatter) => FrontmatterDecision;
     }
   | {
@@ -78,8 +80,12 @@ export interface SizeLimit {
   pattern: RegExp;
   unit: 'lines' | 'chars' | 'bytes';
   max: number;
-  /** "hard" limits drop content; "advice" limits are vendor recommendations. */
-  severity: 'hard' | 'advice';
+  /**
+   * truncate - the tool documents that content past the limit is dropped
+   * limit    - the tool enforces the limit but does not document what happens past it
+   * advice   - a vendor recommendation
+   */
+  severity: 'truncate' | 'limit' | 'advice';
   text: string;
   source: string;
 }
@@ -134,6 +140,7 @@ export const TOOLS: ToolSpec[] = [
       {
         kind: 'frontmatter',
         pattern: /^(?:.*\/)?\.claude\/rules\/.+\.md$/,
+        rootPrefixes: ['.claude/rules/'],
         decide: (fm) =>
           has(fm, 'paths')
             ? { mode: 'on-demand', trigger: `paths: ${str(fm.paths)}` }
@@ -207,7 +214,7 @@ export const TOOLS: ToolSpec[] = [
         pattern: /(^|\/)AGENTS(\.override)?\.md$/,
         unit: 'bytes',
         max: 32 * 1024,
-        severity: 'hard',
+        severity: 'truncate',
         text: 'Codex stops reading project docs at project_doc_max_bytes (default 32 KiB); the rest is dropped.',
         source: 'https://learn.chatgpt.com/docs/agent-configuration/agents-md',
       },
@@ -246,6 +253,7 @@ export const TOOLS: ToolSpec[] = [
       {
         kind: 'frontmatter',
         pattern: /^(?:.*\/)?\.cursor\/rules\/.+\.mdc$/,
+        rootPrefixes: ['.cursor/rules/'],
         decide: (fm) => {
           if (fm.alwaysApply === true || str(fm.alwaysApply) === 'true')
             return { mode: 'always', trigger: 'alwaysApply: true' };
@@ -305,6 +313,7 @@ export const TOOLS: ToolSpec[] = [
       {
         kind: 'frontmatter',
         pattern: /^\.github\/instructions\/.+\.instructions\.md$/,
+        rootPrefixes: ['.github/instructions/'],
         decide: (fm) => {
           if (has(fm, 'applyTo')) return { mode: 'on-demand', trigger: `applyTo: ${str(fm.applyTo)}` };
           if (has(fm, 'description'))
@@ -330,7 +339,7 @@ export const TOOLS: ToolSpec[] = [
         nested: 'ignored',
         nestedTrigger: '',
         condition: 'copilot-no-agents-md',
-        note: 'Copilot docs allow a single root CLAUDE.md or GEMINI.md as an alternative to AGENTS.md.',
+        note: 'Copilot docs allow a single root CLAUDE.md or GEMINI.md as an alternative to AGENTS.md. When both exist the docs do not say which wins; CLAUDE.md is assumed.',
       },
     ],
     limits: [],
@@ -346,6 +355,7 @@ export const TOOLS: ToolSpec[] = [
       {
         kind: 'frontmatter',
         pattern: /^(?:.*\/)?\.(?:devin|windsurf)\/rules\/.+\.md$/,
+        rootPrefixes: ['.devin/rules/', '.windsurf/rules/'],
         decide: (fm) => {
           switch (str(fm.trigger).trim()) {
             case 'always_on':
@@ -379,7 +389,7 @@ export const TOOLS: ToolSpec[] = [
         pattern: /(^|\/)(\.(devin|windsurf)\/rules\/.+\.md|\.windsurfrules)$/,
         unit: 'chars',
         max: 12000,
-        severity: 'hard',
+        severity: 'limit',
         text: 'Windsurf limits workspace rule files to 12,000 characters each.',
         source: 'https://docs.devin.ai/desktop/cascade/memories',
       },

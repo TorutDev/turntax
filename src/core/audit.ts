@@ -148,8 +148,7 @@ function modelCost(model: ModelInfo, always: FileRow[], turns: number): ModelCos
     };
   }
   const perTurn = sum(counts.map((c) => c!.tokens!));
-  // Nothing always loaded: the cost is zero whichever counter would have been used.
-  const method = counts[0]?.method ?? 'offline-exact';
+  const method = counts[0]?.method ?? 'none-loaded';
   const price = (p: number | null) => (p === null ? null : (perTurn * turns * p) / 1_000_000);
   return {
     model: model.id,

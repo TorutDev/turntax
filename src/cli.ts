@@ -11,7 +11,7 @@ import type { ModelInfo, ToolId } from './core/types.js';
 import { discover, existsIn, packageScripts } from './node/discover.js';
 import { anthropicCounter, geminiCounter, translateToEnglish } from './node/remote.js';
 
-const VERSION = '0.1.0';
+const VERSION: string = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 const HELP = `turntax ${VERSION}
 Measure the token tax that agent instruction files add to every turn.
@@ -151,7 +151,11 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
       for (const path of targets) {
         if (english.has(path)) continue;
         notice(`Translating ${path} with Claude (api.anthropic.com) to measure its language multiplier.`);
-        english.set(path, await translateToEnglish(env.ANTHROPIC_API_KEY, files.find((f) => f.path === path)!.text));
+        try {
+          english.set(path, await translateToEnglish(env.ANTHROPIC_API_KEY, files.find((f) => f.path === path)!.text));
+        } catch (e) {
+          notice(`Could not translate ${path}: ${(e as Error).message}. Its multiplier is not measured.`);
+        }
       }
     }
 

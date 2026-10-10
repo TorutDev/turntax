@@ -1,4 +1,4 @@
-import { linesWithFences, splitSections } from './markdown.js';
+import { dirname, linesWithFences, resolvePath, splitSections } from './markdown.js';
 import { countO200k } from './tokenize.js';
 import { TOOLS } from './tools.js';
 import type { LoadedUnit, RepoFile, ToolId } from './types.js';
@@ -111,17 +111,19 @@ function sizeLimits(units: LoadedUnit[], files: RepoFile[]): Advice[] {
           overflow = new TextDecoder().decode(bytes.slice(limit.max));
         }
         if (size <= limit.max) continue;
-        const hard = limit.severity === 'hard';
+        const notes = {
+          truncate: `About ${countO200k(overflow)} tokens past the limit never reach the agent; move them somewhere it reads.`,
+          limit: `About ${countO200k(overflow)} tokens are over the tool's limit; shorten the file.`,
+          advice: 'Tokens beyond the recommended size.',
+        };
         out.push({
           kind: 'size-limit',
-          severity: hard ? 'high' : 'medium',
+          severity: limit.severity === 'advice' ? 'medium' : 'high',
           tools: [tool.id],
           paths: [u.path],
           message: `${size} ${limit.unit} (limit ${limit.max}). ${limit.text} Source: ${limit.source}`,
-          savingTokens: hard ? null : countO200k(overflow),
-          savingNote: hard
-            ? `About ${countO200k(overflow)} tokens past the limit never reach the agent; move them somewhere it reads.`
-            : 'Tokens beyond the recommended size.',
+          savingTokens: limit.severity === 'advice' ? countO200k(overflow) : null,
+          savingNote: notes[limit.severity],
         });
       }
     }
@@ -182,39 +184,61 @@ interface Directive {
   text: string;
 }
 
-const DIRECTIVES: Array<{ topic: string; re: RegExp; value: (m: RegExpMatchArray) => string }> = [
+interface DirectivePattern {
+  topic: string;
+  re: RegExp;
+  value: (m: RegExpMatchArray) => string;
+  /** Style rules are often per language ("4 spaces for Python"); a "for X" qualifier scopes the topic. */
+  scoped?: boolean;
+}
+
+const DIRECTIVES: DirectivePattern[] = [
   {
     topic: 'package manager',
-    re: /(?<!(?:never|not|n't)\s)\b(?:always use|use|prefer|must use)\s+(npm|pnpm|yarn|bun)\b(?!\s+(?:run|scripts?)\b)/i,
+    re: /\b(?:use|prefer)\s+(npm|pnpm|yarn|bun)\b(?!\s+(?:run|scripts?)\b)/gi,
     value: (m) => m[1]!.toLowerCase(),
   },
   {
-    topic: 'package manager',
-    re: /\b(?:never use|don'?t use|do not use|avoid)\s+(npm|pnpm|yarn|bun)\b/i,
-    value: (m) => `not ${m[1]!.toLowerCase()}`,
-  },
-  {
     topic: 'indentation',
-    re: /\b(?:indent(?:ation)?\s+(?:with|using|of)\s+|use\s+)(tabs|\d(?=[- ]?spaces?\b))/i,
+    re: /\b(?:indent(?:ation)?\s+(?:with|using|of)\s+|use\s+)(tabs|\d(?=[- ]?spaces?\b))/gi,
     value: (m) => (m[1]!.toLowerCase() === 'tabs' ? 'tabs' : `${m[1]} spaces`),
+    scoped: true,
   },
   {
     topic: 'indentation',
-    re: /\b(\d)[- ]space indent(?:ation|s)?\b/i,
+    re: /\b(\d)[- ]space indent(?:ation|s)?\b/gi,
     value: (m) => `${m[1]} spaces`,
+    scoped: true,
   },
   {
     topic: 'quotes',
-    re: /\b(?:use|prefer|always use)\s+(single|double)\s+quotes\b/i,
+    re: /\b(?:use|prefer)\s+(single|double)\s+quotes\b/gi,
     value: (m) => m[1]!.toLowerCase(),
+    scoped: true,
   },
-  {
-    topic: 'semicolons',
-    re: /\b(no semicolons|omit semicolons|without semicolons|always use semicolons|use semicolons)\b/i,
-    value: (m) => (/^(no|omit|without)/i.test(m[1]!) ? 'no semicolons' : 'semicolons'),
-  },
+  { topic: 'semicolons', re: /\b(?:use|add|require)\s+semicolons\b/gi, value: () => 'semicolons' },
+  // Already negative: "no semicolons" means the same as "do not use semicolons".
+  { topic: 'semicolons', re: /\b(?:no|omit|without)\s+semicolons\b/gi, value: () => 'not semicolons' },
 ];
 
+/** Matches a negation right before a directive: "never use", "do not use", "don't prefer". */
+const NEGATED = /\b(?:never|not|don'?t|avoid|no)\s+(?:\w+\s+)?$/i;
+
+function directivesIn(line: string): Array<{ topic: string; value: string }> {
+  const found: Array<{ topic: string; value: string }> = [];
+  for (const d of DIRECTIVES) {
+    for (const m of line.matchAll(d.re)) {
+      let value = d.value(m);
+      if (!value.startsWith('not ') && NEGATED.test(line.slice(0, m.index))) value = `not ${value}`;
+      const rest = line.slice((m.index ?? 0) + m[0].length);
+      const scope = d.scoped ? /^[^.;]{0,25}?\b(?:for|in)\s+([A-Za-z][\w.+#-]*)/.exec(rest)?.[1] : undefined;
+      found.push({ topic: scope ? `${d.topic} (${scope.toLowerCase()})` : d.topic, value });
+    }
+  }
+  return found;
+}
+
+/** "not x" conflicts only with "x"; two positive values conflict when they differ. */
 function conflicts(a: string, b: string): boolean {
   if (a === b) return false;
   if (a.startsWith('not ') || b.startsWith('not ')) return a === `not ${b}` || b === `not ${a}`;
@@ -229,10 +253,7 @@ function contradictions(units: LoadedUnit[]): Advice[] {
     for (const u of uniqueByPath(contentUnits(units.filter((x) => x.tool === tool), ['always']))) {
       linesWithFences(u.text).forEach(({ line, inFence }, i) => {
         if (inFence) return;
-        for (const d of DIRECTIVES) {
-          const m = line.match(d.re);
-          if (m) directives.push({ topic: d.topic, value: d.value(m), path: u.path, line: i + 1, text: line.trim() });
-        }
+        for (const d of directivesIn(line)) directives.push({ ...d, path: u.path, line: i + 1, text: line.trim() });
       });
     }
     for (let i = 0; i < directives.length; i++) {
@@ -420,6 +441,12 @@ function nonEnglish(units: LoadedUnit[], english?: Map<string, string>): Advice[
   return out;
 }
 
+/** True for instruction files that live in a package subdirectory rather than at the root or in a root tool folder. */
+function isNested(path: string): boolean {
+  const dir = dirname(path);
+  return dir !== '' && !/^\.(claude|github|cursor|windsurf|devin|agents)(\/|$)/.test(dir);
+}
+
 function staleReferences(units: LoadedUnit[], opts: AdviceOptions): Advice[] {
   const out: Advice[] = [];
   for (const u of uniqueByPath(contentUnits(units))) {
@@ -434,11 +461,14 @@ function staleReferences(units: LoadedUnit[], opts: AdviceOptions): Advice[] {
           const first = ref.split('/')[0]!;
           if (/^(path|example|foo|your|my)/i.test(first)) continue;
           // Only flag when the top-level folder exists but the file does not: likely moved or deleted.
-          if (opts.exists(first) && !opts.exists(ref)) missing.push({ ref, line, n: i + 1 });
+          // Paths may be written relative to the repository root or to the instruction file.
+          const local = resolvePath(u.path, ref);
+          if (opts.exists(first) && !opts.exists(ref) && !(local && opts.exists(local))) missing.push({ ref, line, n: i + 1 });
         }
       }
-      if (opts.packageScripts) {
-        for (const m of line.matchAll(/\b(?:npm|pnpm|yarn|bun) run ([\w:.-]+)/g)) {
+      // Root package.json scripts only apply to root-level instruction files, not nested packages.
+      if (opts.packageScripts && !isNested(u.path)) {
+        for (const m of line.matchAll(/\b(?:npm|pnpm|yarn|bun) run (?!-)([\w:.-]+)/g)) {
           if (!opts.packageScripts.has(m[1]!)) missing.push({ ref: `script "${m[1]}"`, line, n: i + 1 });
         }
       }

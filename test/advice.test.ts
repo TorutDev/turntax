@@ -52,6 +52,27 @@ describe('contradictions', () => {
     expect(c[0]!.message).toMatch(/indentation/);
   });
 
+  it('reads negated rules as agreeing with their positive form', () => {
+    const files = [
+      { path: '.cursor/rules/a.mdc', text: "---\nalwaysApply: true\n---\nDo not use semicolons.\nDon't use double quotes.\nDon't use tabs." },
+      { path: 'AGENTS.md', text: 'No semicolons.\nPrefer single quotes.\nUse 2 spaces for indentation.' },
+    ];
+    expect(buildAdvice(classify(files, ['cursor']), files).filter((a) => a.kind === 'contradiction')).toHaveLength(0);
+  });
+
+  it('flags a negated rule that clashes with a positive one', () => {
+    const files = [
+      { path: '.cursor/rules/a.mdc', text: '---\nalwaysApply: true\n---\nNever use yarn here.' },
+      { path: 'AGENTS.md', text: 'Use yarn for everything.' },
+    ];
+    expect(buildAdvice(classify(files, ['cursor']), files).filter((a) => a.kind === 'contradiction')).toHaveLength(1);
+  });
+
+  it('keeps per-language style rules apart', () => {
+    const files = [{ path: 'AGENTS.md', text: 'Use 4 spaces for Python files.\nUse 2 spaces for TypeScript files.' }];
+    expect(buildAdvice(classify(files, ['codex']), files).filter((a) => a.kind === 'contradiction')).toHaveLength(0);
+  });
+
   it('does not treat "use pnpm, never use npm" as a conflict', () => {
     const files = [{ path: 'AGENTS.md', text: 'Use pnpm, never use npm.' }];
     expect(buildAdvice(classify(files, ['codex']), files).filter((a) => a.kind === 'contradiction')).toHaveLength(0);
@@ -86,6 +107,10 @@ describe('size limits', () => {
     const codex = limits.find((a) => a.tools.includes('codex'))!;
     expect(codex.severity).toBe('high');
     expect(codex.savingNote).toMatch(/never reach/);
+    const ws = [{ path: '.windsurfrules', text: 'x'.repeat(13000) }];
+    const windsurf = buildAdvice(classify(ws, ['windsurf']), ws).find((a) => a.kind === 'size-limit')!;
+    expect(windsurf.savingNote).toMatch(/over the tool's limit/);
+    expect(windsurf.savingNote).not.toMatch(/never reach/);
   });
 });
 
@@ -105,6 +130,18 @@ describe('misconfiguration and stale references', () => {
     expect(dirOnly.filter((a) => a.kind === 'stale-reference')).toHaveLength(0);
     const gemini = of('stale-reference').find((a) => a.paths[0] === 'GEMINI.md')!;
     expect(gemini.message).toContain('script "lint"');
+  });
+
+  it('resolves paths relative to nested files and skips root scripts for nested packages', () => {
+    const files = [
+      { path: 'packages/api/CLAUDE.md', text: 'Handlers live in `packages/api/db.ts` and `handlers/users.ts`. Run `pnpm run deploy` here.' },
+      { path: 'CLAUDE.md', text: 'Run `pnpm run -r build` across the workspace.' },
+    ];
+    const stale = buildAdvice(classify(files, ['claude-code']), files, {
+      exists: existsIn(fixture('mixed')),
+      packageScripts: packageScripts(fixture('mixed')),
+    }).filter((a) => a.kind === 'stale-reference');
+    expect(stale).toHaveLength(0);
   });
 
   it('extracts path references', () => {
