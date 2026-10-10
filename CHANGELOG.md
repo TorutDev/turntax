@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-10-10)
 
 - Ten more agents: Aider, Amp, Cline, Continue, Goose, JetBrains Junie, Kiro, OpenCode, Roo Code and Zed, each linked to its documentation.
 - Agents that load the same files share one row in the report and one card on the web page.
