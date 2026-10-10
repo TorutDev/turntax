@@ -1,0 +1,28 @@
+name: Bug report
+description: Wrong output, a crash, or a file that is classified incorrectly
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the command you ran and the relevant part of the output. Remove anything private.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: turntax version
+      description: Output of `turntax --version`
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS and Node.js version

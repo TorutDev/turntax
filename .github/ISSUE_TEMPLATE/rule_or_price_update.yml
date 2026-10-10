@@ -1,0 +1,34 @@
+name: Loading rule or price update
+description: An agent loads files differently now, or a model price changed
+labels: [data]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What changed
+      options:
+        - Loading rule
+        - Price
+        - New tool or model
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool or model
+      placeholder: e.g. Cursor, claude-sonnet-5.5
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Current behaviour or price
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Official source
+      description: A link to the vendor's documentation or pricing page
+    validations:
+      required: true
