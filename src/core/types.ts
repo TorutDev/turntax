@@ -1,4 +1,20 @@
-export type ToolId = 'claude-code' | 'codex' | 'gemini-cli' | 'cursor' | 'copilot' | 'windsurf';
+export type ToolId =
+  | 'claude-code'
+  | 'codex'
+  | 'gemini-cli'
+  | 'cursor'
+  | 'copilot'
+  | 'windsurf'
+  | 'cline'
+  | 'roo-code'
+  | 'kiro'
+  | 'junie'
+  | 'zed'
+  | 'continue'
+  | 'aider'
+  | 'goose'
+  | 'amp'
+  | 'opencode';
 
 /** A file as seen by the audit: repo-relative POSIX path plus its text. */
 export interface RepoFile {

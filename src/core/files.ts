@@ -1,5 +1,5 @@
 /** Which repository paths can hold agent instructions. Shared by the CLI and the web page. */
-import { findImports, resolvePath } from './markdown.js';
+import { configList, findImports, resolvePath } from './markdown.js';
 import type { RepoFile } from './types.js';
 
 export const SKIP_DIRS = new Set([
@@ -33,6 +33,13 @@ const NAMES = new Set([
   'GEMINI.md',
   '.cursorrules',
   '.windsurfrules',
+  '.clinerules',
+  '.roorules',
+  '.rules',
+  'AGENT.md',
+  'CONVENTIONS.md',
+  '.goosehints',
+  '.aider.conf.yml',
 ]);
 
 const PATTERNS = [
@@ -44,6 +51,13 @@ const PATTERNS = [
   /(^|\/)\.agents\/skills\/[^/]+\/SKILL\.md$/,
   /(^|\/)\.cursor\/rules\/.+\.mdc?$/,
   /(^|\/)\.(devin|windsurf)\/rules\/.+\.md$/,
+  /^\.(clinerules|cline\/rules)\/.+\.md$/,
+  /^\.roo\/rules(-[\w-]+)?\/.+\.(md|txt)$/,
+  /^\.roorules-[\w-]+$/,
+  /^\.kiro\/steering\/[^/]+\.md$/,
+  /^\.junie\/(AGENTS|playbook|guidelines)\.md$/,
+  /^\.junie\/(rules|guidelines)\/[^/]+\.md$/,
+  /^\.continue\/rules\/[^/]+\.md$/,
 ];
 
 export const MAX_DEPTH = 12;
@@ -59,7 +73,15 @@ export function isSkippedDir(path: string): boolean {
   return SKIP_DIRS.has(name) || path === '.claude/worktrees' || path.endsWith('/.claude/worktrees');
 }
 
-/** Adds in-repo files reached through @imports (up to five levels) to `found`. */
+/** Files a file pulls in: its @imports, or the read: list of .aider.conf.yml. */
+function references(f: RepoFile): string[] {
+  if (f.path === '.aider.conf.yml') return configList(f, 'read');
+  return findImports(f.text)
+    .map((t) => resolvePath(f.path, t))
+    .filter((p): p is string => p !== null);
+}
+
+/** Adds in-repo files reached through @imports or config read lists (up to five levels) to `found`. */
 export async function addImports(
   found: Map<string, RepoFile>,
   read: (path: string) => string | null | Promise<string | null>,
@@ -68,9 +90,8 @@ export async function addImports(
   for (let depth = 0; depth < 5 && queue.length; depth++) {
     const next: RepoFile[] = [];
     for (const f of queue) {
-      for (const target of findImports(f.text)) {
-        const rel = resolvePath(f.path, target);
-        if (rel === null || found.has(rel)) continue;
+      for (const rel of references(f)) {
+        if (found.has(rel)) continue;
         const text = await read(rel);
         if (text === null) continue;
         const file = { path: rel, text };

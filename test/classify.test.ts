@@ -86,6 +86,20 @@ describe('Claude Code', () => {
   });
 });
 
+describe('several files at one level', () => {
+  it('counts CLAUDE.md, .claude/CLAUDE.md and CLAUDE.local.md together', () => {
+    const u = classify(
+      [
+        { path: 'CLAUDE.md', text: 'Team rules.' },
+        { path: '.claude/CLAUDE.md', text: 'More team rules.' },
+        { path: 'CLAUDE.local.md', text: 'My notes.' },
+      ],
+      ['claude-code'],
+    );
+    expect(u.filter((x) => x.mode === 'always').map((x) => x.path).sort()).toEqual(['.claude/CLAUDE.md', 'CLAUDE.local.md', 'CLAUDE.md']);
+  });
+});
+
 describe('line endings', () => {
   it('treats CRLF files like LF files', () => {
     const lf = 'Line one.\n\nLine two.\n';
@@ -205,6 +219,8 @@ describe('Gemini CLI', () => {
 
 describe('detectTools', () => {
   it('reports tools that read at least one file', () => {
-    expect(detectTools(classify(AGENTS_ONLY))).toEqual(['claude-code', 'codex', 'cursor', 'copilot', 'windsurf']);
+    expect(detectTools(classify(AGENTS_ONLY))).toEqual([
+      'claude-code', 'codex', 'cursor', 'copilot', 'windsurf', 'roo-code', 'kiro', 'junie', 'zed', 'goose', 'amp', 'opencode',
+    ]);
   });
 });

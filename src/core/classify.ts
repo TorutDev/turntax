@@ -1,4 +1,4 @@
-import { basename, dirname, findImports, firstParagraph, parseFrontmatter, resolvePath, stripHtmlComments } from './markdown.js';
+import { basename, configList, dirname, findImports, firstParagraph, parseFrontmatter, resolvePath, stripHtmlComments } from './markdown.js';
 import { TOOLS, type FileRule, type ToolSpec } from './tools.js';
 import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
 
@@ -58,6 +58,30 @@ function applyRule(tool: ToolSpec, rule: FileRule, files: RepoFile[], byPath: Ma
       return files
         .filter((f) => rule.pattern.test(f.path))
         .map((f) => unit(tool.id, f.path, 'ignored', rule.reason, f.text, { problem: rule.reason }));
+    case 'pattern':
+      return files
+        .filter((f) => rule.pattern.test(f.path))
+        .map((f) => unit(tool.id, f.path, rule.mode, rule.trigger, f.text, { notes: rule.note ? [rule.note] : [] }));
+    case 'precedence': {
+      const inGroup = (g: (typeof rule.groups)[number]) => files.filter((f) => g.patterns.some((p) => p.test(f.path)));
+      const winner = rule.groups.find((g) => inGroup(g).length > 0);
+      if (!winner) return [];
+      return rule.groups.flatMap((g) =>
+        inGroup(g).map((f) =>
+          g === winner
+            ? unit(tool.id, f.path, 'always', 'project instructions', f.text, { notes: rule.note ? [rule.note] : [] })
+            : unit(tool.id, f.path, 'ignored', `${winner.label} takes precedence`, f.text),
+        ),
+      );
+    }
+    case 'config-list': {
+      const config = byPath.get(rule.configPath);
+      if (!config) return [];
+      return configList(config, rule.key)
+        .map((p) => byPath.get(p))
+        .filter((f): f is RepoFile => f !== undefined)
+        .map((f) => unit(tool.id, f.path, 'always', rule.trigger, f.text));
+    }
     case 'frontmatter':
       return files
         .filter((f) => rule.pattern.test(f.path))
@@ -128,20 +152,26 @@ function applyHierarchical(
   if (rule.condition === 'copilot-no-agents-md' && files.some((f) => f.path === 'AGENTS.md'))
     conditionFails = 'A root AGENTS.md exists, which Copilot uses instead.';
 
-  const winners = new Map<string, RepoFile>();
+  // Every matching file is read, except where the tool reads only one file per directory.
+  const firstPerLevel = new Map<string, RepoFile>();
+  const read: RepoFile[] = [];
   const out: LoadedUnit[] = [];
   for (const name of rule.names) {
     for (const f of matches.filter((m) => basename(m.path) === name)) {
       const level = levelOf(f.path, rule.sameLevelDirs);
-      if (rule.onePerDirectory && winners.has(level)) {
-        out.push(unit(tool.id, f.path, 'ignored', `${basename(winners.get(level)!.path)} takes precedence`, f.text));
+      // The docs do not say when subdirectory copies load, so they are not counted either way.
+      if (level !== '' && rule.nested === 'skip') continue;
+      const first = firstPerLevel.get(level);
+      if (rule.onePerDirectory && first) {
+        out.push(unit(tool.id, f.path, 'ignored', `${basename(first.path)} takes precedence`, f.text));
         continue;
       }
-      winners.set(level, f);
+      if (!first) firstPerLevel.set(level, f);
+      read.push(f);
     }
   }
 
-  for (const f of winners.values()) {
+  for (const f of read) {
     if (conditionFails) {
       out.push(unit(tool.id, f.path, 'ignored', conditionFails, f.text));
       continue;
@@ -210,7 +240,18 @@ function expandImports(
     if (!f) continue;
     seen.add(resolved);
     const notes: string[] = [];
-    const child = unit(tool, f.path, parent.mode, parent.trigger, transform(f.text, rule, notes), {
+    let mode = parent.mode;
+    let trigger = parent.trigger;
+    let text = f.text;
+    if (rule.importGlobs) {
+      const { frontmatter, body } = parseFrontmatter(f.text);
+      if (frontmatter.globs !== undefined && String(frontmatter.globs) !== '') {
+        mode = 'on-demand';
+        trigger = `globs: ${Array.isArray(frontmatter.globs) ? frontmatter.globs.join(', ') : String(frontmatter.globs)}`;
+        text = body;
+      }
+    }
+    const child = unit(tool, f.path, mode, trigger, transform(text, rule, notes), {
       importedFrom: parent.path,
       notes,
     });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { audit } from '../src/core/audit.js';
 import { MODELS } from '../src/core/prices.js';
-import { badgeUrl, renderMarkdown, renderText } from '../src/core/render.js';
+import { badgeUrl, groupFiles, groupTools, renderMarkdown, renderText } from '../src/core/render.js';
 import { countO200k } from '../src/core/tokenize.js';
 import type { Counter } from '../src/core/types.js';
 import { loadFixture } from './helpers.js';
@@ -62,14 +62,25 @@ describe('audit', () => {
     expect(report.tools[0]!.models[0]).toMatchObject({ perTurn: 0, method: 'none-loaded' });
   });
 
+  it('groups agents and files only when everything they load matches', async () => {
+    const files = [
+      { path: 'AGENTS.md', text: 'Shared instructions for every agent.' },
+      { path: '.goosehints', text: 'Goose only.' },
+    ];
+    const report = await audit(files, { tools: ['codex', 'opencode', 'goose'], models: pick('gpt-6.1-sol') });
+    expect(groupTools(report).map((g) => g.names)).toEqual([['OpenAI Codex', 'OpenCode'], ['Goose']]);
+    const agents = groupFiles(report).find((g) => g.file.path === 'AGENTS.md')!.tools;
+    expect(agents).toEqual(['codex', 'goose', 'opencode']);
+  });
+
   it('renders text, markdown and a badge', async () => {
     const report = await audit(MIXED, { models: pick('claude-sonnet-5.5', 'gpt-6.1-sol') });
     const text = renderText(report, '/repo');
-    expect(text).toContain('Claude Code ');
+    expect(text).toContain('Claude Code');
     expect(text).toContain('needs --claude-api and ANTHROPIC_API_KEY');
     expect(text).toContain('checked 2026-10-10');
     const md = renderMarkdown(report);
-    expect(md).toContain('| Tool | Model | Tokens / turn |');
+    expect(md).toContain('| Agents | Model | Tokens / turn |');
     expect(md).toContain('img.shields.io/badge/context%20tax%20(o200k)-');
     expect(badgeUrl(report)).toMatch(/^https:\/\/img\.shields\.io\/badge\/context%20tax%20\(o200k\)-\d+%20tokens%2Fturn-brightgreen$/);
   });

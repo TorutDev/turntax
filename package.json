@@ -1,7 +1,7 @@
 {
   "name": "turntax",
   "version": "0.1.0",
-  "description": "Measure the per-turn token tax your AI coding-agent instruction files (CLAUDE.md, AGENTS.md, Cursor/Copilot/Windsurf rules) add to every agent turn.",
+  "description": "Measure the per-turn token cost of AI coding-agent instruction files (AGENTS.md, CLAUDE.md, Cursor, Copilot, Cline, Roo, Kiro, Windsurf and more) for every agent that reads them.",
   "license": "MIT",
   "author": "TORUT LTD",
   "homepage": "https://github.com/TorutDev/turntax#readme",
@@ -30,13 +30,23 @@
     "prepack": "npm run build"
   },
   "keywords": [
-    "claude-code",
     "agents-md",
+    "claude-code",
     "codex",
     "cursor",
     "copilot",
     "gemini-cli",
     "windsurf",
+    "cline",
+    "roo-code",
+    "kiro",
+    "junie",
+    "zed",
+    "continue",
+    "aider",
+    "goose",
+    "amp",
+    "opencode",
     "tokens",
     "context",
     "cli"

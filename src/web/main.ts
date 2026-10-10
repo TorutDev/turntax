@@ -1,7 +1,8 @@
 import { audit, type Report } from '../core/audit.js';
 import { addImports, isInstructionFile, isSkippedDir } from '../core/files.js';
 import { DEFAULT_MODEL_IDS, MODELS } from '../core/prices.js';
-import { METHOD_LABEL, badgeMarkdown, fmtTokens, fmtUsd, renderMarkdown } from '../core/render.js';
+import { SAMPLE_REPO } from './sample.js';
+import { badgeMarkdown, fmtTokens, fmtUsd, groupFiles, groupTools, renderMarkdown } from '../core/render.js';
 import { TOOLS } from '../core/tools.js';
 import type { RepoFile } from '../core/types.js';
 
@@ -125,72 +126,152 @@ function renderFileList(): void {
   $('loaded').hidden = state.files.size === 0;
 }
 
-function renderReport(report: Report): void {
-  $('results').hidden = false;
-  const summary = $('summary');
-  const head = el('tr', {}, ...['Tool', 'Always-loaded files', 'o200k / turn', 'Model', 'Tokens / turn', 'Counted by', `${report.turns} turns`, 'Cached'].map((h) => el('th', {}, h)));
-  const rows: HTMLElement[] = [];
-  for (const t of report.tools) {
-    const models = t.models.length ? t.models : [null];
-    models.forEach((m, i) => {
-      const lead = i === 0 ? [t.name, String(t.alwaysFiles), fmtTokens(t.perTurnO200k)] : ['', '', ''];
-      const rest = !m
-        ? ['(no selected model)', '', '', '', '']
-        : m.perTurn === null
-          ? [m.label, '-', m.model.startsWith('claude') || m.model.startsWith('gemini') ? 'CLI with API key only' : m.reason ?? '', '-', '-']
-          : [m.label, fmtTokens(m.perTurn), METHOD_LABEL[m.method], fmtUsd(m.uncached), fmtUsd(m.cached)];
-      rows.push(el('tr', {}, ...[...lead, ...rest].map((c) => el('td', {}, c))));
-    });
-  }
-  summary.replaceChildren(el('thead', {}, head), el('tbody', {}, ...rows));
+type ModelCost = Report['tools'][number]['models'][number];
 
-  const advice = $('advice');
-  advice.replaceChildren(
+function costLine(m: ModelCost, turns: number): string {
+  if (m.perTurn === null)
+    return m.model.startsWith('claude') || m.model.startsWith('gemini') ? 'exact count: CLI + API key' : (m.reason ?? 'not counted');
+  if (m.method === 'none-loaded') return 'nothing every turn';
+  return `${fmtUsd(m.uncached)} / ${turns} turns · ${fmtUsd(m.cached)} cached`;
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+function renderCards(report: Report): void {
+  $('cards').replaceChildren(
+    // Agents that load exactly the same files share one card.
+    ...groupTools(report).map(({ names, tool: t }) =>
+      el(
+        'article',
+        { class: 'card' },
+        el('h3', {}, names.join(' · ')),
+        el('div', { class: 'big' }, fmtTokens(t.perTurnO200k), el('span', {}, ' o200k tokens / turn')),
+        el('p', { class: 'muted small' }, `${plural(t.alwaysFiles, 'file')} every turn · ${fmtTokens(t.onDemandO200k)} o200k tokens on demand`),
+        el(
+          'ul',
+          {},
+          ...(t.models.length
+            ? t.models.map((m) => el('li', {}, el('span', {}, m.label), el('span', {}, costLine(m, report.turns))))
+            : [el('li', {}, el('span', {}, 'No model selected for this agent'), el('span', {}, ''))]),
+        ),
+      ),
+    ),
+  );
+}
+
+function renderChart(report: Report): void {
+  const chart = $('chart');
+  const tip = $('tip');
+  const rows = [...report.tools].sort((a, b) => b.perTurnO200k - a.perTurnO200k);
+  const max = Math.max(1, ...rows.map((t) => t.perTurnO200k));
+  chart.replaceChildren(
+    tip,
+    ...rows.map((t) => {
+      const bar = el('div', { class: 'bar', style: `width:${Math.max(0.5, (t.perTurnO200k / max) * 100)}%` });
+      const row = el(
+        'div',
+        { class: 'bar-row', tabindex: '0', 'aria-label': `${t.name}: ${fmtTokens(t.perTurnO200k)} o200k tokens every turn` },
+        el('span', { class: 'name' }, t.name),
+        el('span', { class: 'bar-track' }, bar, el('span', { class: 'bar-value' }, fmtTokens(t.perTurnO200k))),
+      );
+      const show = () => {
+        tip.textContent = `${t.name}: ${fmtTokens(t.perTurnO200k)} o200k tokens every turn from ${plural(t.alwaysFiles, 'file')}`;
+        const box = chart.getBoundingClientRect();
+        const b = bar.getBoundingClientRect();
+        tip.style.left = `${Math.min(box.width - 145, Math.max(145, b.right - box.left))}px`;
+        tip.style.top = `${b.top - box.top}px`;
+        tip.hidden = false;
+      };
+      row.addEventListener('mouseenter', show);
+      row.addEventListener('focus', show);
+      row.addEventListener('mouseleave', () => (tip.hidden = true));
+      row.addEventListener('blur', () => (tip.hidden = true));
+      return row;
+    }),
+  );
+}
+
+function renderAdvice(report: Report): void {
+  $('advice').replaceChildren(
     ...(report.advice.length
       ? report.advice.map((a) =>
           el(
             'li',
             { class: `sev-${a.severity}` },
-            el('span', { class: 'tag' }, `${a.severity} · ${a.kind}`),
-            ' ',
-            el('code', {}, a.paths.join(', ') + (a.line ? `:${a.line}` : '')),
+            el(
+              'div',
+              { class: 'row' },
+              el('span', { class: 'tag' }, `${a.severity} · ${a.kind.replace(/-/g, ' ')}`),
+              el('code', {}, a.paths.join(', ') + (a.line ? `:${a.line}` : '')),
+            ),
             el('p', {}, a.message),
-            el('p', { class: 'muted' }, (a.savingTokens === null ? '' : `Saves about ${fmtTokens(a.savingTokens)} o200k tokens per turn. `) + (a.savingNote ?? '')),
+            el(
+              'p',
+              { class: 'muted small' },
+              ...(a.savingTokens ? [el('span', { class: 'saving' }, `Saves about ${fmtTokens(a.savingTokens)} o200k tokens per turn. `)] : []),
+              a.savingNote ?? '',
+            ),
           ),
         )
-      : [el('li', {}, 'No issues found.')]),
+      : [el('li', {}, 'Nothing to trim.')]),
   );
+}
 
-  const files = $('files');
-  files.replaceChildren(
-    el('thead', {}, el('tr', {}, ...['Tool', 'Mode', 'File', 'o200k', 'Loads'].map((h) => el('th', {}, h)))),
+function renderFiles(report: Report): void {
+  const name = (id: string) => TOOLS.find((t) => t.id === id)?.name ?? id;
+  $('files').replaceChildren(
+    el('thead', {}, el('tr', {}, ...['File', 'Loads', 'o200k', 'When', 'Agents'].map((h) => el('th', {}, h)))),
     el(
       'tbody',
       {},
-      ...report.files.map((f) =>
+      ...groupFiles(report).map(({ file: f, tools }) =>
         el(
           'tr',
           {},
-          el('td', {}, f.tool),
-          el('td', {}, el('span', { class: `mode mode-${f.mode}` }, f.mode)),
           el('td', {}, el('code', {}, f.part === 'full' ? f.path : `${f.path} (${f.part})`)),
+          el('td', {}, el('span', { class: 'mode' }, f.mode)),
           el('td', { class: 'num' }, fmtTokens(f.o200k)),
-          el('td', {}, f.trigger),
+          el('td', { class: 'small' }, f.trigger),
+          el('td', { class: 'small' }, tools.map(name).join(', ')),
         ),
       ),
     ),
   );
+}
+
+function renderReport(report: Report): void {
+  $('results').hidden = false;
+  renderCards(report);
+  renderChart(report);
+  renderAdvice(report);
+  renderFiles(report);
   ($('badge') as HTMLTextAreaElement).value = badgeMarkdown(report);
 }
 
+function setupAgents(): void {
+  const names = TOOLS.map((t) => t.name).sort((a, b) => a.localeCompare(b));
+  $('agents').replaceChildren(...names.map((n) => el('li', { class: 'chip' }, n)));
+  const examples = ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.github/copilot-instructions.md', '.cursor/rules/main.mdc', '.windsurf/rules/main.md'];
+  $('paste-names').replaceChildren(...examples.map((v) => el('option', { value: v })));
+}
+
 function setupModels(): void {
+  const families: Array<[string, string]> = [
+    ['openai', 'OpenAI'],
+    ['claude', 'Anthropic'],
+    ['gemini', 'Google'],
+    ['open', 'Open weights'],
+  ];
   const box = $('models');
-  for (const m of MODELS) {
-    const input = el('input', { type: 'checkbox', id: `model-${m.id}` }) as HTMLInputElement;
-    input.checked = DEFAULT_MODEL_IDS.includes(m.id);
-    input.addEventListener('change', () => void run());
-    const note = m.offline === 'none' ? ' (count needs the CLI + API key)' : m.offline === 'o200k-proxy' ? ' (o200k estimate)' : '';
-    box.append(el('label', {}, input, ` ${m.label}`, el('span', { class: 'muted' }, note)));
+  for (const [family, title] of families) {
+    box.append(el('div', { class: 'muted small', style: 'margin-top:6px' }, title));
+    for (const m of MODELS.filter((x) => x.family === family)) {
+      const input = el('input', { type: 'checkbox', id: `model-${m.id}` }) as HTMLInputElement;
+      input.checked = DEFAULT_MODEL_IDS.includes(m.id);
+      input.addEventListener('change', () => void run());
+      const note = m.offline === 'none' ? ' · exact count via CLI + API key' : m.offline === 'o200k-proxy' ? ' · estimate' : ' · exact';
+      box.append(el('label', {}, input, ` ${m.label}`, el('span', { class: 'muted small' }, note)));
+    }
   }
 }
 
@@ -223,6 +304,13 @@ function setupInputs(): void {
     input.value = '';
     await run();
   });
+  $('sample').addEventListener('click', async () => {
+    state.files.clear();
+    state.allPaths = null;
+    for (const f of SAMPLE_REPO) state.files.set(f.path, f);
+    await run();
+    $('results').scrollIntoView({ behavior: 'smooth' });
+  });
   $('paste-add').addEventListener('click', async () => {
     const path = ($('paste-name') as HTMLInputElement).value.trim().replace(/^\.?\//, '');
     const text = ($('paste-text') as HTMLTextAreaElement).value;
@@ -237,16 +325,18 @@ function setupInputs(): void {
     void run();
   });
   $('turns').addEventListener('change', () => void run());
+  $('copy-install').addEventListener('click', () => void navigator.clipboard.writeText('npx turntax'));
   $('copy-badge').addEventListener('click', () => void navigator.clipboard.writeText(($('badge') as HTMLTextAreaElement).value));
   $('download-md').addEventListener('click', () => {
     if (!state.report) return;
     const url = URL.createObjectURL(new Blob([renderMarkdown(state.report)], { type: 'text/markdown' }));
-    const a = el('a', { href: url, download: 'context-tax-report.md' });
+    const a = el('a', { href: url, download: 'turntax-report.md' });
     a.click();
     URL.revokeObjectURL(url);
   });
-  $('tool-count').textContent = String(TOOLS.length);
 }
 
+setupAgents();
 setupModels();
 setupInputs();
+

@@ -1,6 +1,6 @@
 # How turntax counts
 
-`turntax` assumes the agent is started at the repository root. For each tool it sorts every instruction file into one of four modes:
+`turntax` assumes the agent is started at the repository root. For each agent it sorts every instruction file into one of four modes:
 
 - **always**: sent with every turn. This is the per-turn cost.
 - **on-demand**: loaded when the agent works in a folder, touches a matching file, invokes a skill, or decides a rule is relevant.
@@ -83,6 +83,104 @@ Source: [rules](https://docs.devin.ai/desktop/cascade/memories)
 | `.devin/rules/*.md`, `.windsurf/rules/*.md` | `trigger: always_on` always; `model_decision`: description always, body on-demand; `glob` on-demand; `manual` manual; no trigger: not counted and flagged |
 | `.windsurfrules` | always (legacy) |
 | `AGENTS.md` | always at the root; nested ones apply to their folder |
+
+## Cline
+
+Source: [Cline rules](https://docs.cline.bot/features/cline-rules)
+
+| File | Mode |
+| --- | --- |
+| `.clinerules/**/*.md`, `.cline/rules/**/*.md` | always without `paths`; on-demand with `paths`; `paths: []` never applies |
+
+Rules can be toggled off in Cline; the audit assumes they are on. Cline also detects `AGENTS.md`, `.cursorrules` and `.windsurfrules`, but whether those are on by default is not documented, so they are not counted. A single `.clinerules` file is not counted for Cline.
+
+## Roo Code
+
+Source: [custom instructions](https://roocodeinc.github.io/Roo-Code/features/custom-instructions)
+
+| File | Mode |
+| --- | --- |
+| `.roo/rules/**` | always |
+| `.roo/rules-{mode}/**`, `.roorules-{mode}` | on-demand: only in that mode |
+| `.roorules`, then `.clinerules` (order assumed) | always, only when `.roo/rules/` is empty or missing |
+| `AGENTS.md`, else `AGENT.md`, at the root | always (the `roo-cline.useAgentRules` setting turns it off) |
+
+## Kiro
+
+Source: [steering](https://kiro.dev/docs/steering/)
+
+| File | Mode |
+| --- | --- |
+| `.kiro/steering/*.md` | `inclusion: always` (the default) always; `fileMatch` on-demand; `manual` manual; `auto`: description always, body on-demand; an unknown value is counted as always |
+| `AGENTS.md` at the root | always |
+
+When subdirectory `AGENTS.md` files load is not documented, so they are not counted.
+
+## JetBrains Junie
+
+Source: [guidelines and memory](https://junie.jetbrains.com/docs/guidelines-and-memory.html)
+
+The first of these that exists is loaded every turn; the others are ignored:
+
+1. `.junie/AGENTS.md` (used on its own)
+2. `AGENTS.md`, together with `.junie/playbook.md` and `.junie/rules/*.md`
+3. `.junie/guidelines.md` or `.junie/guidelines/*.md` (deprecated)
+
+A custom path set in project settings is not modelled.
+
+## Zed
+
+Source: [instructions](https://zed.dev/docs/ai/instructions)
+
+Zed loads the first of these at the project root, every turn: `.rules`, `.cursorrules`, `.windsurfrules`, `.clinerules`, `.github/copilot-instructions.md`, `AGENT.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`. The others are ignored.
+
+## Continue
+
+Source: [rules](https://docs.continue.dev/customize/deep-dives/rules)
+
+| File | Mode |
+| --- | --- |
+| `.continue/rules/*.md` | `alwaysApply: true` always; `globs` on-demand; `alwaysApply: false` with only a `description`: description always, body on-demand; no frontmatter: always |
+
+Rules in `config.yaml` and from the Continue hub are not counted.
+
+## Aider
+
+Source: [conventions](https://aider.chat/docs/usage/conventions.html)
+
+| File | Mode |
+| --- | --- |
+| Files listed under `read:` in `.aider.conf.yml` | always |
+| `CONVENTIONS.md` | manual: only with `--read` or `/read` |
+
+## Goose
+
+Source: [goosehints](https://goose-docs.ai/docs/guides/context-engineering/using-goosehints)
+
+| File | Mode |
+| --- | --- |
+| `AGENTS.md`, `.goosehints` at the root | always (needs the Developer extension) |
+| The same files in a subdirectory | on-demand, when goose accesses files there |
+
+## Amp
+
+Source: [AGENTS.md](https://ampcode.com/docs/customize/agents-md)
+
+| File | Mode |
+| --- | --- |
+| `AGENTS.md` at the root (or `AGENT.md` / `CLAUDE.md` when there is no `AGENTS.md`) | always |
+| The same files in a subdirectory | on-demand, when Amp reads a file there |
+| Files @-mentioned in them | always, or on-demand when they have `globs` frontmatter |
+
+## OpenCode
+
+Source: [rules](https://opencode.ai/docs/rules/)
+
+| File | Mode |
+| --- | --- |
+| `AGENTS.md` at the root, or `CLAUDE.md` when there is none | always |
+
+Files listed under `instructions` in `opencode.json` are not counted. When subdirectory `AGENTS.md` files load is not documented, so they are not counted.
 
 ## Token counts
 

@@ -1,4 +1,5 @@
 import type { Frontmatter } from './tools.js';
+import type { RepoFile } from './types.js';
 
 export interface ParsedDoc {
   frontmatter: Frontmatter;
@@ -173,4 +174,15 @@ export function resolvePath(fromFile: string, target: string): string | null {
     } else parts.push(seg);
   }
   return parts.join('/');
+}
+
+/** Paths listed under `key` in a small YAML config (string, inline list or block list). */
+export function configList(config: RepoFile, key: string): string[] {
+  const value = parseFrontmatter(`---\n${config.text}\n---\n`).frontmatter[key];
+  const list = value === undefined || value === '' ? [] : Array.isArray(value) ? value : [String(value)];
+  return list
+    .map((p) => p.replace(/\s+#.*$/, '').trim())
+    .filter(Boolean)
+    .map((p) => resolvePath(config.path, p))
+    .filter((p): p is string => p !== null);
 }

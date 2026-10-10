@@ -452,7 +452,7 @@ function nonEnglish(units: LoadedUnit[], english?: Map<string, string>): Advice[
 /** True for instruction files that live in a package subdirectory rather than at the root or in a root tool folder. */
 function isNested(path: string): boolean {
   const dir = dirname(path);
-  return dir !== '' && !/^\.(claude|github|cursor|windsurf|devin|agents)(\/|$)/.test(dir);
+  return dir !== '' && !/^\.(claude|github|cursor|windsurf|devin|agents|clinerules|cline|roo|kiro|junie|continue)(\/|$)/.test(dir);
 }
 
 function staleReferences(units: LoadedUnit[], opts: AdviceOptions): Advice[] {

@@ -30,11 +30,14 @@ export type FileRule =
       sameLevelDirs?: string[];
       /** When several names exist in one directory, only the first present one is read. */
       onePerDirectory?: boolean;
-      nested: 'on-demand' | 'ignored';
+      /** 'skip' when the docs do not say when subdirectory copies load; they are then left out. */
+      nested: 'on-demand' | 'ignored' | 'skip';
       nestedTrigger: string;
       stripHtmlComments?: boolean;
       /** Maximum @import depth, when the tool expands @path imports. */
       importDepth?: number;
+      /** Imported files with `globs` frontmatter load only when a matching file is read (Amp). */
+      importGlobs?: boolean;
       /** Bytes read before the tool stops (content beyond is dropped). */
       maxBytes?: number;
       /** Only read when the condition holds for the repository. */
@@ -73,6 +76,30 @@ export type FileRule =
       kind: 'ignored';
       pattern: RegExp;
       reason: string;
+    }
+  | {
+      /** Files that always load in the same mode, e.g. mode-specific rule folders. */
+      kind: 'pattern';
+      pattern: RegExp;
+      mode: LoadMode;
+      trigger: string;
+      note?: string;
+    }
+  | {
+      /**
+       * Ordered groups: the first group with any file present is loaded every turn,
+       * files of later groups are ignored (e.g. Zed's first-match list, Junie's precedence).
+       */
+      kind: 'precedence';
+      groups: Array<{ label: string; patterns: RegExp[] }>;
+      note?: string;
+    }
+  | {
+      /** Files listed in a config file key (e.g. `read:` in .aider.conf.yml) load every turn. */
+      kind: 'config-list';
+      configPath: string;
+      key: string;
+      trigger: string;
     };
 
 export interface SizeLimit {
@@ -395,6 +422,251 @@ export const TOOLS: ToolSpec[] = [
       },
     ],
     notes: ['Global rules (~/.codeium/windsurf/memories/global_rules.md) are outside the repository and not counted.'],
+  },
+  {
+    id: 'cline',
+    name: 'Cline',
+    families: [],
+    sources: ['https://docs.cline.bot/features/cline-rules'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'frontmatter',
+        pattern: /^\.(?:clinerules|cline\/rules)\/.+\.md$/,
+        rootPrefixes: ['.clinerules/', '.cline/rules/'],
+        decide: (fm) => {
+          if (Array.isArray(fm.paths) && fm.paths.length === 0) return { mode: 'ignored', trigger: 'paths: [] (never applies)' };
+          if (has(fm, 'paths')) return { mode: 'on-demand', trigger: `paths: ${str(fm.paths)}` };
+          return { mode: 'always', trigger: 'rule without paths' };
+        },
+      },
+    ],
+    limits: [],
+    notes: [
+      'Each rule can be toggled off in Cline; the audit assumes rules are on.',
+      'Cline also detects AGENTS.md, .cursorrules and .windsurfrules; whether they are on by default is not documented, so they are not counted.',
+      'A single .clinerules file (instead of a folder) is not documented and is not counted.',
+    ],
+  },
+  {
+    id: 'roo-code',
+    name: 'Roo Code',
+    families: [],
+    sources: ['https://roocodeinc.github.io/Roo-Code/features/custom-instructions'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'precedence',
+        groups: [
+          { label: '.roo/rules/', patterns: [/^\.roo\/rules\/.+/] },
+          { label: '.roorules', patterns: [/^\.roorules$/] },
+          { label: '.clinerules', patterns: [/^\.clinerules$/] },
+        ],
+        note: 'Legacy .roorules and .clinerules are read only when .roo/rules/ has no content; their order between each other is assumed.',
+      },
+      { kind: 'pattern', pattern: /^\.roo\/rules-[\w-]+\/.+/, mode: 'on-demand', trigger: 'only in that Roo mode' },
+      { kind: 'pattern', pattern: /^\.roorules-[\w-]+$/, mode: 'on-demand', trigger: 'only in that Roo mode (legacy)' },
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md', 'AGENT.md'],
+        onePerDirectory: true,
+        nested: 'skip',
+        nestedTrigger: '',
+        note: 'Read by default; the roo-cline.useAgentRules setting turns it off.',
+      },
+    ],
+    limits: [],
+    notes: ['Global ~/.roo/rules/ is outside the repository and not counted.'],
+  },
+  {
+    id: 'kiro',
+    name: 'Kiro',
+    families: [],
+    sources: ['https://kiro.dev/docs/steering/'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'frontmatter',
+        pattern: /^\.kiro\/steering\/[^/]+\.md$/,
+        rootPrefixes: ['.kiro/steering/'],
+        decide: (fm) => {
+          switch (str(fm.inclusion).trim()) {
+            case '':
+            case 'always':
+              return { mode: 'always', trigger: 'inclusion: always' };
+            case 'fileMatch':
+              return { mode: 'on-demand', trigger: `fileMatch: ${str(fm.fileMatchPattern)}` };
+            case 'manual':
+              return { mode: 'manual', trigger: 'inclusion: manual (#name)' };
+            case 'auto':
+              return {
+                mode: 'on-demand',
+                trigger: 'inclusion: auto (matched on description)',
+                descriptionOnly: true,
+                note: 'Description assumed to be in context so Kiro can match it (inferred, not documented).',
+              };
+            default:
+              return { mode: 'always', trigger: `inclusion: ${str(fm.inclusion)} (unknown, treated as always)` };
+          }
+        },
+      },
+      { kind: 'hierarchical', names: ['AGENTS.md'], nested: 'skip', nestedTrigger: '' },
+    ],
+    limits: [],
+    notes: [
+      'fileMatch and manual modes need Kiro CLI V3; older versions skip those files.',
+      'Global ~/.kiro/steering/ is outside the repository and not counted.',
+    ],
+  },
+  {
+    id: 'junie',
+    name: 'JetBrains Junie',
+    families: [],
+    sources: ['https://junie.jetbrains.com/docs/guidelines-and-memory.html'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'precedence',
+        groups: [
+          { label: '.junie/AGENTS.md', patterns: [/^\.junie\/AGENTS\.md$/] },
+          { label: 'AGENTS.md', patterns: [/^AGENTS\.md$/, /^\.junie\/playbook\.md$/, /^\.junie\/rules\/[^/]+\.md$/] },
+          { label: '.junie/guidelines', patterns: [/^\.junie\/guidelines\.md$/, /^\.junie\/guidelines\/[^/]+\.md$/] },
+        ],
+        note: 'Follows the IDE plugin order; a custom guidelines path set in project settings is not modelled.',
+      },
+    ],
+    limits: [],
+    notes: ['Global ~/.junie/AGENTS.md is outside the repository and not counted.'],
+  },
+  {
+    id: 'zed',
+    name: 'Zed',
+    families: [],
+    sources: ['https://zed.dev/docs/ai/instructions'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'precedence',
+        groups: [
+          '.rules',
+          '.cursorrules',
+          '.windsurfrules',
+          '.clinerules',
+          '.github/copilot-instructions.md',
+          'AGENT.md',
+          'AGENTS.md',
+          'CLAUDE.md',
+          'GEMINI.md',
+        ].map((path) => ({ label: path, patterns: [new RegExp(`^${path.replace(/\./g, '\\.')}$`)] })),
+        note: 'Zed uses only the first of these files it finds at the project root.',
+      },
+    ],
+    limits: [],
+    notes: ['Personal ~/.config/zed/AGENTS.md is outside the repository and not counted.'],
+  },
+  {
+    id: 'continue',
+    name: 'Continue',
+    families: [],
+    sources: ['https://docs.continue.dev/customize/deep-dives/rules'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'frontmatter',
+        pattern: /^\.continue\/rules\/[^/]+\.md$/,
+        rootPrefixes: ['.continue/rules/'],
+        decide: (fm) => {
+          const always = fm.alwaysApply === true || str(fm.alwaysApply) === 'true';
+          const never = fm.alwaysApply === false || str(fm.alwaysApply) === 'false';
+          if (always) return { mode: 'always', trigger: 'alwaysApply: true' };
+          if (has(fm, 'globs')) return { mode: 'on-demand', trigger: `globs: ${str(fm.globs)}` };
+          if (!never) return { mode: 'always', trigger: 'no globs' };
+          if (has(fm, 'description'))
+            return {
+              mode: 'on-demand',
+              trigger: 'agent decides from description',
+              descriptionOnly: true,
+              note: 'Description assumed to be in context so the agent can decide (inferred, not documented).',
+            };
+          return { mode: 'on-demand', trigger: 'alwaysApply: false (agent decides)' };
+        },
+      },
+    ],
+    limits: [],
+    notes: ['Rules in config.yaml or from the Continue hub are not counted.'],
+  },
+  {
+    id: 'aider',
+    name: 'Aider',
+    families: [],
+    sources: ['https://aider.chat/docs/usage/conventions.html'],
+    checkedAt: '2026-10-10',
+    rules: [
+      { kind: 'config-list', configPath: '.aider.conf.yml', key: 'read', trigger: 'read: in .aider.conf.yml' },
+      { kind: 'pattern', pattern: /^CONVENTIONS\.md$/, mode: 'manual', trigger: 'only with --read, /read or read: in .aider.conf.yml' },
+    ],
+    limits: [],
+    notes: ['Aider loads no instruction file by itself; files given with --read are sent with every request.'],
+  },
+  {
+    id: 'goose',
+    name: 'Goose',
+    families: [],
+    sources: ['https://goose-docs.ai/docs/guides/context-engineering/using-goosehints'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md', '.goosehints'],
+        nested: 'on-demand',
+        nestedTrigger: 'when goose accesses files in',
+      },
+    ],
+    limits: [],
+    notes: [
+      'Needs the Developer extension; CONTEXT_FILE_NAMES can change which files are read.',
+      'Global ~/.config/goose/.goosehints is outside the repository and not counted.',
+    ],
+  },
+  {
+    id: 'amp',
+    name: 'Amp',
+    families: [],
+    sources: ['https://ampcode.com/docs/customize/agents-md'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md', 'AGENT.md', 'CLAUDE.md'],
+        onePerDirectory: true,
+        nested: 'on-demand',
+        nestedTrigger: 'when Amp reads a file in',
+        importDepth: 1,
+        importGlobs: true,
+        note: 'AGENT.md and CLAUDE.md are fallbacks for directories without AGENTS.md; their order between each other, and following @-mentions one level deep, are assumptions.',
+      },
+    ],
+    limits: [],
+    notes: ['User and system AGENTS.md files (~/.config/amp, /etc/ampcode) are outside the repository and not counted.'],
+  },
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    families: [],
+    sources: ['https://opencode.ai/docs/rules/'],
+    checkedAt: '2026-10-10',
+    rules: [
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md', 'CLAUDE.md'],
+        onePerDirectory: true,
+        nested: 'skip',
+        nestedTrigger: '',
+        note: 'CLAUDE.md is read only when there is no AGENTS.md.',
+      },
+    ],
+    limits: [],
+    notes: ['Extra files listed under instructions in opencode.json are not counted.'],
   },
 ];
 

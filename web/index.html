@@ -4,126 +4,185 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>turntax</title>
-<meta name="description" content="Measure the token tax your AI coding-agent instruction files add to every turn. Runs in your browser.">
+<meta name="description" content="See how many tokens your coding agents' instruction files add to every turn, for every agent, in your browser.">
 <style>
   :root {
-    --bg: #fbfaf8; --fg: #1d1c1a; --muted: #6b6760; --line: #e3e0da; --panel: #ffffff;
-    --accent: #2f5bd3; --high: #b3261e; --medium: #a15c00; --low: #4b6b3a;
-    color-scheme: light;
+    --bg: #f7f6f3; --surface: #ffffff; --surface-2: #f0eee9; --fg: #1b1a18; --muted: #66625b; --line: #e2dfd8;
+    --accent: #3056c9; --accent-soft: #e6ecfb; --bar: #3a63d6;
+    --high: #b42318; --medium: #9a5b00; --low: #3f6b2a;
+    --radius: 12px; color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #151514; --fg: #ecebe8; --muted: #a29e96; --line: #2f2e2b; --panel: #1d1d1b;
-      --accent: #8aa8ff; --high: #ff8a80; --medium: #f0b45c; --low: #9cc48a;
-      color-scheme: dark;
+      --bg: #121211; --surface: #1b1b19; --surface-2: #232320; --fg: #ecebe7; --muted: #a39f97; --line: #2e2d2a;
+      --accent: #8eaaff; --accent-soft: #1f2a48; --bar: #7d9cf5;
+      --high: #ff8b80; --medium: #f2b45a; --low: #9ccb85; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #151514; --fg: #ecebe8; --muted: #a29e96; --line: #2f2e2b; --panel: #1d1d1b;
-    --accent: #8aa8ff; --high: #ff8a80; --medium: #f0b45c; --low: #9cc48a;
-    color-scheme: dark;
+    --bg: #121211; --surface: #1b1b19; --surface-2: #232320; --fg: #ecebe7; --muted: #a39f97; --line: #2e2d2a;
+    --accent: #8eaaff; --accent-soft: #1f2a48; --bar: #7d9cf5;
+    --high: #ff8b80; --medium: #f2b45a; --low: #9ccb85; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
-  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
-  h2 { font-size: 18px; margin: 32px 0 12px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 0 16px 72px; }
+  a { color: var(--accent); }
+  code, .mono { font: 13px/1.45 ui-monospace, "Cascadia Code", Consolas, monospace; }
+  h2 { font-size: 20px; margin: 48px 0 16px; letter-spacing: -0.01em; }
+  h3 { font-size: 16px; margin: 0; }
   p { margin: 0 0 12px; }
-  code { font: 13px/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; }
   .muted { color: var(--muted); }
-  .lede { color: var(--muted); max-width: 70ch; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
-  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-  #drop { border: 2px dashed var(--line); border-radius: 10px; padding: 28px 16px; text-align: center; }
-  #drop.over { border-color: var(--accent); }
-  .buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
-  label.button, button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  .small { font-size: 13px; }
+
+  header.hero { padding: 56px 0 32px; }
+  .brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 40px; }
+  .brand strong { font-size: 18px; letter-spacing: -0.01em; }
+  .brand nav { display: flex; gap: 16px; font-size: 14px; }
+  h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 16px; letter-spacing: -0.02em; max-width: 20ch; }
+  .lede { font-size: 17px; color: var(--muted); max-width: 62ch; }
+  .install { display: inline-flex; align-items: center; gap: 12px; margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 8px 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; padding: 0; list-style: none; }
+  .chip { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  #drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 36px 16px; text-align: center; background: var(--surface); transition: border-color .15s; }
+  #drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  #drop strong { font-size: 17px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+  label.button, button { font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
   label.button:hover, button:hover { border-color: var(--accent); }
+  button.primary, label.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  :root[data-theme="dark"] button.primary, :root[data-theme="dark"] label.primary { color: #10183a; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary, :root:not([data-theme="light"]) label.primary { color: #10183a; } }
   button.link { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13px; }
   input[type="file"] { display: none; }
-  input[type="text"], input[type="number"], textarea { width: 100%; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
-  textarea { font: 13px/1.4 ui-monospace, Consolas, monospace; min-height: 120px; }
-  #models label { display: block; margin: 2px 0; }
+  input[type="text"], input[type="number"], textarea { width: 100%; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+  textarea { font: 13px/1.45 ui-monospace, Consolas, monospace; min-height: 140px; resize: vertical; }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+  .settings { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 12px; }
+  .settings fieldset { border: 0; padding: 0; margin: 0; }
+  .settings legend { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .settings label { display: block; font-size: 14px; margin: 2px 0; }
+  .privacy { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); margin-top: 12px; justify-content: center; }
+
+  .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .card .big { font-size: 34px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .card .big span { font-size: 14px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+  .card ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 13px; }
+  .card li { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .card li span:last-child { text-align: right; color: var(--muted); }
+
+  .chart { position: relative; }
+  .bar-row { display: grid; grid-template-columns: minmax(110px, 180px) 1fr; gap: 12px; align-items: center; padding: 5px 0; }
+  .bar-row .name { font-size: 14px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .bar { height: 14px; background: var(--bar); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .bar-row:hover .bar { filter: brightness(1.12); }
+  .bar-value { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 6px 8px; border-radius: 6px; max-width: min(280px, 80%); transform: translate(-50%, -110%); }
+
+  #advice { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  #advice li { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  #advice p { margin: 6px 0 0; }
+  .sev-high { border-left-color: var(--high) !important; }
+  .sev-medium { border-left-color: var(--medium) !important; }
+  .sev-low { border-left-color: var(--low) !important; }
+  .tag { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sev-high .tag { color: var(--high); } .sev-medium .tag { color: var(--medium); } .sev-low .tag { color: var(--low); }
+  .saving { font-weight: 600; }
+
   .table-wrap { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-weight: 600; white-space: nowrap; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; white-space: nowrap; color: var(--muted); font-size: 13px; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .mode { font-size: 12px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); }
-  .mode-always { color: var(--high); }
-  .mode-on-demand { color: var(--low); }
-  #advice { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-  #advice li { border-left: 3px solid var(--line); padding: 4px 0 4px 12px; }
-  #advice p { margin: 4px 0 0; }
-  .sev-high { border-color: var(--high) !important; }
-  .sev-medium { border-color: var(--medium) !important; }
-  .sev-low { border-color: var(--low) !important; }
-  .tag { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
-  #file-list { padding-left: 18px; margin: 8px 0; }
-  footer { margin-top: 48px; font-size: 13px; }
+  .mode { font-size: 12px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); white-space: nowrap; }
+  #file-list { padding-left: 18px; margin: 8px 0; font-size: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
 </style>
 </head>
 <body>
 <main>
-  <h1>turntax</h1>
-  <p class="lede">Coding agents re-send their instruction files (CLAUDE.md, AGENTS.md, Cursor, Copilot and Windsurf rules) with every turn. Drop a repository folder to see that per-turn token cost for <span id="tool-count"></span> tools, and where to cut it.</p>
-  <p class="muted">Runs entirely in your browser with the offline o200k tokenizer. Nothing is uploaded.</p>
+  <header class="hero">
+    <div class="brand">
+      <strong>turntax</strong>
+      <nav><a href="https://github.com/TorutDev/turntax/blob/main/docs/how-it-counts.md">How it counts</a><a href="https://github.com/TorutDev/turntax">GitHub</a></nav>
+    </div>
+    <h1>What your agent instructions cost on every turn</h1>
+    <p class="lede">Coding agents re-send their instruction files with every message. turntax applies each agent's documented loading rules, measures what is sent every turn, and shows what to trim.</p>
+    <div class="install"><code>npx turntax</code><button id="copy-install" type="button">Copy</button></div>
+    <ul class="chips" id="agents" aria-label="Supported agents"></ul>
+  </header>
 
-  <div class="grid">
-    <section class="panel">
-      <div id="drop">
-        <strong>Drop a repository folder here</strong>
-        <div class="muted">Only agent instruction files are read; node_modules, .git and build folders are skipped.</div>
-        <div class="buttons">
-          <label class="button">Choose folder<input id="pick-folder" type="file" webkitdirectory multiple></label>
-          <label class="button">Choose files<input id="pick-files" type="file" multiple accept=".md,.mdc,.cursorrules,.windsurfrules"></label>
-        </div>
+  <section aria-label="Try it">
+    <div id="drop">
+      <strong>Drop a repository folder</strong>
+      <p class="muted small">Only agent instruction files are read. node_modules, .git and build folders are skipped.</p>
+      <div class="buttons">
+        <label class="button primary">Choose folder<input id="pick-folder" type="file" webkitdirectory multiple></label>
+        <label class="button">Choose files<input id="pick-files" type="file" multiple></label>
+        <button id="sample" type="button">Try a sample repo</button>
       </div>
-      <h2>Or paste a file</h2>
-      <label for="paste-name" class="muted">Path in the repository</label>
-      <input id="paste-name" type="text" value="CLAUDE.md" list="paste-names">
-      <datalist id="paste-names">
-        <option value="CLAUDE.md"><option value="AGENTS.md"><option value="GEMINI.md">
-        <option value=".github/copilot-instructions.md"><option value=".cursor/rules/main.mdc"><option value=".windsurfrules">
-      </datalist>
-      <label for="paste-text" class="muted">Contents</label>
-      <textarea id="paste-text"></textarea>
-      <div class="buttons"><button id="paste-add" type="button">Add file</button></div>
-    </section>
-    <section class="panel">
-      <h2 style="margin-top:0">Models</h2>
-      <div id="models"></div>
-      <h2>Turns</h2>
-      <input id="turns" type="number" min="1" value="100" aria-label="Turns for the cost projection">
-      <div id="loaded" hidden>
-        <h2>Loaded files</h2>
-        <ul id="file-list"></ul>
-        <button id="clear" type="button">Clear</button>
+    </div>
+    <p class="privacy">Runs in your browser with an offline tokenizer. Nothing is uploaded.</p>
+
+    <details class="panel">
+      <summary>Paste a file instead</summary>
+      <div style="margin-top:12px">
+        <label for="paste-name" class="muted small">Path in the repository</label>
+        <input id="paste-name" type="text" value="AGENTS.md" list="paste-names">
+        <datalist id="paste-names"></datalist>
+        <label for="paste-text" class="muted small" style="display:block;margin-top:8px">Contents</label>
+        <textarea id="paste-text"></textarea>
+        <div class="buttons" style="justify-content:flex-start"><button id="paste-add" type="button">Add file</button></div>
       </div>
-    </section>
-  </div>
+    </details>
 
-  <div id="results" hidden>
-    <h2>Per-turn cost</h2>
-    <div class="table-wrap"><table id="summary"></table></div>
-    <p class="muted">o200k = OpenAI o200k_base, counted offline: exact for GPT-5.x and gpt-oss, an estimate for newer GPT models. Claude and Gemini tokenizers are not public, so their counts need the CLI with your own API key. "Cached" assumes every turn reads the context from the prompt cache.</p>
+    <details class="panel">
+      <summary>Models and pricing</summary>
+      <div class="settings">
+        <fieldset><legend>Models to price</legend><div id="models"></div></fieldset>
+        <fieldset><legend>Turns for the cost projection</legend><input id="turns" type="number" min="1" value="100" aria-label="Turns"></fieldset>
+      </div>
+    </details>
 
-    <h2>Advice</h2>
+    <div id="loaded" class="panel" hidden style="margin-top:12px">
+      <div class="row" style="justify-content:space-between"><strong>Loaded files</strong><button id="clear" type="button">Clear</button></div>
+      <ul id="file-list"></ul>
+    </div>
+  </section>
+
+  <section id="results" hidden>
+    <h2>Every-turn cost by agent</h2>
+    <div class="cards" id="cards"></div>
+
+    <h2>Tokens sent every turn</h2>
+    <div class="panel chart" id="chart"><div id="tip" hidden></div></div>
+    <p class="muted small" style="margin-top:8px">Counted with OpenAI's o200k_base tokenizer as a common reference. Claude and Gemini publish no tokenizer: run the CLI with your own API key for their exact counts.</p>
+
+    <h2>What to trim</h2>
     <ul id="advice"></ul>
 
     <h2>Files</h2>
-    <div class="table-wrap"><table id="files"></table></div>
+    <div class="panel table-wrap"><table id="files"></table></div>
 
     <h2>Badge</h2>
-    <textarea id="badge" readonly rows="2"></textarea>
-    <div class="buttons" style="justify-content:flex-start">
-      <button id="copy-badge" type="button">Copy badge</button>
-      <button id="download-md" type="button">Download Markdown report</button>
+    <div class="panel">
+      <textarea id="badge" readonly rows="2" style="min-height:0"></textarea>
+      <div class="buttons" style="justify-content:flex-start">
+        <button id="copy-badge" type="button">Copy badge</button>
+        <button id="download-md" type="button">Download Markdown report</button>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <footer class="muted">
-    CLI: <code>npx turntax</code> · Prices and loading rules are dated and sourced in the project repository. MIT licensed.
+  <footer>
+    <span>MIT licensed. Loading rules and prices are dated and linked to vendor docs.</span>
+    <span><a href="https://github.com/TorutDev/turntax/issues/new/choose">Report an out-of-date rule</a></span>
   </footer>
 </main>
 <script type="module" src="app.js"></script>

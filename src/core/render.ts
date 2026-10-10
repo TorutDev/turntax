@@ -25,6 +25,37 @@ function table(rows: string[][], indent = ''): string {
   return rows.map((r) => indent + r.map((cell, c) => cell.padEnd(widths[c]!)).join('  ').trimEnd()).join('\n');
 }
 
+/**
+ * Agents that load exactly the same files with the same results share one row,
+ * so a repository with only AGENTS.md does not print a dozen identical lines.
+ */
+export function groupTools(report: Report): Array<{ names: string[]; tool: Report['tools'][number] }> {
+  const groups = new Map<string, { names: string[]; tool: Report['tools'][number] }>();
+  for (const t of report.tools) {
+    const files = report.files
+      .filter((f) => f.tool === t.tool && f.mode !== 'ignored')
+      .map((f) => [f.path, f.part, f.mode, f.o200k])
+      .sort();
+    const key = JSON.stringify([files, t.models.map(({ model, perTurn, method, reason }) => [model, perTurn, method, reason])]);
+    const g = groups.get(key);
+    if (g) g.names.push(t.name);
+    else groups.set(key, { names: [t.name], tool: t });
+  }
+  return [...groups.values()];
+}
+
+/** File rows that are identical across agents, merged with the list of agents. */
+export function groupFiles(report: Report): Array<{ file: Report['files'][number]; tools: string[] }> {
+  const groups = new Map<string, { file: Report['files'][number]; tools: string[] }>();
+  for (const f of report.files) {
+    const key = JSON.stringify([f.path, f.part, f.mode, f.trigger, f.o200k, f.importedFrom ?? '']);
+    const g = groups.get(key);
+    if (g) g.tools.push(f.tool);
+    else groups.set(key, { file: f, tools: [f.tool] });
+  }
+  return [...groups.values()];
+}
+
 /** Highest always-loaded o200k total across the reported tools. */
 export function headlineTokens(report: Report): number {
   return Math.max(0, ...report.tools.map((t) => t.perTurnO200k));
@@ -39,12 +70,13 @@ export function renderText(report: Report, root?: string): string {
     return out.join('\n');
   }
   const rows = [
-    ['tool', 'always', 'o200k/turn', 'on-demand', 'model', 'tokens/turn', 'counted by', `${report.turns} turns`, 'cached'],
+    ['always', 'o200k/turn', 'on-demand', 'model', 'tokens/turn', 'counted by', `${report.turns} turns`, 'cached', 'agents'],
   ];
-  for (const t of report.tools) {
-    const head = [t.name, String(t.alwaysFiles), fmtTokens(t.perTurnO200k), fmtTokens(t.onDemandO200k)];
+  for (const { names, tool: t } of groupTools(report)) {
+    const head = [String(t.alwaysFiles), fmtTokens(t.perTurnO200k), fmtTokens(t.onDemandO200k)];
     const blank = head.map(() => '');
-    if (!t.models.length) rows.push([...head, '(no selected model)', '', '', '', '']);
+    const agents = names.join(', ');
+    if (!t.models.length) rows.push([...head, '(no selected model)', '', '', '', '', agents]);
     t.models.forEach((m, i) =>
       rows.push([
         ...(i === 0 ? head : blank),
@@ -52,6 +84,7 @@ export function renderText(report: Report, root?: string): string {
         ...(m.perTurn === null
           ? ['-', m.reason ?? METHOD_LABEL[m.method], '-', '-']
           : [fmtTokens(m.perTurn), METHOD_LABEL[m.method], fmtUsd(m.uncached), fmtUsd(m.cached)]),
+        i === 0 ? agents : '',
       ]),
     );
   }
@@ -59,10 +92,10 @@ export function renderText(report: Report, root?: string): string {
   out.push('');
 
   out.push('Files');
-  const fileRows = [['tool', 'mode', 'file', 'o200k', 'loads']];
-  for (const f of report.files) {
+  const fileRows = [['mode', 'file', 'o200k', 'loads', 'agents']];
+  for (const { file: f, tools } of groupFiles(report)) {
     const name = f.part === 'full' ? f.path : `${f.path} (${f.part})`;
-    fileRows.push([f.tool, f.mode, name + (f.importedFrom ? ` <- @${f.importedFrom}` : ''), fmtTokens(f.o200k), f.trigger]);
+    fileRows.push([f.mode, name + (f.importedFrom ? ` <- @${f.importedFrom}` : ''), fmtTokens(f.o200k), f.trigger, tools.join(', ')]);
   }
   out.push(table(fileRows, '  '));
   const notes = [...new Set(report.files.flatMap((f) => f.notes.map((n) => `${f.path}: ${n}`)))];
@@ -106,21 +139,22 @@ function footer(report: Report): string {
 export function renderMarkdown(report: Report): string {
   const out: string[] = ['# Agent context tax report', ''];
   out.push(`Every agent re-sends its always-loaded instruction files with each turn. Costs are for ${report.turns} turns.`, '');
-  out.push('## Per tool', '');
-  out.push('| Tool | Model | Tokens / turn | Counted by | Uncached | Cached |', '| --- | --- | ---: | --- | ---: | ---: |');
-  for (const t of report.tools) {
-    if (!t.models.length) out.push(`| ${t.name} | - | ${fmtTokens(t.perTurnO200k)} (o200k) | reference | - | - |`);
+  out.push('## Per agent', '');
+  out.push('| Agents | Model | Tokens / turn | Counted by | Uncached | Cached |', '| --- | --- | ---: | --- | ---: | ---: |');
+  for (const { names, tool: t } of groupTools(report)) {
+    const agents = names.join(', ');
+    if (!t.models.length) out.push(`| ${agents} | - | ${fmtTokens(t.perTurnO200k)} (o200k) | reference | - | - |`);
     for (const m of t.models)
       out.push(
         m.perTurn === null
-          ? `| ${t.name} | ${m.label} | - | ${m.reason ?? ''} | - | - |`
-          : `| ${t.name} | ${m.label} | ${fmtTokens(m.perTurn)} | ${METHOD_LABEL[m.method]} | ${fmtUsd(m.uncached)} | ${fmtUsd(m.cached)} |`,
+          ? `| ${agents} | ${m.label} | - | ${m.reason ?? ''} | - | - |`
+          : `| ${agents} | ${m.label} | ${fmtTokens(m.perTurn)} | ${METHOD_LABEL[m.method]} | ${fmtUsd(m.uncached)} | ${fmtUsd(m.cached)} |`,
       );
   }
-  out.push('', '## Files', '', '| Tool | Mode | File | o200k tokens | Loads |', '| --- | --- | --- | ---: | --- |');
-  for (const f of report.files) {
+  out.push('', '## Files', '', '| Mode | File | o200k tokens | Loads | Agents |', '| --- | --- | ---: | --- | --- |');
+  for (const { file: f, tools } of groupFiles(report)) {
     const name = f.part === 'full' ? f.path : `${f.path} (${f.part})`;
-    out.push(`| ${f.tool} | ${f.mode} | \`${name}\` | ${fmtTokens(f.o200k)} | ${escapeCell(f.trigger)} |`);
+    out.push(`| ${f.mode} | \`${name}\` | ${fmtTokens(f.o200k)} | ${escapeCell(f.trigger)} | ${tools.join(', ')} |`);
   }
   out.push('', '## Advice', '');
   if (!report.advice.length) out.push('No issues found.');
