@@ -39,14 +39,16 @@ export interface AdviceOptions {
 const DEFAULT_SECTION_TOKENS = 600;
 
 export function buildAdvice(units: LoadedUnit[], files: RepoFile[], opts: AdviceOptions = {}): Advice[] {
+  // User-level files take part in checks across files; moving sections or checking paths only makes sense in the repository.
+  const repo = units.filter((u) => !u.scope);
   const advice: Advice[] = [
     ...misconfigured(units),
     ...sizeLimits(units, files),
     ...duplicates(units),
     ...contradictions(units),
-    ...sections(units, opts.sectionTokens ?? DEFAULT_SECTION_TOKENS),
+    ...sections(repo, opts.sectionTokens ?? DEFAULT_SECTION_TOKENS),
     ...nonEnglish(units, opts.english),
-    ...staleReferences(units, opts),
+    ...staleReferences(repo, opts),
   ];
   const order = { high: 0, medium: 1, low: 2 };
   return advice.sort((a, b) => order[a.severity] - order[b.severity] || (b.savingTokens ?? 0) - (a.savingTokens ?? 0));

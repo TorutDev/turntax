@@ -1,14 +1,20 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { basename, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { hasNonEnglish } from './core/advice.js';
-import { audit, type AuditOptions } from './core/audit.js';
+import { audit, type AuditOptions, type McpMeasurement } from './core/audit.js';
 import { classify } from './core/classify.js';
+import { asDiffInput, diffReports, maxIncrease } from './core/diff.js';
+import { parseMcpConfigs, serverKey, toolDefinitionsText, toolNamesText, type McpServer } from './core/mcp.js';
 import { DEFAULT_MODEL_IDS, MODELS, validateModels } from './core/prices.js';
-import { badgeMarkdown, headlineTokens, renderMarkdown, renderText } from './core/render.js';
+import { badgeMarkdown, headlineTokens, renderMarkdown, renderPrComment, renderText } from './core/render.js';
+import { countO200k } from './core/tokenize.js';
 import { TOOL_IDS } from './core/tools.js';
-import type { ModelInfo, ToolId } from './core/types.js';
-import { discover, existsIn, packageScripts } from './node/discover.js';
+import type { ModelInfo, RepoFile, ToolId } from './core/types.js';
+import { discover, discoverMcpConfigs, discoverUser, existsIn, packageScripts } from './node/discover.js';
+import { filesAtRef } from './node/git.js';
+import { measureServer } from './node/mcp.js';
 import { anthropicCounter, geminiCounter, translateToEnglish } from './node/remote.js';
 
 const VERSION: string = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
@@ -25,9 +31,20 @@ Options:
   --turns <n>             Turns for the cost projection (default: 100)
   --json                  Print the full report as JSON
   --md                    Print a Markdown report
+  --pr-comment            Print a pull request comment: the change first, the full report folded
   --out <file>            Write the report to a file instead of stdout
   --badge                 Print a shields.io badge snippet
   --max-tokens <n>        Exit with code 1 if any tool loads more than n o200k tokens per turn
+                          (repository files plus measured project MCP tools)
+  --include-user          Also count user-level files and MCP servers in your home directory
+                          (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md, ...)
+  --mcp                   Start the configured MCP servers and count their tool definitions
+                          (runs the commands in .mcp.json and the other agents' MCP configs)
+  --mcp-timeout <s>       Seconds to wait for each MCP server (default: 30)
+  --baseline <file.json>  Compare with an earlier --json report
+  --compare <git-ref>     Compare with the instruction files at a git ref (for example origin/main)
+  --max-increase <n>      Exit with code 1 if any tool's per-turn tokens grew by more than n
+                          compared with --baseline or --compare
   --claude-api            Count Claude tokens with Anthropic's count_tokens (needs ANTHROPIC_API_KEY;
                           sends file contents to api.anthropic.com)
   --gemini-api            Count Gemini tokens with Google's countTokens (needs GEMINI_API_KEY;
@@ -40,7 +57,7 @@ Options:
   -h, --help              Show help
   -v, --version           Show version
 
-Without --claude-api or --gemini-api nothing leaves your machine.
+Without --claude-api, --gemini-api or --mcp nothing leaves your machine.
 `;
 
 class UsageError extends Error {}
@@ -72,6 +89,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
         turns: { type: 'string' },
         json: { type: 'boolean' },
         md: { type: 'boolean' },
+        'pr-comment': { type: 'boolean' },
         out: { type: 'string' },
         badge: { type: 'boolean' },
         'max-tokens': { type: 'string' },
@@ -81,6 +99,12 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
         translate: { type: 'boolean' },
         prices: { type: 'string' },
         'section-tokens': { type: 'string' },
+        'include-user': { type: 'boolean' },
+        mcp: { type: 'boolean' },
+        'mcp-timeout': { type: 'string' },
+        baseline: { type: 'string' },
+        compare: { type: 'string' },
+        'max-increase': { type: 'string' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
       },
@@ -123,6 +147,32 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
 
     const root = resolve(positionals[0] ?? '.');
     const files = await discover(root);
+    if (o.baseline && o.compare) throw new UsageError('Use --baseline or --compare, not both.');
+    if (o['max-increase'] !== undefined && !o.baseline && !o.compare)
+      throw new UsageError('--max-increase needs --baseline or --compare.');
+    const maxIncreaseLimit =
+      o['max-increase'] === undefined ? undefined : nonNegativeInt('max-increase', o['max-increase']);
+
+    let userFiles: RepoFile[] = [];
+    let mcpFiles = discoverMcpConfigs(root);
+    if (o['include-user']) {
+      const user = discoverUser(env.HOME || env.USERPROFILE || homedir());
+      userFiles = user.files;
+      mcpFiles = [...mcpFiles, ...user.mcpConfigs];
+    }
+    const parsedMcp = parseMcpConfigs(mcpFiles, root);
+    for (const p of parsedMcp.problems) notice(`${p.path} ${p.message}`);
+    const servers = parsedMcp.servers;
+    let measured: Map<string, McpMeasurement> | undefined;
+    if (o.mcp) {
+      const timeoutMs = positiveInt('mcp-timeout', o['mcp-timeout'], 30) * 1000;
+      measured = await measureAll(
+        servers.filter((s) => !s.disabled && (!tools || tools.includes(s.tool))),
+        root,
+        timeoutMs,
+        env,
+      );
+    }
 
     const counters: AuditOptions['counters'] = {};
     if (o['claude-api']) {
@@ -164,6 +214,8 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
       models,
       counters,
       turns: positiveInt('turns', o.turns, 100),
+      userFiles,
+      mcp: { servers, measured },
       advice: {
         exists: existsIn(root),
         packageScripts: packageScripts(root),
@@ -172,22 +224,51 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
       },
     });
 
+    if (o.baseline) {
+      let data: unknown;
+      try {
+        data = JSON.parse(readFileSync(o.baseline, 'utf8'));
+      } catch (e) {
+        throw new UsageError(`Could not read --baseline ${o.baseline}: ${(e as Error).message}`);
+      }
+      report.diff = diffReports(asDiffInput(data), report, basename(o.baseline));
+    } else if (o.compare) {
+      const base = await filesAtRef(root, o.compare).catch((e: Error) => {
+        throw new UsageError(e.message);
+      });
+      const before = await audit(base.files, {
+        tools,
+        models: [],
+        mcp: { servers: parseMcpConfigs(base.mcpConfigs, root).servers },
+      });
+      report.diff = diffReports(before, report, o.compare);
+    }
+
     const output = o.json
       ? JSON.stringify({ root, ...report }, null, 2) + '\n'
-      : o.md
-        ? renderMarkdown(report)
-        : o.badge
-          ? badgeMarkdown(report) + '\n'
-          : renderText(report, root) + '\n';
+      : o['pr-comment']
+        ? renderPrComment(report)
+        : o.md
+          ? renderMarkdown(report)
+          : o.badge
+            ? badgeMarkdown(report) + '\n'
+            : renderText(report, root) + '\n';
     if (o.out) writeFileSync(o.out, output);
     else process.stdout.write(output);
 
+    let code = 0;
     const max = o['max-tokens'] === undefined ? undefined : positiveInt('max-tokens', o['max-tokens'], 0);
     if (max !== undefined && headlineTokens(report) > max) {
       process.stderr.write(`turntax: ${headlineTokens(report)} o200k tokens per turn exceeds --max-tokens ${max}\n`);
-      return 1;
+      code = 1;
     }
-    return 0;
+    if (maxIncreaseLimit !== undefined && report.diff && maxIncrease(report.diff) > maxIncreaseLimit) {
+      process.stderr.write(
+        `turntax: per-turn tokens grew by ${maxIncrease(report.diff)} vs ${report.diff.base}, more than --max-increase ${maxIncreaseLimit}\n`,
+      );
+      code = 1;
+    }
+    return code;
   } catch (e) {
     if (e instanceof UsageError) {
       process.stderr.write(`turntax: ${e.message}\n`);
@@ -196,6 +277,45 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
     process.stderr.write(`turntax: ${(e as Error).message}\n`);
     return 1;
   }
+}
+
+function nonNegativeInt(name: string, value: string): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) throw new UsageError(`--${name} must be a non-negative integer`);
+  return n;
+}
+
+/** Starts each distinct server once (several agents often share one) and counts its tool definitions. */
+async function measureAll(
+  servers: McpServer[],
+  root: string,
+  timeoutMs: number,
+  env: NodeJS.ProcessEnv,
+): Promise<Map<string, McpMeasurement>> {
+  const unique = new Map<string, McpServer>();
+  for (const s of servers) if (!unique.has(serverKey(s))) unique.set(serverKey(s), s);
+  const out = new Map<string, McpMeasurement>();
+  const queue = [...unique.entries()];
+  for (const [, s] of queue)
+    notice(
+      s.transport === 'stdio'
+        ? `Starting MCP server "${s.name}" from ${s.configPath}: ${[s.command, ...(s.args ?? [])].join(' ')}`
+        : `Connecting to MCP server "${s.name}" from ${s.configPath}: ${s.url}`,
+    );
+  const worker = async () => {
+    for (let next = queue.shift(); next; next = queue.shift()) {
+      const [key, s] = next;
+      const r = await measureServer(s, { root, timeoutMs, env });
+      if (r.tools) {
+        out.set(key, { tools: r.tools.length, o200k: countO200k(toolDefinitionsText(r.tools)), namesO200k: countO200k(toolNamesText(r.tools)) });
+      } else {
+        out.set(key, { error: r.error ?? 'failed' });
+        notice(`MCP server "${s.name}" was not measured: ${r.error}`);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, queue.length) }, worker));
+  return out;
 }
 
 function notice(message: string): void {

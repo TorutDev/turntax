@@ -182,6 +182,36 @@ Source: [rules](https://opencode.ai/docs/rules/)
 
 Files listed under `instructions` in `opencode.json` are not counted. When subdirectory `AGENTS.md` files load is not documented, so they are not counted.
 
+## User-level files
+
+With `--include-user`, files in the home directory are classified by the same rules as their project counterpart, for the one agent that reads them. Checked on 2026-10-11.
+
+| File | Agent | Read as |
+| --- | --- | --- |
+| `~/.claude/CLAUDE.md`, `~/.claude/rules/`, `~/.claude/skills/`, `~/.claude/commands/`, `~/.claude/agents/` | Claude Code ([memory](https://code.claude.com/docs/en/memory), [skills](https://code.claude.com/docs/en/skills)) | the same paths at the root |
+| `~/.codex/AGENTS.override.md`, else `~/.codex/AGENTS.md` | OpenAI Codex ([AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)) | root `AGENTS.override.md` / `AGENTS.md` |
+| `~/.agents/skills/*/SKILL.md` | OpenAI Codex ([skills](https://learn.chatgpt.com/docs/build-skills)) | `.agents/skills` |
+| `~/.gemini/GEMINI.md` | Gemini CLI ([GEMINI.md](https://geminicli.com/docs/cli/gemini-md/)) | root `GEMINI.md` |
+| `~/.codeium/windsurf/memories/global_rules.md` | Windsurf ([rules](https://docs.devin.ai/desktop/cascade/memories)) | always loaded |
+| `~/Documents/Cline/Rules/`, `~/Cline/Rules/`, `~/.cline/rules/` | Cline ([rules](https://docs.cline.bot/features/cline-rules)) | `.clinerules/` |
+| `~/.roo/rules/`, `~/.roo/rules-{mode}/` | Roo Code ([instructions](https://roocodeinc.github.io/Roo-Code/features/custom-instructions)) | the same paths |
+| `~/.kiro/steering/*.md` | Kiro ([steering](https://kiro.dev/docs/steering/)) | `.kiro/steering/` |
+| `~/.config/goose/.goosehints` | Goose ([goosehints](https://goose-docs.ai/docs/guides/context-engineering/using-goosehints)) | root `.goosehints` |
+| `~/.config/AGENTS.md` and `~/.config/amp/AGENTS.md` (both) | Amp ([AGENTS.md](https://ampcode.com/docs/customize/agents-md)) | root `AGENTS.md` |
+| `~/.config/opencode/AGENTS.md`, else `~/.claude/CLAUDE.md` | OpenCode ([rules](https://opencode.ai/docs/rules/)) | root `AGENTS.md` / `CLAUDE.md` |
+
+`@imports` inside user-level files are not followed. Continue keeps user rules in `~/.continue/config.yaml`, Cursor and Copilot in app settings; those are not counted.
+
+## MCP servers
+
+Sources are listed in [`src/core/mcp.ts`](../src/core/mcp.ts); checked on 2026-10-11.
+
+- Configs are read for Claude Code (`.mcp.json`; `~/.claude.json` top-level and `projects[<repo path>]` servers), Cursor, VS Code / Copilot (`servers` key), Gemini CLI (`url` is SSE, `httpUrl` is streamable HTTP), Kiro, Roo Code, OpenAI Codex (`[mcp_servers.<name>]` in `config.toml`), OpenCode (`mcp` key), Zed (`context_servers`) and Windsurf (`~/.config/devin/mcp_config.json`, `%APPDATA%\devin\mcp_config.json`).
+- A server with `disabled: true` or `enabled: false` is listed as disabled and not started.
+- `--mcp` sends `initialize`, `notifications/initialized` and `tools/list` (all pages). The definitions are counted as one JSON object per tool (`name`, `description`, `input_schema`) with o200k. Agents wrap tool definitions in their own format, so this is an estimate.
+- Claude Code defers MCP tool definitions to tool search by default ([MCP docs](https://code.claude.com/docs/en/mcp)): only tool names count per turn, and the full size is shown as loading on use. `alwaysLoad: true` on a server counts it in full. Setting `ENABLE_TOOL_SEARCH=false` or using a non-first-party API host turns deferral off; `turntax` does not read those settings.
+- Server instructions and resources are not counted.
+
 ## Token counts
 
 - **o200k**: OpenAI `o200k_base`, counted offline with [`gpt-tokenizer`](https://www.npmjs.com/package/gpt-tokenizer). OpenAI's tiktoken maps GPT-4o, GPT-4.1, GPT-5.x and o-series models to it, and gpt-oss to `o200k_harmony`, which gives the same counts for plain text. GPT-6.x has no published encoding, so its counts are labelled estimates.

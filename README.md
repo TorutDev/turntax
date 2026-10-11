@@ -83,6 +83,80 @@ All checks are deterministic. Each one shows an estimated saving in o200k tokens
 - **stale-reference**: referenced files or `npm run` scripts that no longer exist.
 - **non-english**: non-English sections. The token multiplier is measured only against an English version you supply (`--english CLAUDE.md=CLAUDE.en.md`) or, if you opt in, a Claude translation (`--translate`).
 
+## MCP servers
+
+Every MCP server an agent starts adds its tool definitions (names, descriptions, input schemas) to the context. `turntax` reads the agents' MCP configs and lists the servers each agent starts:
+
+| Agent | Project config | User config |
+| --- | --- | --- |
+| Claude Code | `.mcp.json` | `~/.claude.json` (user and per-project servers) |
+| Cursor | `.cursor/mcp.json` | `~/.cursor/mcp.json` |
+| GitHub Copilot (VS Code) | `.vscode/mcp.json` | |
+| Gemini CLI | `.gemini/settings.json` | `~/.gemini/settings.json` |
+| Kiro | `.kiro/settings/mcp.json` | `~/.kiro/settings/mcp.json` |
+| Roo Code | `.roo/mcp.json` | |
+| OpenAI Codex | `.codex/config.toml` (trusted projects) | `~/.codex/config.toml` |
+| OpenCode | `opencode.json` | `~/.config/opencode/opencode.json` |
+| Zed | `.zed/settings.json` | |
+| Windsurf (Devin Desktop) | | `~/.config/devin/mcp_config.json` |
+
+Counting the tool definitions needs the servers running, so it is opt-in:
+
+```bash
+npx turntax --mcp
+```
+
+`--mcp` starts each stdio server with the command from its config (in the repository folder) and connects to streamable HTTP servers, asks for `tools/list`, and counts the definitions as JSON with o200k. A server several agents share is started once. Environment variables in the config (`${VAR}`, `${VAR:-default}`, `${env:VAR}`) are expanded; servers that need a VS Code `${input:...}` prompt, legacy SSE servers and servers that fail or time out (`--mcp-timeout`, default 30 s) are listed with the reason and not counted.
+
+Claude Code defers MCP tool definitions by default (tool search): only the tool names are in context until a tool is used, so its row counts the names and shows the full size separately. A server with `alwaysLoad: true` is counted in full.
+
+MCP tokens are an o200k estimate and are not included in the model cost columns.
+
+## User-level files
+
+Agents also read instruction files from your home directory in every project. `--include-user` adds them in a separate `user/turn` column and a `total`:
+
+```bash
+npx turntax --include-user
+```
+
+It reads only the documented locations: `~/.claude/` (CLAUDE.md, rules, skills, commands, agents), `~/.codex/AGENTS.md`, `~/.agents/skills`, `~/.gemini/GEMINI.md`, Windsurf's `global_rules.md`, Cline's global rules folders, `~/.roo/rules*`, `~/.kiro/steering`, `~/.config/goose/.goosehints`, Amp's `~/.config/AGENTS.md` and `~/.config/amp/AGENTS.md`, and `~/.config/opencode/AGENTS.md` (OpenCode falls back to `~/.claude/CLAUDE.md`), plus the user MCP configs above. Contradictions and duplicates between user-level and repository files are reported. User-level files never count toward the badge or `--max-tokens`, so the result does not depend on who runs it.
+
+## Comparing with a baseline
+
+```bash
+npx turntax --compare origin/main            # instruction files at a git ref, read with git show
+npx turntax --json --out before.json         # or save a report ...
+npx turntax --baseline before.json           # ... and compare with it later
+npx turntax --compare origin/main --max-increase 200   # exit 1 when any agent grows by more than 200 tokens
+```
+
+The comparison covers repository instruction files (o200k), per agent and per file, and lists MCP servers that were added or removed. It never changes the working tree.
+
+## GitHub Action
+
+The repository is also an Action. On pull requests it compares with the base branch, posts one comment (updated on every push) and writes the report to the job summary:
+
+```yaml
+name: turntax
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  turntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: TorutDev/turntax@v0.3.0
+        with:
+          max-increase: 500      # optional: fail when an agent grows by more than 500 tokens per turn
+          # max-tokens: 8000     # optional: absolute budget
+          # args: --tools claude-code,cursor
+```
+
+The comment opens with a table of the change per agent and per file, and folds the full report below it. Pull requests from forks get a read-only token, so the comment step is skipped there; the job summary still has the report.
+
 ## Options
 
 ```text
@@ -91,8 +165,15 @@ turntax [path]
   --models <ids>            see --list-models (default: claude-sonnet-5.5, gpt-6.1-sol, gemini-3.8-flash)
   --turns <n>               cost projection (default 100)
   --json | --md | --badge   output format (default: terminal table)
+  --pr-comment              Markdown for a pull request comment (change first, full report folded)
   --out <file>              write the output to a file
   --max-tokens <n>          exit 1 when any tool loads more than n o200k tokens per turn (CI gate)
+  --include-user            add user-level files and MCP servers from your home directory
+  --mcp                     start the configured MCP servers and count their tool definitions
+  --mcp-timeout <s>         seconds to wait for each MCP server (default 30)
+  --baseline <file.json>    compare with an earlier --json report
+  --compare <git-ref>       compare with the instruction files at a git ref
+  --max-increase <n>        exit 1 when any tool grows by more than n tokens per turn vs the baseline
   --claude-api              exact Claude counts (ANTHROPIC_API_KEY)
   --gemini-api              Gemini counts (GEMINI_API_KEY)
   --english <file=en>       measure a language multiplier against your English version
@@ -104,6 +185,8 @@ turntax [path]
 ## Privacy
 
 Offline by default: no network calls, no telemetry. File contents are sent only when you pass `--claude-api`, `--gemini-api` or `--translate`, and only to that vendor's API. Keys are read from environment variables and sent only in request headers.
+
+`--mcp` runs the commands in the MCP configs it finds and connects to the configured HTTP servers, as the agents themselves would. Run it only on repositories whose configs you trust. `turntax` prints each command before starting it. `--include-user` reads files in your home directory and never sends them anywhere.
 
 ## Web page
 
@@ -121,12 +204,12 @@ npx turntax --badge
 
 [![context tax (o200k)](https://img.shields.io/badge/context%20tax%20(o200k)-297%20tokens%2Fturn-brightgreen)](https://github.com/TorutDev/turntax)
 
-The badge shows the largest always-loaded total among the tools found, counted with o200k_base.
+The badge shows the largest always-loaded total among the tools found, counted with o200k_base: repository files plus measured project MCP tools, never user-level files.
 
 ## Limits
 
-- Assumes the agent starts at the repository root. Files outside the repository (user-level `~/.claude/CLAUDE.md`, global rules, team rules in a dashboard) are not counted.
-- Counts instruction files only, not the agent's own system prompt, tool definitions or MCP servers.
+- Assumes the agent starts at the repository root. User-level files are counted only with `--include-user`; rules kept in an app's settings or a team dashboard (Cursor user rules, Copilot organization instructions) are not counted.
+- Counts instruction files and, with `--mcp`, MCP tool definitions; not the agent's own system prompt or built-in tools.
 - Loading rules change. Each rule cites the vendor page and the date it was checked; please open an issue when one is out of date.
 
 ## Contributing

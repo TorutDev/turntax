@@ -1,0 +1,102 @@
+name: turntax
+description: Measure how many tokens agent instruction files add to every turn, and comment on pull requests with the change.
+author: TORUT LTD
+branding:
+  icon: bar-chart-2
+  color: green
+
+inputs:
+  path:
+    description: Folder to audit, relative to the workspace.
+    default: .
+  base-ref:
+    description: Branch or ref to compare with. Defaults to the pull request's base branch; empty outside pull requests means no comparison.
+    default: ''
+  max-tokens:
+    description: Fail when any agent loads more than this many o200k tokens per turn.
+    default: ''
+  max-increase:
+    description: Fail when any agent's per-turn tokens grow by more than this compared with the base.
+    default: ''
+  args:
+    description: Extra turntax options, for example "--tools claude-code,cursor --models gpt-6.1-sol".
+    default: ''
+  comment:
+    description: Post or update one comment on the pull request with the report.
+    default: 'true'
+  github-token:
+    description: Token used to comment. Needs pull-requests write permission.
+    default: ${{ github.token }}
+
+outputs:
+  exit-code:
+    description: turntax exit code (0 ok, 1 a budget was exceeded, 2 usage error).
+    value: ${{ steps.run.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Build turntax
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci --no-audit --no-fund --loglevel=error && npm run build --silent
+
+    - name: Run turntax
+      id: run
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_BASE: ${{ inputs.base-ref || github.base_ref }}
+        INPUT_MAX_TOKENS: ${{ inputs.max-tokens }}
+        INPUT_MAX_INCREASE: ${{ inputs.max-increase }}
+        INPUT_ARGS: ${{ inputs.args }}
+        BIN: ${{ github.action_path }}/dist/bin.js
+      run: |
+        set +e
+        opts=()
+        if [ -n "$INPUT_BASE" ]; then
+          git fetch --no-tags --depth=1 origin "+refs/heads/$INPUT_BASE:refs/remotes/origin/$INPUT_BASE" >/dev/null 2>&1 \
+            || git fetch --no-tags --depth=1 origin "$INPUT_BASE" >/dev/null 2>&1
+          if git rev-parse --verify --quiet "origin/$INPUT_BASE^{commit}" >/dev/null; then
+            opts+=(--compare "origin/$INPUT_BASE")
+          else
+            opts+=(--compare "FETCH_HEAD")
+          fi
+          [ -n "$INPUT_MAX_INCREASE" ] && opts+=(--max-increase "$INPUT_MAX_INCREASE")
+        fi
+        [ -n "$INPUT_MAX_TOKENS" ] && opts+=(--max-tokens "$INPUT_MAX_TOKENS")
+        # shellcheck disable=SC2206
+        extra=($INPUT_ARGS)
+        node "$BIN" "$INPUT_PATH" "${opts[@]}" "${extra[@]}" --pr-comment --out "$RUNNER_TEMP/turntax-comment.md"
+        code=$?
+        if [ "$code" -eq 2 ]; then exit 2; fi
+        cat "$RUNNER_TEMP/turntax-comment.md" >> "$GITHUB_STEP_SUMMARY"
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+
+    - name: Comment on the pull request
+      if: inputs.comment == 'true' && github.event.pull_request
+      continue-on-error: true
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+          --jq '.[] | select(.body | startswith("<!-- turntax-report -->")) | .id' | head -n 1)
+        if [ -n "$id" ]; then
+          gh api -X PATCH "repos/$REPO/issues/comments/$id" -F "body=@$RUNNER_TEMP/turntax-comment.md" >/dev/null
+        else
+          gh api -X POST "repos/$REPO/issues/$PR/comments" -F "body=@$RUNNER_TEMP/turntax-comment.md" >/dev/null
+        fi
+
+    - name: Check budgets
+      if: steps.run.outputs.exit-code != '0'
+      shell: bash
+      run: |
+        echo "turntax: a token budget was exceeded; see the report in the job summary."
+        exit 1

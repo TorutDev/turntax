@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 (2026-10-11)
+
+- MCP servers: the agents' MCP configs (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.gemini/settings.json` and more) are read and listed per agent. `--mcp` starts the servers and counts their tool definitions; Claude Code's deferred tools (tool search) count as names only.
+- `--include-user` adds user-level instruction files and MCP servers from the home directory (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md` and others) in a separate column and a total.
+- `--compare <git-ref>` and `--baseline <report.json>` show how much each agent's per-turn cost changed and which files caused it; `--max-increase` fails CI when it grows too much.
+- GitHub Action (`uses: TorutDev/turntax@v0.3.0`): comments on pull requests with the change against the base branch and keeps that one comment up to date. `--pr-comment` prints the same comment.
+- Agents that only have an MCP config (no instruction files) are now reported.
+
 ## 0.2.0 (2026-10-10)
 
 - Ten more agents: Aider, Amp, Cline, Continue, Goose, JetBrains Junie, Kiro, OpenCode, Roo Code and Zed, each linked to its documentation.
