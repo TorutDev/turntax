@@ -1,7 +1,10 @@
 import { buildAdvice, type Advice, type AdviceOptions } from './advice.js';
 import { classify, detectTools } from './classify.js';
+import type { ReportDiff } from './diff.js';
+import { defersTools, serverKey, type McpServer, type McpTransport } from './mcp.js';
 import { countO200k, offlineCounter } from './tokenize.js';
 import { TOOLS } from './tools.js';
+import { classifyUser } from './user.js';
 import type { Counter, LoadedUnit, ModelInfo, RepoFile, TokenCount, ToolId } from './types.js';
 
 export interface AuditOptions {
@@ -13,6 +16,34 @@ export interface AuditOptions {
   advice?: AdviceOptions;
   /** Turns used for the cost projection. */
   turns?: number;
+  /** User-level files (paths start with `~/`), counted only when the user asks for them. */
+  userFiles?: RepoFile[];
+  /** MCP servers from the agents' config files, and tool definitions measured with --mcp (keyed by serverKey). */
+  mcp?: { servers: McpServer[]; measured?: Map<string, McpMeasurement> };
+}
+
+/** o200k of the full tool definitions, and of the tool names alone (what a deferring agent lists). */
+export type McpMeasurement = { tools: number; o200k: number; namesO200k: number } | { error: string };
+
+export interface McpRow {
+  name: string;
+  tool: ToolId;
+  configPath: string;
+  scope: 'project' | 'user';
+  transport: McpTransport;
+  /**
+   * not-measured - found in a config; tool definitions are counted only with --mcp
+   * measured     - started and listed; `tools` and `o200k` are set
+   * failed       - could not be measured; `error` says why
+   * disabled     - turned off in the config, so the agent does not start it
+   */
+  status: 'not-measured' | 'measured' | 'failed' | 'disabled';
+  tools?: number;
+  /** o200k reference tokens this server adds to every turn: the tool definitions (names, descriptions, input schemas as JSON), or only the names when the agent defers them. */
+  o200k?: number;
+  /** Set when the agent defers the definitions (Claude Code tool search): their full size, loaded when a tool is used. */
+  deferredO200k?: number;
+  error?: string;
 }
 
 export interface FileRow {
@@ -23,6 +54,8 @@ export interface FileRow {
   trigger: string;
   importedFrom?: string;
   notes: string[];
+  /** 'user' for files in the home directory; absent for repository files. */
+  scope?: 'user';
   /** Reference count with OpenAI o200k_base, for every file. */
   o200k: number;
   /** Per selected model that this tool runs. */
@@ -47,9 +80,22 @@ export interface ToolSummary {
   name: string;
   alwaysFiles: number;
   onDemandFiles: number;
-  /** o200k reference tokens of always-loaded content. */
+  /** o200k reference tokens of always-loaded repository files. */
   perTurnO200k: number;
   onDemandO200k: number;
+  /** User-level files (only with --include-user). */
+  userAlwaysFiles: number;
+  /** o200k tokens of always-loaded user-level files plus measured user-level MCP servers. */
+  userPerTurnO200k: number;
+  /** Enabled MCP servers this agent starts (project and user level). */
+  mcpServers: number;
+  /** o200k tokens of measured project MCP tool definitions; 0 when none were measured. */
+  mcpPerTurnO200k: number;
+  /** True when every enabled MCP server of this agent was measured. */
+  mcpMeasured: boolean;
+  /** Repository files + project MCP + user level: what this agent sends every turn, as far as measured. */
+  totalPerTurnO200k: number;
+  /** Per model: always-loaded files (repository and user level). MCP tool definitions are not priced. */
   models: ModelCost[];
   notes: string[];
   sources: string[];
@@ -61,6 +107,10 @@ export interface Report {
   files: FileRow[];
   advice: Advice[];
   models: ModelInfo[];
+  /** MCP servers found in the agents' config files. */
+  mcp: McpRow[];
+  /** Set when the report was compared with a baseline (--baseline, --compare). */
+  diff?: ReportDiff;
 }
 
 export function modelsForTool(tool: ToolId, models: ModelInfo[]): ModelInfo[] {
@@ -76,9 +126,15 @@ function counterFor(model: ModelInfo, opts: AuditOptions): Counter {
 
 export async function audit(files: RepoFile[], opts: AuditOptions): Promise<Report> {
   const turns = opts.turns ?? 100;
-  const allUnits = classify(files);
-  const toolIds = opts.tools ?? detectTools(allUnits);
+  const allUnits = [...classify(files), ...classifyUser(opts.userFiles ?? [])];
+  const servers = opts.mcp?.servers ?? [];
+  const toolIds =
+    opts.tools ??
+    [...new Set([...detectTools(allUnits), ...servers.filter((s) => !s.disabled).map((s) => s.tool)])].sort(
+      (a, b) => TOOLS.findIndex((t) => t.id === a) - TOOLS.findIndex((t) => t.id === b),
+    );
   const units = allUnits.filter((u) => toolIds.includes(u.tool));
+  const mcp = servers.filter((s) => toolIds.includes(s.tool)).map((s) => mcpRow(s, opts.mcp?.measured));
 
   // Count each distinct text once per model, only for the tools that run that model.
   const counts = new Map<string, Map<string, TokenCount>>();
@@ -103,6 +159,7 @@ export async function audit(files: RepoFile[], opts: AuditOptions): Promise<Repo
       counts: {},
     };
     if (u.importedFrom) row.importedFrom = u.importedFrom;
+    if (u.scope) row.scope = u.scope;
     if (u.mode !== 'ignored')
       for (const m of modelsForTool(u.tool, opts.models)) {
         const c = counts.get(m.id)?.get(u.text);
@@ -115,22 +172,46 @@ export async function audit(files: RepoFile[], opts: AuditOptions): Promise<Repo
     const spec = TOOLS.find((t) => t.id === id)!;
     const rows = files_.filter((r) => r.tool === id);
     const always = rows.filter((r) => r.mode === 'always');
-    const onDemand = rows.filter((r) => r.mode === 'on-demand');
+    const repoAlways = always.filter((r) => !r.scope);
+    const userAlways = always.filter((r) => r.scope === 'user');
+    const onDemand = rows.filter((r) => r.mode === 'on-demand' && !r.scope);
     const models = modelsForTool(id, opts.models).map((m) => modelCost(m, always, turns));
+    const toolMcp = mcp.filter((r) => r.tool === id && r.status !== 'disabled');
+    const mcpTokens = (scope: McpRow['scope']) => sum(toolMcp.filter((r) => r.scope === scope).map((r) => r.o200k ?? 0));
+    const perTurnO200k = sum(repoAlways.map((r) => r.o200k));
+    const userPerTurnO200k = sum(userAlways.map((r) => r.o200k)) + mcpTokens('user');
+    const mcpPerTurnO200k = mcpTokens('project');
     return {
       tool: id,
       name: spec.name,
-      alwaysFiles: new Set(always.map((r) => r.path)).size,
+      alwaysFiles: new Set(repoAlways.map((r) => r.path)).size,
       onDemandFiles: new Set(onDemand.map((r) => r.path)).size,
-      perTurnO200k: sum(always.map((r) => r.o200k)),
+      perTurnO200k,
       onDemandO200k: sum(onDemand.map((r) => r.o200k)),
+      userAlwaysFiles: new Set(userAlways.map((r) => r.path)).size,
+      userPerTurnO200k,
+      mcpServers: toolMcp.length,
+      mcpPerTurnO200k,
+      mcpMeasured: toolMcp.every((r) => r.status === 'measured'),
+      totalPerTurnO200k: perTurnO200k + mcpPerTurnO200k + userPerTurnO200k,
       models,
       notes: spec.notes,
       sources: spec.sources,
     };
   });
 
-  return { turns, tools, files: files_, advice: buildAdvice(units, files, opts.advice), models: opts.models };
+  const adviceFiles = [...files, ...(opts.userFiles ?? [])];
+  return { turns, tools, files: files_, advice: buildAdvice(units, adviceFiles, opts.advice), models: opts.models, mcp };
+}
+
+function mcpRow(s: McpServer, measured?: Map<string, McpMeasurement>): McpRow {
+  const row: McpRow = { name: s.name, tool: s.tool, configPath: s.configPath, scope: s.scope, transport: s.transport, status: 'not-measured' };
+  if (s.disabled) return { ...row, status: 'disabled' };
+  const m = measured?.get(serverKey(s));
+  if (!m) return row;
+  if ('error' in m) return { ...row, status: 'failed', error: m.error };
+  if (defersTools(s)) return { ...row, status: 'measured', tools: m.tools, o200k: m.namesO200k, deferredO200k: m.o200k };
+  return { ...row, status: 'measured', tools: m.tools, o200k: m.o200k };
 }
 
 function modelCost(model: ModelInfo, always: FileRow[], turns: number): ModelCost {

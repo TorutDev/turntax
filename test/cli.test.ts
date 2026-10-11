@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { main } from '../src/cli.js';
-import { fixture } from './helpers.js';
+import { fixture, homeFixture } from './helpers.js';
 
 function capture() {
   let out = '';
@@ -42,6 +42,25 @@ describe('cli', () => {
     expect(await main([fixture('mixed'), '--badge', '--max-tokens', '10'], {})).toBe(1);
     expect(io.out()).toContain('img.shields.io');
     expect(io.err()).toMatch(/exceeds --max-tokens 10/);
+  });
+
+  it('counts user-level files only with --include-user, never in the badge', async () => {
+    const home = homeFixture();
+    let io = capture();
+    expect(await main([fixture('agents-only'), '--json'], { HOME: home })).toBe(0);
+    expect(JSON.parse(io.out()).files.some((f: { scope?: string }) => f.scope === 'user')).toBe(false);
+    io = capture();
+    expect(await main([fixture('agents-only'), '--json', '--include-user'], { HOME: home })).toBe(0);
+    const report = JSON.parse(io.out());
+    const codex = report.tools.find((t: { tool: string }) => t.tool === 'codex');
+    expect(codex.userPerTurnO200k).toBeGreaterThan(0);
+    expect(report.mcp.map((m: { name: string }) => m.name)).toEqual(['personal']);
+    io = capture();
+    await main([fixture('agents-only'), '--badge'], { HOME: home });
+    const badge = io.out();
+    io = capture();
+    await main([fixture('agents-only'), '--badge', '--include-user'], { HOME: home });
+    expect(io.out()).toBe(badge);
   });
 
   it('measures a language multiplier from --english', async () => {

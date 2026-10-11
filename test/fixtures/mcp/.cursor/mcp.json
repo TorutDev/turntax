@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "docs": { "command": "node", "args": ["server.mjs"] },
+    "off": { "command": "node", "args": ["server.mjs"], "disabled": true }
+  }
+}

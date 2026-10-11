@@ -47,6 +47,8 @@ export interface LoadedUnit {
   notes: string[];
   /** Set when the file looks misconfigured for this tool (for example ignored because of its extension). */
   problem?: string;
+  /** 'user' for files in the home directory that the agent adds to every project; absent for repository files. */
+  scope?: 'user';
 }
 
 /** 'none-loaded': the tool loads nothing every turn, so there is nothing to count. */
