@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 (2026-10-13)
+
+- `--fix` prints a diff of safe fixes: duplicate lines an agent already reads every turn from another file, sections that can load only in the folder they are about (moved to a nested `CLAUDE.md` / `AGENTS.md` or a Claude Code rule with `paths:`), and `.md` files in `.cursor/rules` renamed to `.mdc`. `--write` applies them.
+- Every fix is checked by classifying the files again: each agent must still read every line it read before, as often as before (a moved section may load only in its folder), or the fix is skipped with the reason. `--tools` limits the check to the agents you use. Symlinked files are never changed.
+- The web page loads a public GitHub repository by URL or `owner/name`, and `?repo=owner/name` links open straight to its report. Files come from api.github.com and raw.githubusercontent.com; nothing is uploaded. Files that cannot be downloaded are listed.
+
 ## 0.3.0 (2026-10-11)
 
 - MCP servers: the agents' MCP configs (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.gemini/settings.json` and more) are read and listed per agent. `--mcp` starts the servers and counts their tool definitions; Claude Code's deferred tools (tool search) count as names only.

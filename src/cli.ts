@@ -6,13 +6,15 @@ import { hasNonEnglish } from './core/advice.js';
 import { audit, type AuditOptions, type McpMeasurement } from './core/audit.js';
 import { classify } from './core/classify.js';
 import { asDiffInput, diffReports, maxIncrease } from './core/diff.js';
+import { planFixes, unifiedDiff } from './core/fix.js';
 import { parseMcpConfigs, serverKey, toolDefinitionsText, toolNamesText, type McpServer } from './core/mcp.js';
 import { DEFAULT_MODEL_IDS, MODELS, validateModels } from './core/prices.js';
 import { badgeMarkdown, headlineTokens, renderMarkdown, renderPrComment, renderText } from './core/render.js';
 import { countO200k } from './core/tokenize.js';
 import { TOOL_IDS } from './core/tools.js';
 import type { ModelInfo, RepoFile, ToolId } from './core/types.js';
-import { discover, discoverMcpConfigs, discoverUser, existsIn, packageScripts } from './node/discover.js';
+import { applyChanges } from './node/apply.js';
+import { discover, discoverMcpConfigs, discoverUser, existsIn, linkedPaths, packageScripts } from './node/discover.js';
 import { filesAtRef } from './node/git.js';
 import { measureServer } from './node/mcp.js';
 import { anthropicCounter, geminiCounter, translateToEnglish } from './node/remote.js';
@@ -54,6 +56,10 @@ Options:
                           (needs --claude-api; sends those files to api.anthropic.com)
   --prices <file.json>    Use your own price table (same shape as --list-models --json)
   --section-tokens <n>    Flag always-loaded sections at or above n o200k tokens (default: 600)
+  --fix                   Print a diff of the safe fixes: duplicate lines, sections that can load only in
+                          their folder, misnamed Cursor rules. Every agent keeps reading the moved text;
+                          --tools limits the agents whose context is kept
+  --write                 With --fix, apply the changes to the files
   -h, --help              Show help
   -v, --version           Show version
 
@@ -105,6 +111,8 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
         baseline: { type: 'string' },
         compare: { type: 'string' },
         'max-increase': { type: 'string' },
+        fix: { type: 'boolean' },
+        write: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
       },
@@ -146,6 +154,15 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
     for (const t of tools ?? []) if (!TOOL_IDS.includes(t)) throw new UsageError(`Unknown tool "${t}". Use: ${TOOL_IDS.join(', ')}`);
 
     const root = resolve(positionals[0] ?? '.');
+    if (o.write && !o.fix) throw new UsageError('--write needs --fix.');
+    if (o.fix) {
+      const other: string[] = (
+        ['json', 'md', 'pr-comment', 'badge', 'baseline', 'compare', 'max-tokens', 'max-increase', 'include-user', 'mcp'] as const
+      ).filter((k) => o[k] !== undefined);
+      if (o.write && o.out) other.push('out');
+      if (other.length) throw new UsageError(`--fix${o.write ? ' --write' : ''} cannot be combined with --${other.join(', --')}.`);
+      return await fix(root, tools, Boolean(o.write), o.out);
+    }
     const files = await discover(root);
     if (o.baseline && o.compare) throw new UsageError('Use --baseline or --compare, not both.');
     if (o['max-increase'] !== undefined && !o.baseline && !o.compare)
@@ -277,6 +294,28 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
     process.stderr.write(`turntax: ${(e as Error).message}\n`);
     return 1;
   }
+}
+
+async function fix(root: string, tools: ToolId[] | undefined, write: boolean, out: string | undefined): Promise<number> {
+  const files = await discover(root);
+  const plan = planFixes(files, { tools, exists: existsIn(root), readOnly: linkedPaths(root, files) });
+  const log = (line: string) => (write ? process.stdout : process.stderr).write(line + '\n');
+  for (const f of plan.fixes) log(`fix: ${f.message}${f.savingTokens ? ` [saves ~${f.savingTokens} tokens/turn]` : ''}`);
+  for (const s of plan.skipped) log(`skipped ${s.kind}: ${s.reason}`);
+  if (!plan.changes.length) {
+    log('Nothing to fix automatically.');
+    return 0;
+  }
+  if (write) {
+    applyChanges(root, plan.changes);
+    log(`Changed ${plan.changes.length} file(s): ${plan.changes.map((c) => c.path).join(', ')}`);
+    return 0;
+  }
+  const diff = unifiedDiff(plan.changes);
+  if (out) writeFileSync(out, diff);
+  else process.stdout.write(diff);
+  log('Preview only. Run again with --write to apply, or save the diff and use git apply.');
+  return 0;
 }
 
 function nonNegativeInt(name: string, value: string): number {

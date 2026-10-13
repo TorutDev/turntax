@@ -133,17 +133,22 @@ function sizeLimits(units: LoadedUnit[], files: RepoFile[]): Advice[] {
   return out;
 }
 
-/** Lowercased, whitespace-collapsed instruction lines long enough to be meaningful. */
-function normalizedLines(text: string): Map<string, string> {
+/** Lowercased, whitespace-collapsed form of a line without list markers or emphasis, used to compare lines. */
+export function normalizeLine(line: string): string {
+  return line
+    .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
+    .replace(/[*_`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/** Normalized instruction lines long enough to be meaningful, mapped to their original text. */
+export function normalizedLines(text: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const { line, inFence } of linesWithFences(text)) {
     if (inFence) continue;
-    const norm = line
-      .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
-      .replace(/[*_`]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
+    const norm = normalizeLine(line);
     if (norm.length >= 30 && !norm.startsWith('#')) out.set(norm, line);
   }
   return out;
@@ -314,11 +319,8 @@ function sections(units: LoadedUnit[], threshold: number): Advice[] {
     const tools = toolsWith(units, u.path, 'always');
     for (const s of splitSections(u.text)) {
       const tokens = countO200k(s.text);
-      const refs = pathRefs(s.text).filter((r) => !r.startsWith('.'));
-      const dirs = refs.map((r) => r.split('/')[0]!);
-      const top = mostCommon(dirs);
-      if (tokens >= 100 && top && top.count >= 2 && top.count / dirs.length >= 0.6) {
-        const scope = commonDir(refs.filter((r) => r.startsWith(top.value + '/')));
+      const scope = sectionScope(s.text);
+      if (scope) {
         out.push({
           kind: 'scopable-section',
           severity: 'medium',
@@ -344,6 +346,16 @@ function sections(units: LoadedUnit[], threshold: number): Advice[] {
     }
   }
   return out;
+}
+
+/** The directory a section is mostly about (for example `packages/api`), or null when it is not scopable. */
+export function sectionScope(text: string): string | null {
+  if (countO200k(text) < 100) return null;
+  const refs = pathRefs(text).filter((r) => !r.startsWith('.'));
+  const dirs = refs.map((r) => r.split('/')[0]!);
+  const top = mostCommon(dirs);
+  if (!top || top.count < 2 || top.count / dirs.length < 0.6) return null;
+  return commonDir(refs.filter((r) => r.startsWith(top.value + '/')));
 }
 
 /** Longest directory prefix shared by all refs, e.g. `packages/api` for `packages/api/db.ts` and `packages/api/handlers/`. */

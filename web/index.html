@@ -65,6 +65,9 @@
   .settings fieldset { border: 0; padding: 0; margin: 0; }
   .settings legend { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
   .settings label { display: block; font-size: 14px; margin: 2px 0; }
+  #repo-form .row { flex-wrap: nowrap; margin-top: 8px; }
+  #repo-input { flex: 1; min-width: 0; }
+  .error { color: var(--high); }
   .privacy { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); margin-top: 12px; justify-content: center; }
 
   .cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
@@ -130,6 +133,16 @@
     </div>
     <p class="privacy">Runs in your browser with an offline tokenizer. Nothing is uploaded.</p>
 
+    <form id="repo-form" class="panel" style="margin-top:12px" novalidate>
+      <label for="repo-input"><strong>Or analyse a public GitHub repository</strong></label>
+      <div class="row">
+        <input id="repo-input" type="text" placeholder="owner/name or https://github.com/owner/name" autocomplete="off" spellcheck="false">
+        <button id="repo-load" type="submit" class="primary">Analyse</button>
+      </div>
+      <p id="repo-status" class="small" role="status" hidden style="margin:8px 0 0"></p>
+      <p class="muted small" style="margin:8px 0 0">Loading a repository downloads its files from api.github.com and raw.githubusercontent.com. Nothing is uploaded.</p>
+    </form>
+
     <details class="panel">
       <summary>Paste a file instead</summary>
       <div style="margin-top:12px">
@@ -151,7 +164,8 @@
     </details>
 
     <div id="loaded" class="panel" hidden style="margin-top:12px">
-      <div class="row" style="justify-content:space-between"><strong>Loaded files</strong><button id="clear" type="button">Clear</button></div>
+      <div class="row" style="justify-content:space-between"><strong>Loaded files</strong><span class="row"><button id="copy-link" type="button" hidden>Copy link</button><button id="clear" type="button">Clear</button></span></div>
+      <p id="repo-info" class="small" hidden style="margin:8px 0 0"></p>
       <ul id="file-list"></ul>
     </div>
   </section>
