@@ -55,7 +55,8 @@ describe('planFixes on the mixed fixture', () => {
     expect(fix.paths).toEqual(['CLAUDE.md', 'packages/api/CLAUDE.md']);
     expect(fix.savingTokens).toBeGreaterThan(100);
     expect(after(plan, 'CLAUDE.md')).not.toContain('## API package');
-    expect(after(plan, 'packages/api/CLAUDE.md')).toMatch(/^# API package notes[\s\S]*\n\n## API package\n/);
+    // A Windows checkout may have CRLF fixtures; the fix keeps each file's line endings.
+    expect(after(plan, 'packages/api/CLAUDE.md')!.replace(/\r\n/g, '\n')).toMatch(/^# API package notes[\s\S]*\n\n## API package\n/);
   });
 
   it('keeps duplicates that an agent reads from only one of the files', () => {
