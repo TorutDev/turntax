@@ -189,6 +189,16 @@ describe('scopable sections', () => {
     expect(plan.changes.find((c) => c.path === '.claude/rules/general.md')).toBeUndefined();
   });
 
+  it('treats lines that differ in case, underscores or asterisks as different', () => {
+    const a = 'Call `create_user` from the handlers, never the repository directly.';
+    const b = 'Call `createuser` from the handlers, never the repository directly.';
+    const files: RepoFile[] = [
+      { path: 'AGENTS.md', text: `${a}\nMatch files with src/**/*.ts when you add new modules.\n` },
+      { path: '.cursor/rules/always.mdc', text: `---\nalwaysApply: true\n---\n${b}\nMatch files with src/*/.ts when you add new modules.\n` },
+    ];
+    expect(planFixes(files).changes).toEqual([]);
+  });
+
   it('does not count a line quoted in a code block as a copy', () => {
     const line = 'Run the full test suite before every commit you make here.';
     const files: RepoFile[] = [
@@ -311,6 +321,14 @@ describe('cli --fix', () => {
     writeFileSync(join(dir, 'CLAUDE.md'), 'edited\n');
     expect(() => applyChanges(dir, plan.changes)).toThrow(/CLAUDE\.md changed/);
     expect(existsSync(join(dir, '.cursor/rules/wrong.md'))).toBe(true);
+  });
+
+  it('empties the --out file when nothing is left to fix', async () => {
+    const out = join(mkdtempSync(join(tmpdir(), 'turntax-out-')), 'fix.patch');
+    writeFileSync(out, 'stale patch\n');
+    capture();
+    expect(await main([fixture('agents-only'), '--fix', '--out', out], {})).toBe(0);
+    expect(readFileSync(out, 'utf8')).toBe('');
   });
 
   it('rejects --write without --fix and --fix with report formats', async () => {

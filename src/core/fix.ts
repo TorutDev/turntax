@@ -1,4 +1,4 @@
-import { normalizeLine, normalizedLines, sectionScope } from './advice.js';
+import { sectionScope } from './advice.js';
 import { classify } from './classify.js';
 import { isInstructionFile } from './files.js';
 import { basename, findImports, linesWithFences, parseFrontmatter, splitSections } from './markdown.js';
@@ -64,10 +64,28 @@ function contentUnits(units: LoadedUnit[]): LoadedUnit[] {
   return units.filter((u) => u.part !== 'description' && u.mode !== 'ignored');
 }
 
+/**
+ * A line as compared by the fixes: only list markers and whitespace are ignored. Case, underscores,
+ * asterisks and backticks can carry meaning (`create_user`, globs), so lines that differ there differ.
+ */
+function lineKey(line: string): string {
+  return line.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '').replace(/\s+/g, ' ').trim();
+}
+
+/** Prose lines long enough to be meaningful (outside fenced code, not headings), by key. */
+function proseLines(text: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const { line, inFence } of linesWithFences(text)) {
+    const key = lineKey(line);
+    if (!inFence && key.length >= 30 && !key.startsWith('#')) out.set(key, line);
+  }
+  return out;
+}
+
 function keysOf(text: string): string[] {
   return text
     .split('\n')
-    .map(normalizeLine)
+    .map(lineKey)
     .filter((k) => k.replace(/[#\s]/g, '').length > 0);
 }
 
@@ -251,12 +269,12 @@ function removeDuplicates(ws: Workspace, readOnly: (path: string) => string | nu
     if (!tools.size || ws.units.some((u) => u.path === path && u.part === 'body')) continue;
     const { text, eol } = lf(ws.files.get(path)!.text);
     const elsewhere = (key: string) =>
-      contentUnits(ws.units).filter((u) => u.path !== path && u.mode === 'always' && normalizedLines(u.text).has(key));
+      contentUnits(ws.units).filter((u) => u.path !== path && u.mode === 'always' && proseLines(u.text).has(key));
     // Lines this file shares with another file that some agent reads every turn.
     const shared = new Map<string, string[]>();
     const blockers = new Set<ToolId>();
     const removable = new Set<string>();
-    for (const [key] of normalizedLines(text)) {
+    for (const [key] of proseLines(text)) {
       const others = elsewhere(key);
       if (!others.length) continue;
       shared.set(key, [...new Set(others.map((u) => u.path))]);
@@ -272,7 +290,7 @@ function removeDuplicates(ws: Workspace, readOnly: (path: string) => string | nu
     }
     if (removable.size) {
       const lines = text.split('\n');
-      const drop = new Set(bodyLines(text).filter((l) => removable.has(normalizeLine(l.line))).map((l) => l.index));
+      const drop = new Set(bodyLines(text).filter((l) => removable.has(lineKey(l.line))).map((l) => l.index));
       const removed = [...drop].map((i) => lines[i]!);
       const next = ws.trial(new Map([[path, dropLines(lines, drop).join('\n').replace(/\n/g, eol)]]));
       const lost = ws.check(next, removable, (r) => r);

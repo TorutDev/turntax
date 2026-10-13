@@ -56,7 +56,10 @@ function keepPath(path: string): boolean {
   return true;
 }
 
-async function loadSource(src: Source): Promise<void> {
+/** Bumped whenever the user picks another source, so a GitHub load still in flight is discarded. */
+let generation = 0;
+
+async function loadSource(src: Source, isCurrent: () => boolean = () => true): Promise<void> {
   const found = new Map<string, RepoFile>();
   // Read in parallel; a GitHub source fetches each file over the network.
   const paths = [...src.paths].filter((p) => isInstructionFile(p));
@@ -66,6 +69,7 @@ async function loadSource(src: Source): Promise<void> {
     if (text != null) found.set(path, { path, text });
   });
   await addImports(found, (p) => (src.paths.has(p) ? src.read(p) : null));
+  if (!isCurrent()) return;
   for (const [p, f] of found) state.files.set(p, f);
   state.allPaths = new Set([...(state.allPaths ?? []), ...src.paths]);
 }
@@ -110,6 +114,7 @@ const TRUNCATED_NOTE = 'GitHub truncated the file list; very large repos may be 
 /** Shows the loaded repo and puts it in the URL; null hides it and drops ?repo= unless `keepUrl`. */
 function setRepo(repo: LoadedRepo | null, keepUrl = false): void {
   state.repo = repo;
+  if (!repo) generation++;
   const info = $('repo-info');
   info.hidden = !repo;
   $('copy-link').hidden = !repo;
@@ -149,21 +154,27 @@ async function loadRepo(input: string, fromLink = false): Promise<void> {
   state.files.clear();
   state.allPaths = null;
   setRepo(null, fromLink);
+  const gen = generation;
+  const current = () => gen === generation;
   try {
     const tree = await fetchRepoTree(repo);
+    if (!current()) return;
     const read = rawReader(tree);
-    await loadSource({ paths: new Set(tree.paths.filter(keepPath)), read });
+    await loadSource({ paths: new Set(tree.paths.filter(keepPath)), read }, current);
+    if (!current()) return;
     const where = `${tree.owner}/${tree.name}@${tree.ref}`;
     if (!state.files.size) repoStatus(`No agent instruction files found in ${where}.${tree.truncated ? ` ${TRUNCATED_NOTE}` : ''}`);
     else setRepo({ owner: tree.owner, name: tree.name, ref: tree.ref, explicitRef: !!repo.ref, truncated: tree.truncated });
     if (read.failed.length)
       repoStatus(`${read.failed.length} file(s) could not be downloaded and are not counted: ${read.failed.slice(0, 5).join(', ')}${read.failed.length > 5 ? ', …' : ''}`, true);
   } catch (e) {
+    if (!current()) return;
     repoStatus(e instanceof GitHubError ? e.message : 'Could not load the repository.', true);
   } finally {
     button.disabled = false;
     button.textContent = 'Analyse';
   }
+  if (!current()) return;
   await run();
   if (state.files.size) $('results').scrollIntoView({ behavior: 'smooth' });
 }

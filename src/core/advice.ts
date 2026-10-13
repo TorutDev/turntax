@@ -133,22 +133,17 @@ function sizeLimits(units: LoadedUnit[], files: RepoFile[]): Advice[] {
   return out;
 }
 
-/** Lowercased, whitespace-collapsed form of a line without list markers or emphasis, used to compare lines. */
-export function normalizeLine(line: string): string {
-  return line
-    .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
-    .replace(/[*_`]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-}
-
-/** Normalized instruction lines long enough to be meaningful, mapped to their original text. */
-export function normalizedLines(text: string): Map<string, string> {
+/** Lowercased, whitespace-collapsed instruction lines long enough to be meaningful. */
+function normalizedLines(text: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const { line, inFence } of linesWithFences(text)) {
     if (inFence) continue;
-    const norm = normalizeLine(line);
+    const norm = line
+      .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
+      .replace(/[*_`]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
     if (norm.length >= 30 && !norm.startsWith('#')) out.set(norm, line);
   }
   return out;

@@ -303,6 +303,8 @@ async function fix(root: string, tools: ToolId[] | undefined, write: boolean, ou
   for (const f of plan.fixes) log(`fix: ${f.message}${f.savingTokens ? ` [saves ~${f.savingTokens} tokens/turn]` : ''}`);
   for (const s of plan.skipped) log(`skipped ${s.kind}: ${s.reason}`);
   if (!plan.changes.length) {
+    // An empty patch, so an earlier patch in the same file is not applied again.
+    if (out && !write) writeFileSync(out, '');
     log('Nothing to fix automatically.');
     return 0;
   }
