@@ -6,7 +6,7 @@ Coding agents re-send their instruction files with every turn. `turntax` measure
 npx turntax
 ```
 
-Try it in the browser, with nothing uploaded: https://torutdev.github.io/turntax/
+Try it in the browser, with nothing uploaded: https://torutdev.github.io/turntax/ — drop a folder or enter a public GitHub repository. Links like `https://torutdev.github.io/turntax/?repo=owner/name` open straight to that repository's report.
 
 ## Supported agents
 
@@ -83,6 +83,23 @@ All checks are deterministic. Each one shows an estimated saving in o200k tokens
 - **stale-reference**: referenced files or `npm run` scripts that no longer exist.
 - **non-english**: non-English sections. The token multiplier is measured only against an English version you supply (`--english CLAUDE.md=CLAUDE.en.md`) or, if you opt in, a Claude translation (`--translate`).
 
+## Fixing
+
+```bash
+npx turntax --fix            # print a diff of the safe fixes; nothing is changed
+npx turntax --fix --write    # apply them
+```
+
+`--fix` handles three kinds of advice:
+
+- **duplicate**: removes lines from a file when every agent that reads the file also reads the same lines every turn from another file. Skill, command and subagent files are left whole.
+- **scopable-section**: moves a section into the folder it is about: the same file name there (`packages/api/CLAUDE.md`), a nested `AGENTS.md`, or a Claude Code rule with `paths:`. The folder the section is about must already exist, and sections with `@imports` or relative links stay put. A section moves together with its subsections.
+- **misconfigured**: renames `.md` files in `.cursor/rules` to `.mdc`.
+
+Before a fix is kept, the files are classified again with the change applied: every agent must still read every line it read before, including files reached through `@imports`, and as often as before. The only exception is a moved section, which may load only when the agent works in that folder. Otherwise the fix is skipped and the reason is printed. A moved section can reach agents that did not read it before (a nested `AGENTS.md` is read by more agents than a `CLAUDE.md`); the summary names them. By default that check covers every supported agent, so a section of `AGENTS.md` usually stays where it is, because some agents read only the root file. `--tools codex,claude-code` limits the check to the agents you use.
+
+In preview the diff is on stdout and works with `git apply`, and the summary is on stderr; with `--write` the summary is on stdout. `--write` checks that no file changed since it was read and writes nothing if one did. Symlinked files, their targets and files in symlinked folders are never changed. Contradictions and stale references need a person to decide, so `--fix` leaves them alone.
+
 ## MCP servers
 
 Every MCP server an agent starts adds its tool definitions (names, descriptions, input schemas) to the context. `turntax` reads the agents' MCP configs and lists the servers each agent starts:
@@ -148,7 +165,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TorutDev/turntax@v0.3.0
+      - uses: TorutDev/turntax@v0.4.0
         with:
           max-increase: 500      # optional: fail when an agent grows by more than 500 tokens per turn
           # max-tokens: 8000     # optional: absolute budget
@@ -180,17 +197,21 @@ turntax [path]
   --translate               opt-in Claude translation for that measurement (needs --claude-api)
   --prices <file.json>      your own price table
   --section-tokens <n>      threshold for oversized sections (default 600)
+  --fix                     print a diff of the safe fixes (--tools limits the agents whose context is kept)
+  --write                   with --fix, apply the changes
 ```
 
 ## Privacy
 
 Offline by default: no network calls, no telemetry. File contents are sent only when you pass `--claude-api`, `--gemini-api` or `--translate`, and only to that vendor's API. Keys are read from environment variables and sent only in request headers.
 
-`--mcp` runs the commands in the MCP configs it finds and connects to the configured HTTP servers, as the agents themselves would. Run it only on repositories whose configs you trust. `turntax` prints each command before starting it. `--include-user` reads files in your home directory and never sends them anywhere.
+`--mcp` runs the commands in the MCP configs it finds and connects to the configured HTTP servers, as the agents themselves would. Run it only on repositories whose configs you trust. `turntax` prints each command before starting it. `--include-user` reads files in your home directory and never sends them anywhere. `--fix --write` is the only option that changes files, and only repository files.
 
 ## Web page
 
 [`web/`](web) is a static page that runs the same engine in the browser with the offline tokenizer only. Drop a repository folder or paste files; nothing is uploaded.
+
+It can also load a public GitHub repository: it lists the files with the GitHub API (`api.github.com`, unauthenticated, 60 requests per hour) and downloads only the instruction files, and files they `@import`, from `raw.githubusercontent.com`. Those are the only network requests the page makes, and only when you load a repository or open a `?repo=` link.
 
 ```bash
 npm run build:web

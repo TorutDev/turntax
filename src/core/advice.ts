@@ -314,11 +314,8 @@ function sections(units: LoadedUnit[], threshold: number): Advice[] {
     const tools = toolsWith(units, u.path, 'always');
     for (const s of splitSections(u.text)) {
       const tokens = countO200k(s.text);
-      const refs = pathRefs(s.text).filter((r) => !r.startsWith('.'));
-      const dirs = refs.map((r) => r.split('/')[0]!);
-      const top = mostCommon(dirs);
-      if (tokens >= 100 && top && top.count >= 2 && top.count / dirs.length >= 0.6) {
-        const scope = commonDir(refs.filter((r) => r.startsWith(top.value + '/')));
+      const scope = sectionScope(s.text);
+      if (scope) {
         out.push({
           kind: 'scopable-section',
           severity: 'medium',
@@ -344,6 +341,16 @@ function sections(units: LoadedUnit[], threshold: number): Advice[] {
     }
   }
   return out;
+}
+
+/** The directory a section is mostly about (for example `packages/api`), or null when it is not scopable. */
+export function sectionScope(text: string): string | null {
+  if (countO200k(text) < 100) return null;
+  const refs = pathRefs(text).filter((r) => !r.startsWith('.'));
+  const dirs = refs.map((r) => r.split('/')[0]!);
+  const top = mostCommon(dirs);
+  if (!top || top.count < 2 || top.count / dirs.length < 0.6) return null;
+  return commonDir(refs.filter((r) => r.startsWith(top.value + '/')));
 }
 
 /** Longest directory prefix shared by all refs, e.g. `packages/api` for `packages/api/db.ts` and `packages/api/handlers/`. */

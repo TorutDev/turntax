@@ -1,5 +1,6 @@
 import { audit, type Report } from '../core/audit.js';
 import { addImports, isInstructionFile, isSkippedDir } from '../core/files.js';
+import { fetchRepoTree, GitHubError, parseRepoInput, rawReader } from './github.js';
 import { DEFAULT_MODEL_IDS, MODELS } from '../core/prices.js';
 import { SAMPLE_REPO } from './sample.js';
 import { badgeMarkdown, fmtTokens, fmtUsd, groupFiles, groupTools, renderMarkdown } from '../core/render.js';
@@ -7,8 +8,9 @@ import { TOOLS } from '../core/tools.js';
 import type { RepoFile } from '../core/types.js';
 
 /**
- * Browser front end. Everything runs locally with the offline o200k tokenizer;
- * this file makes no network requests.
+ * Browser front end. Everything runs locally with the offline o200k tokenizer.
+ * Network requests happen only when the user loads a GitHub repository (or opens
+ * a ?repo= link), and only to api.github.com and raw.githubusercontent.com.
  */
 
 interface Source {
@@ -18,10 +20,20 @@ interface Source {
   read: (path: string) => Promise<string | null>;
 }
 
-const state: { files: Map<string, RepoFile>; allPaths: Set<string> | null; report: Report | null } = {
+interface LoadedRepo {
+  owner: string;
+  name: string;
+  ref: string;
+  /** The user named the ref; only then does the shareable link carry it. */
+  explicitRef: boolean;
+  truncated: boolean;
+}
+
+const state: { files: Map<string, RepoFile>; allPaths: Set<string> | null; report: Report | null; repo: LoadedRepo | null } = {
   files: new Map(),
   allPaths: null,
   report: null,
+  repo: null,
 };
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -44,14 +56,20 @@ function keepPath(path: string): boolean {
   return true;
 }
 
-async function loadSource(src: Source): Promise<void> {
+/** Bumped whenever the user picks another source, so a GitHub load still in flight is discarded. */
+let generation = 0;
+
+async function loadSource(src: Source, isCurrent: () => boolean = () => true): Promise<void> {
   const found = new Map<string, RepoFile>();
-  for (const path of src.paths) {
-    if (!isInstructionFile(path)) continue;
-    const text = await src.read(path);
-    if (text !== null) found.set(path, { path, text });
-  }
+  // Read in parallel; a GitHub source fetches each file over the network.
+  const paths = [...src.paths].filter((p) => isInstructionFile(p));
+  const texts = await Promise.all(paths.map((p) => src.read(p)));
+  paths.forEach((path, i) => {
+    const text = texts[i];
+    if (text != null) found.set(path, { path, text });
+  });
   await addImports(found, (p) => (src.paths.has(p) ? src.read(p) : null));
+  if (!isCurrent()) return;
   for (const [p, f] of found) state.files.set(p, f);
   state.allPaths = new Set([...(state.allPaths ?? []), ...src.paths]);
 }
@@ -89,6 +107,76 @@ async function fromDrop(items: DataTransferItemList): Promise<Source> {
   if (singleDir) await walk(entries[0]!, '');
   else for (const e of entries) await walk(e, e.name);
   return { paths: new Set(files.keys()), read: async (p) => (files.has(p) ? files.get(p)!.text() : null) };
+}
+
+const TRUNCATED_NOTE = 'GitHub truncated the file list; very large repos may be incomplete.';
+
+/** Shows the loaded repo and puts it in the URL; null hides it and drops ?repo= unless `keepUrl`. */
+function setRepo(repo: LoadedRepo | null, keepUrl = false): void {
+  state.repo = repo;
+  if (!repo) generation++;
+  const info = $('repo-info');
+  info.hidden = !repo;
+  $('copy-link').hidden = !repo;
+  if (!repo) {
+    info.replaceChildren();
+    if (!keepUrl && location.search) history.replaceState(null, '', location.pathname + location.hash);
+    return;
+  }
+  const label = `github.com/${repo.owner}/${repo.name} @ ${repo.ref}`;
+  info.replaceChildren(
+    el('a', { href: `https://github.com/${repo.owner}/${repo.name}`, rel: 'noopener', target: '_blank' }, label),
+    ...(repo.truncated ? [el('span', { class: 'muted' }, ` · ${TRUNCATED_NOTE}`)] : []),
+  );
+  const ref = repo.explicitRef ? `&ref=${repo.ref.split('/').map(encodeURIComponent).join('/')}` : '';
+  history.replaceState(null, '', `${location.pathname}?repo=${repo.owner}/${repo.name}${ref}${location.hash}`);
+}
+
+function repoStatus(message: string, error = false): void {
+  const status = $('repo-status');
+  status.textContent = message;
+  status.classList.toggle('error', error);
+  status.classList.toggle('muted', !error);
+  status.hidden = !message;
+}
+
+/** `fromLink` keeps a failing ?repo= link in the address bar so a reload retries it. */
+async function loadRepo(input: string, fromLink = false): Promise<void> {
+  const repo = parseRepoInput(input);
+  if (!repo) {
+    repoStatus('Enter a repository as owner/name or a github.com URL.', true);
+    return;
+  }
+  const button = $('repo-load') as HTMLButtonElement;
+  button.disabled = true;
+  button.textContent = 'Loading…';
+  repoStatus('');
+  state.files.clear();
+  state.allPaths = null;
+  setRepo(null, fromLink);
+  const gen = generation;
+  const current = () => gen === generation;
+  try {
+    const tree = await fetchRepoTree(repo);
+    if (!current()) return;
+    const read = rawReader(tree);
+    await loadSource({ paths: new Set(tree.paths.filter(keepPath)), read }, current);
+    if (!current()) return;
+    const where = `${tree.owner}/${tree.name}@${tree.ref}`;
+    if (!state.files.size) repoStatus(`No agent instruction files found in ${where}.${tree.truncated ? ` ${TRUNCATED_NOTE}` : ''}`);
+    else setRepo({ owner: tree.owner, name: tree.name, ref: tree.ref, explicitRef: !!repo.ref, truncated: tree.truncated });
+    if (read.failed.length)
+      repoStatus(`${read.failed.length} file(s) could not be downloaded and are not counted: ${read.failed.slice(0, 5).join(', ')}${read.failed.length > 5 ? ', …' : ''}`, true);
+  } catch (e) {
+    if (!current()) return;
+    repoStatus(e instanceof GitHubError ? e.message : 'Could not load the repository.', true);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Analyse';
+  }
+  if (!current()) return;
+  await run();
+  if (state.files.size) $('results').scrollIntoView({ behavior: 'smooth' });
 }
 
 function selectedModels() {
@@ -286,17 +374,20 @@ function setupInputs(): void {
     e.preventDefault();
     drop.classList.remove('over');
     if (!e.dataTransfer) return;
+    setRepo(null);
     await loadSource(await fromDrop(e.dataTransfer.items));
     await run();
   });
   $('pick-folder').addEventListener('change', async (e) => {
     const input = e.target as HTMLInputElement;
+    setRepo(null);
     if (input.files) await loadSource(fromFileList(input.files, true));
     input.value = '';
     await run();
   });
   $('pick-files').addEventListener('change', async (e) => {
     const input = e.target as HTMLInputElement;
+    setRepo(null);
     if (input.files) {
       // Single files have no folder context; keep their names as root-level paths.
       for (const f of Array.from(input.files)) state.files.set(f.name, { path: f.name, text: await f.text() });
@@ -307,6 +398,7 @@ function setupInputs(): void {
   $('sample').addEventListener('click', async () => {
     state.files.clear();
     state.allPaths = null;
+    setRepo(null);
     for (const f of SAMPLE_REPO) state.files.set(f.path, f);
     await run();
     $('results').scrollIntoView({ behavior: 'smooth' });
@@ -315,6 +407,7 @@ function setupInputs(): void {
     const path = ($('paste-name') as HTMLInputElement).value.trim().replace(/^\.?\//, '');
     const text = ($('paste-text') as HTMLTextAreaElement).value;
     if (!path || !text.trim()) return;
+    setRepo(null);
     state.files.set(path, { path, text });
     ($('paste-text') as HTMLTextAreaElement).value = '';
     await run();
@@ -322,8 +415,14 @@ function setupInputs(): void {
   $('clear').addEventListener('click', () => {
     state.files.clear();
     state.allPaths = null;
+    setRepo(null);
     void run();
   });
+  $('repo-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    void loadRepo(($('repo-input') as HTMLInputElement).value);
+  });
+  $('copy-link').addEventListener('click', () => void navigator.clipboard.writeText(location.href));
   $('turns').addEventListener('change', () => void run());
   $('copy-install').addEventListener('click', () => void navigator.clipboard.writeText('npx turntax'));
   $('copy-badge').addEventListener('click', () => void navigator.clipboard.writeText(($('badge') as HTMLTextAreaElement).value));
@@ -339,4 +438,12 @@ function setupInputs(): void {
 setupAgents();
 setupModels();
 setupInputs();
+
+const params = new URLSearchParams(location.search);
+const sharedRepo = params.get('repo');
+if (sharedRepo) {
+  const ref = params.get('ref');
+  ($('repo-input') as HTMLInputElement).value = ref ? `https://github.com/${sharedRepo}/tree/${ref}` : sharedRepo;
+  void loadRepo(($('repo-input') as HTMLInputElement).value, true);
+}
 

@@ -1,5 +1,5 @@
-import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { MAX_DEPTH, addImports, isInstructionFile, isSkippedDir } from '../core/files.js';
 import { MCP_CONFIGS, USER_MCP_PATHS } from '../core/mcp.js';
 import type { RepoFile } from '../core/types.js';
@@ -100,4 +100,35 @@ export function discoverUser(home: string): { files: RepoFile[]; mcpConfigs: Rep
     return text === null ? [] : [{ path: `~/${path}`, text }];
   });
   return { files: [...files.values()].sort((a, b) => a.path.localeCompare(b.path)), mcpConfigs };
+}
+
+/** The real location of `p`, following symlinks in the part of the path that exists; null behind a dangling symlink. */
+export function realLocation(p: string): string | null {
+  if (lstatSync(p, { throwIfNoEntry: false })) {
+    try {
+      return realpathSync(p);
+    } catch {
+      return null;
+    }
+  }
+  const parent = dirname(p);
+  if (parent === p) return p;
+  const real = realLocation(parent);
+  return real === null ? null : resolve(real, relative(parent, p));
+}
+
+/**
+ * A check for paths that must not be changed: paths that are symlinks or lie under a symlinked folder
+ * (existing or not), and repository files that such a link points to.
+ */
+export function linkedPaths(root: string, files: RepoFile[]): (path: string) => boolean {
+  const realRoot = realpathSync(root);
+  const linked = (path: string) => realLocation(join(root, path)) !== join(realRoot, path);
+  const targets = new Set<string>();
+  for (const f of files) {
+    if (!linked(f.path)) continue;
+    const rel = relative(realRoot, realLocation(join(root, f.path)) ?? realRoot);
+    if (!rel.startsWith('..') && !isAbsolute(rel)) targets.add(rel.split(sep).join('/'));
+  }
+  return (path) => targets.has(path) || linked(path);
 }
