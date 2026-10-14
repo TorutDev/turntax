@@ -366,11 +366,11 @@ function renderFixes(report: Report): void {
   const agents = report.tools.map((t) => t.tool);
   const kept = agents.filter((id) => !fixExcluded.has(id));
   // All checked is the CLI default: keep the context of every supported agent.
-  const plan = planWebFixes(
-    { files: [...state.files.values()], paths: state.allPaths ?? [], linked: state.linked },
-    kept.length === agents.length ? undefined : kept,
-  );
+  const tools = kept.length === agents.length ? undefined : kept;
+  // Without a full path list (sample, pasted files) folders are unknown, as for the advice above.
+  const plan = planWebFixes({ files: [...state.files.values()], paths: state.allPaths ?? undefined, linked: state.linked }, tools);
   state.fixDiff = plan.diff;
+  $('fix-command').textContent = `npx turntax --fix --write${tools ? ` --tools ${tools.join(',')}` : ''}`;
   $('fix-list').replaceChildren(
     ...(plan.changes.length
       ? plan.fixes.map((f) =>

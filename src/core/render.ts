@@ -350,7 +350,8 @@ export function renderPrComment(report: Report, fixes?: FixPlan, fixCommand = 'n
   const top = report.diff ? renderDiffMarkdown(report.diff) : '## Agent context tax';
   const headline = `Largest per-turn cost: **${fmtTokens(headlineTokens(report))}** o200k tokens (repository files and measured project MCP tools).`;
   const fixPart = fixes?.changes.length ? ['', renderFixes(fixes, fixCommand)] : [];
-  const limit = COMMENT_LIMIT - fixPart.join('\n').length;
+  // GitHub rejects comments over 65,536 characters; everything but the full report counts against the limit.
+  const limit = Math.max(0, COMMENT_LIMIT - [top, headline, ...fixPart].join('\n').length);
   let full = renderMarkdown({ ...report, diff: undefined }).replace(/^# .*\n\n/, '');
   if (full.length > limit) full = full.slice(0, limit) + '\n\n_Report cut to fit in a comment; run turntax locally for all of it._\n';
   return [PR_COMMENT_MARKER, top, '', headline, ...fixPart, '', '<details><summary>Full report</summary>', '', full, '</details>', ''].join('\n');
@@ -362,7 +363,8 @@ function renderFixes(plan: FixPlan, command: string): string {
   let diff = unifiedDiff(plan.changes);
   let cut = '';
   if (diff.length > FIX_DIFF_LIMIT) {
-    diff = diff.slice(0, diff.lastIndexOf('\n', FIX_DIFF_LIMIT) + 1);
+    const end = diff.lastIndexOf('\n', FIX_DIFF_LIMIT);
+    diff = diff.slice(0, end > 0 ? end + 1 : FIX_DIFF_LIMIT);
     cut = `\n_Diff cut to fit in a comment; run \`${command}\` for all of it._\n`;
   }
   // A fence longer than any backtick run in the diff, so moved code blocks cannot close it.
@@ -372,7 +374,8 @@ function renderFixes(plan: FixPlan, command: string): string {
     '',
     '<details><summary>Fixes</summary>',
     '',
-    ...plan.fixes.map((f) => `- ${f.message}`),
+    // Section headings in the messages may contain @names; keep them from mentioning people.
+    ...plan.fixes.map((f) => `- ${f.message.replace(/@(?=[A-Za-z0-9])/g, '@&#8203;')}`),
     '',
     `${fence}diff`,
     diff.replace(/\n$/, ''),

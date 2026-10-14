@@ -19,7 +19,7 @@ inputs:
     description: Fail when any agent's per-turn tokens grow by more than this compared with the base.
     default: ''
   args:
-    description: Extra turntax options, for example "--tools claude-code,cursor --models gpt-6.1-sol".
+    description: Extra turntax options, for example "--tools claude-code,cursor --models gpt-6.1-sol". Also passed to the annotations step, so leave output options (--json, --md, --out) and slow or network options (--mcp, --claude-api) out of it when annotations are on.
     default: ''
   comment:
     description: Post or update one comment on the pull request with the report.
@@ -72,8 +72,9 @@ runs:
           [ -n "$INPUT_MAX_INCREASE" ] && opts+=(--max-increase "$INPUT_MAX_INCREASE")
         fi
         [ -n "$INPUT_MAX_TOKENS" ] && opts+=(--max-tokens "$INPUT_MAX_TOKENS")
+        # Split args on spaces without expanding * or ? against the workspace.
         # shellcheck disable=SC2206
-        extra=($INPUT_ARGS)
+        set -f; extra=($INPUT_ARGS); set +f
         node "$BIN" "$INPUT_PATH" "${opts[@]}" "${extra[@]}" --pr-comment --out "$RUNNER_TEMP/turntax-comment.md"
         code=$?
         if [ "$code" -eq 2 ]; then exit 2; fi
@@ -89,8 +90,9 @@ runs:
         INPUT_ARGS: ${{ inputs.args }}
         BIN: ${{ github.action_path }}/dist/bin.js
       run: |
+        # Split args on spaces without expanding * or ? against the workspace.
         # shellcheck disable=SC2206
-        extra=($INPUT_ARGS)
+        set -f; extra=($INPUT_ARGS); set +f
         node "$BIN" "$INPUT_PATH" "${extra[@]}" --annotations --path-prefix "$INPUT_PATH"
 
     - name: Comment on the pull request

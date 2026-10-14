@@ -415,13 +415,12 @@ function summarize(repos) {
       medianSavingO200k: percentile(savings, 0.5),
       medianSavingAmongReposWithSavingO200k: percentile(withSaving.map((r) => r.fixes.savingO200k), 0.5),
     },
+    // Ranked with a symlinked file counted once: whether agents read a linked file twice is not documented.
     heaviest: [...repos]
-      .sort((a, b) => b.maxPerTurn.o200k - a.maxPerTurn.o200k || a.full_name.localeCompare(b.full_name))
+      .map((r) => ({ r, once: (r.maxPerTurnLinksOnce ?? r.maxPerTurn).o200k }))
+      .sort((a, b) => b.once - a.once || a.r.full_name.localeCompare(b.r.full_name))
       .slice(0, 10)
-      .map((r) => {
-        const once = r.maxPerTurnLinksOnce?.o200k;
-        return { full_name: r.full_name, o200k: r.maxPerTurn.o200k, ...(once !== undefined && once !== r.maxPerTurn.o200k ? { o200kLinksOnce: once } : {}) };
-      }),
+      .map(({ r, once }) => ({ full_name: r.full_name, o200k: once, ...(once !== r.maxPerTurn.o200k ? { o200kBothNames: r.maxPerTurn.o200k } : {}) })),
   };
 }
 
@@ -429,6 +428,12 @@ async function main() {
   const generatedAt = new Date().toISOString();
   const version = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version;
   const engineCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  // The recorded commit must be the code that counted: no uncommitted engine changes.
+  const dirty = execFileSync('git', ['status', '--porcelain', '--', 'src', 'scripts', 'package.json'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  if (dirty) {
+    console.error(`Uncommitted changes in the engine; commit them and run npm run build first:\n${dirty}`);
+    process.exit(1);
+  }
 
   log(`Searching: ${QUERY}`);
   const search = await searchRepos();

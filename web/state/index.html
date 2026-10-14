@@ -173,7 +173,7 @@
       <li>Per-turn tokens are the always-loaded repository files only. User-level files (for example <code>~/.claude/CLAUDE.md</code>), MCP server tool definitions and each agent's own system prompt are not counted, so real per-turn context is larger.</li>
       <li>Counts use OpenAI's o200k_base tokenizer as a common reference. They are not Claude or Gemini tokenizer counts, which differ. Percentiles interpolate linearly between the closest ranks.</li>
       <li>Numbers are per turn before prompt caching. With caching, most of this text is billed at the cache-read rate after the first turn, but it still takes up context window.</li>
-      <li>Findings and fixes come from static analysis of the files alone (the same as <code>npx turntax</code> and <code>turntax --fix</code>). Nothing was run. In a local checkout the CLI also checks <code>npm run</code> script names and paths that start with <code>../</code>, so it can report a few more missing paths.</li>
+      <li>Findings and fixes come from static analysis of the files alone (the same as <code>npx turntax</code> and <code>turntax --fix</code>). Nothing was run. In a local checkout the CLI also checks <code>npm run</code> script names against package.json, so it can report a few more missing references.</li>
       <li>The live report behind each repository link reads the current default branch and includes test and example folders, so its numbers can differ from this snapshot.</li>
     </ul>
     <h3>Reproduce</h3>
@@ -200,6 +200,8 @@ function el(tag, attrs = {}, ...children) {
 const fmt = (n) => (n === null || n === undefined ? '–' : Math.round(n).toLocaleString('en-US'));
 const pct = (n, total) => (total ? `${Math.round((n / total) * 100)}%` : '–');
 const plural = (n, one, many = `${one}s`) => `${fmt(n)} ${n === 1 ? one : many}`;
+/** Per-turn size with a symlinked file counted once; reading it under both names is not documented. */
+const perTurn = (r) => r.maxPerTurnLinksOnce ?? r.maxPerTurn;
 const repoLink = (fullName) => `../?repo=${fullName.split('/').map(encodeURIComponent).join('/')}`;
 const longDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
@@ -249,8 +251,8 @@ function renderHeader(data) {
   $('lede').textContent =
     `turntax measured the agent instruction files of ${n} of the most-starred public GitHub repositories that have them ` +
     `and were pushed to since ${longDate(sel.pushedSince)}. In the median repository, the agent that loads the most ` +
-    `instruction text receives ${fmt(s.maxPerTurnO200k.median)} o200k tokens of it with every turn; in one repository in ten it is more than ` +
-    `${fmt(s.maxPerTurnO200k.p90)}. The most common file is ${top.name}, in ${pct(top.repos, n)} of the repositories. ` +
+    `instruction text receives ${fmt(s.maxPerTurnO200kLinksOnce.median)} o200k tokens of it with every turn; in one repository in ten it is more than ` +
+    `${fmt(s.maxPerTurnO200kLinksOnce.p90)}. The most common file is ${top.name}, in ${pct(top.repos, n)} of the repositories. ` +
     `${fmt(pair.repos)} keep both an AGENTS.md and a CLAUDE.md at the root; in ${fmt(pair.linked)} of them one points to the other.`;
   $('meta').textContent = `Collected ${longDate(data.generatedAt)} · ${plural(sel.scanned, 'repository', 'repositories')} scanned · turntax ${data.turntaxVersion}`;
 }
@@ -260,8 +262,8 @@ function renderStats(data) {
   const n = s.repos;
   const tiles = [
     ['Repositories', fmt(n), `with instruction files, of ${fmt(data.selection.scanned)} scanned`],
-    ['Median per-turn tokens', fmt(s.maxPerTurnO200k.median), 'o200k, agent that loads the most'],
-    ['90th percentile', fmt(s.maxPerTurnO200k.p90), `75th: ${fmt(s.maxPerTurnO200k.p75)} · max: ${fmt(s.maxPerTurnO200k.max)}`],
+    ['Median per-turn tokens', fmt(s.maxPerTurnO200kLinksOnce.median), 'o200k, agent that loads the most'],
+    ['90th percentile', fmt(s.maxPerTurnO200kLinksOnce.p90), `75th: ${fmt(s.maxPerTurnO200kLinksOnce.p75)} · max: ${fmt(s.maxPerTurnO200kLinksOnce.max)}`],
     ['AGENTS.md and CLAUDE.md', pct(s.agentsAndClaudeAtRoot.repos, n), `both at the root; ${fmt(s.agentsAndClaudeAtRoot.linked)} of ${fmt(s.agentsAndClaudeAtRoot.repos)} link one to the other`],
     ['Agents reading the files', fmt(s.agentsReading.median), `median, of ${Object.keys(data.agentNames).length} agents modelled`],
     ['Lines loaded twice', pct(s.duplicates.everyTurn.repos, n), 'same lines from two files, every turn, for at least one agent'],
@@ -283,7 +285,7 @@ const BINS = [
 ];
 
 function renderDistribution(data) {
-  const values = data.repos.map((r) => r.maxPerTurn.o200k);
+  const values = data.repos.map((r) => perTurn(r).o200k);
   const n = values.length;
   const max = Math.max(0, ...values);
   const rows = BINS.filter(([lo]) => lo <= max).map(([lo, hi, label]) => {
@@ -316,7 +318,6 @@ function renderNames(data) {
 const FINDINGS = [
   { group: 'Exact checks' },
   ['duplicate', 'high', 'Lines loaded twice every turn', 'The same instruction lines reach one agent from two different files on every turn.', (s) => s.duplicates.everyTurn.repos],
-  ['duplicate', 'high', 'Linked file read under two names', 'A file and a symbolic link to it (for example CLAUDE.md → AGENTS.md) are both read by an agent that reads both names, such as Cursor. Whether agents skip the second copy is not documented.', (s) => s.duplicates.linkedFileReadTwice.repos],
   ['duplicate', 'low', 'Lines kept in two files', 'The same lines are maintained in files that different agents read. No agent pays twice, but the copies can drift.', (s) => s.duplicates.acrossAgents.repos],
   ['contradiction', 'high', 'Contradiction', 'Two always-loaded lines disagree on the package manager, indentation, quotes or semicolons.', (s) => s.findings.contradiction.repos],
   ['misconfigured', 'high', 'Misconfigured file', 'A file an agent does not read as written, for example a Cursor rule saved as .md instead of .mdc.', (s) => s.findings.misconfigured.repos],
@@ -324,6 +325,7 @@ const FINDINGS = [
   ['size-limit', 'medium', 'Past a size recommendation', 'Longer than the vendor recommends, such as CLAUDE.md over 200 lines or a Cursor rule over 500 lines.', (s) => s.findings['size-limit'].medium ?? 0],
   ['oversized-section', 'medium', 'Large always-on section', 'One heading section of 600 or more tokens loads every turn; a procedure could move to an on-demand skill or rule.', (s) => s.findings['oversized-section'].repos],
   { group: 'Heuristic checks (pointers that include false positives)' },
+  ['duplicate', 'high', 'Linked file read under two names', 'A file and a symbolic link to it (for example CLAUDE.md → AGENTS.md) are both read by an agent that reads both names, such as Cursor. Whether agents skip the second copy is not documented.', (s) => s.duplicates.linkedFileReadTwice.repos],
   ['scopable-section', 'medium', 'Section about one folder', 'An always-loaded section mostly names paths in one existing folder and might load only when the agent works there. Some of these sections are deliberately global.', (s) => s.findings['scopable-section'].repos],
   ['stale-reference', 'medium', 'Missing path', 'A file is named that is not in the repository, although its top-level folder is. Placeholders and generated files are also matched.', (s) => s.findings['stale-reference'].repos],
   ['non-english', 'low', 'Non-English sections', 'Sections in a non-Latin script, or Latin text with accents and few English words. Translations can be deliberate; the token cost per word differs by language.', (s) => s.findings['non-english'].repos],
@@ -361,8 +363,9 @@ function renderFindings(data) {
   $('findings').replaceChildren(head, body);
   const f = s.fixes;
   $('fix-note').textContent =
-    `turntax --fix finds changes that lower per-turn tokens without any agent losing context in ${plural(f.reposWithSaving, 'repository', 'repositories')} ` +
-    `(${pct(f.reposWithSaving, n)}): together ${fmt(f.totalSavingO200k)} o200k tokens per turn, median ${fmt(f.medianSavingAmongReposWithSavingO200k)}. ` +
+    `turntax --fix finds changes that lower per-turn tokens in ${plural(f.reposWithSaving, 'repository', 'repositories')} (${pct(f.reposWithSaving, n)}), ` +
+    `while every agent keeps reading every line (a moved section then loads when the agent works in its folder). ` +
+    `The estimated savings of those fixes add up to ${fmt(f.totalSavingO200k)} o200k tokens per turn across the repositories, median ${fmt(f.medianSavingAmongReposWithSavingO200k)} per repository. ` +
     `${fmt(f.repos - f.reposWithSaving)} more have only fixes without a per-turn saving, such as removing duplicate lines from files that load on demand.`;
 }
 
@@ -370,7 +373,8 @@ function renderHeaviest(data) {
   const byName = new Map(data.repos.map((r) => [r.full_name, r]));
   $('heaviest').replaceChildren(
     ...data.summary.heaviest.map((h) => {
-      const agent = data.agentNames[byName.get(h.full_name)?.maxPerTurn.agent] ?? '';
+      const repo = byName.get(h.full_name);
+      const agent = repo ? (data.agentNames[perTurn(repo).agent] ?? '') : '';
       return el(
         'li',
         {},
@@ -379,7 +383,7 @@ function renderHeaviest(data) {
           {},
           el('a', { href: repoLink(h.full_name) }, h.full_name),
           agent ? el('span', { class: 'muted small' }, ` · ${agent}`) : '',
-          h.o200kLinksOnce !== undefined ? el('span', { class: 'muted small' }, ` · ${fmt(h.o200kLinksOnce)} with the symlinked copy counted once`) : '',
+          h.o200kBothNames !== undefined ? el('span', { class: 'muted small' }, ` · ${fmt(h.o200kBothNames)} if a symlinked file is read under both names`) : '',
         ),
         el('span', { class: 'num' }, `${fmt(h.o200k)} tokens`),
       );
@@ -399,9 +403,9 @@ const COLUMNS = [
     key: 'max',
     label: 'Per turn',
     num: true,
-    get: (r) => r.maxPerTurn.o200k,
+    get: (r) => perTurn(r).o200k,
     title: 'o200k tokens loaded every turn by the agent that loads the most',
-    cell: (r, data) => el('td', { class: 'num', title: data.agentNames[r.maxPerTurn.agent] ?? '' }, fmt(r.maxPerTurn.o200k)),
+    cell: (r, data) => el('td', { class: 'num', title: data.agentNames[perTurn(r).agent] ?? '' }, fmt(perTurn(r).o200k)),
   },
   { key: 'files', label: 'Files', num: true, get: (r) => r.files.length, title: 'Instruction files read, including @imported files', cell: (r) => el('td', { class: 'num' }, fmt(r.files.length)) },
   { key: 'agents', label: 'Agents', num: true, get: (r) => r.agentsReading, title: 'Agents that read at least one of the files', cell: (r) => el('td', { class: 'num' }, fmt(r.agentsReading)) },
@@ -481,11 +485,12 @@ function renderMethods(data) {
   $('m-scan').textContent =
     `${fmt(sel.qualifying)} of the first ${fmt(sel.scanned)} repositories qualified${sel.qualifying < sel.target ? ` (target ${fmt(sel.target)})` : ''}` +
     (skipped.length ? `; skipped: ${skipped.join(' and ')}.` : '.');
-  const once = data.summary.maxPerTurnO200kLinksOnce;
+  const both = data.summary.maxPerTurnO200k;
   $('m-links').textContent =
-    `A symbolic link and its target are counted as two files, as the turntax CLI counts them in a checkout: an agent that reads both names ` +
-    `(Cursor reads AGENTS.md and CLAUDE.md) is counted as loading the text twice. ${fmt(data.summary.reposWithLinkedFiles)} repositories link instruction files this way. ` +
-    `Counting each linked file once, the median is ${fmt(once.median)} tokens and the 90th percentile ${fmt(once.p90)}.`;
+    `${fmt(data.summary.reposWithLinkedFiles)} repositories link instruction files with symbolic links (for example CLAUDE.md → AGENTS.md). ` +
+    `The numbers on this page count a linked file once. The turntax CLI counts a link and its target as two files, so an agent that reads both names ` +
+    `(Cursor reads AGENTS.md and CLAUDE.md) is counted as loading the text twice; whether it does is not documented. Counted that way, ` +
+    `the median is ${fmt(both.median)} tokens and the 90th percentile ${fmt(both.p90)}.`;
   $('m-version').textContent = data.turntaxVersion;
   $('m-engine').textContent = `turntax ${data.turntaxVersion} · engine commit ${data.engineCommit} · generated ${data.generatedAt}`;
 }

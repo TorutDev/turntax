@@ -72,7 +72,7 @@ Config file keys (all optional; command-line flags override them):
   tools, models           Lists of ids, like --tools and --models
   turns, maxTokens, maxIncrease, sectionTokens
                           Integers, like the matching flags (maxIncrease applies only when comparing)
-  ignore                  Repository-relative globs of instruction files to leave out (* and ? within a
+  ignore                  Globs of instruction files to leave out, relative to the audited folder (* and ? within a
                           folder name, ** across folders, a trailing / for a whole folder)
 
 Without --claude-api, --gemini-api or --mcp nothing leaves your machine.
@@ -301,7 +301,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
       : o['pr-comment']
         ? renderPrComment(
             report,
-            files.length ? fixPlan(root, discovered, files, tools, ignored) : undefined,
+            files.length ? fixPlan(root, discovered, tools, ignored) : undefined,
             fixCommand(positionals[0], o.config, o.tools),
           )
         : o.annotations
@@ -345,7 +345,7 @@ async function fix(
   out: string | undefined,
 ): Promise<number> {
   const discovered = await discover(root);
-  const plan = fixPlan(root, discovered, discovered.filter((f) => !ignored(f.path)), tools, ignored);
+  const plan = fixPlan(root, discovered, tools, ignored);
   const log = (line: string) => (write ? process.stdout : process.stderr).write(line + '\n');
   for (const f of plan.fixes) log(`fix: ${f.message}${f.savingTokens ? ` [saves ~${f.savingTokens} tokens/turn]` : ''}`);
   for (const s of plan.skipped) log(`skipped ${s.kind}: ${s.reason}`);
@@ -368,18 +368,13 @@ async function fix(
 }
 
 /**
- * Safe fixes for the audited files. Symlinks, their targets (among all discovered files) and files the
- * config ignores are never written.
+ * Safe fixes. The plan sees every repository file, ignored ones included, because the agents still read
+ * them and the safety check must see what they read; symlinks, their targets and ignored files are never
+ * written.
  */
-function fixPlan(
-  root: string,
-  discovered: RepoFile[],
-  files: RepoFile[],
-  tools: ToolId[] | undefined,
-  ignored: (path: string) => boolean,
-): FixPlan {
+function fixPlan(root: string, discovered: RepoFile[], tools: ToolId[] | undefined, ignored: (path: string) => boolean): FixPlan {
   const linked = linkedPaths(root, discovered);
-  return planFixes(files, { tools, exists: existsIn(root), readOnly: (p) => ignored(p) || linked(p) });
+  return planFixes(discovered, { tools, exists: existsIn(root), readOnly: (p) => ignored(p) || linked(p) });
 }
 
 /** The --fix command matching the run that made a pull request comment. */

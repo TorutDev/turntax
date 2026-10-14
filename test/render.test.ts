@@ -19,6 +19,11 @@ describe('renderPrComment with fixes', () => {
     expect(renderPrComment(report, plan, 'npx turntax packages/web --fix')).toContain('run `npx turntax packages/web --fix` to preview');
   });
 
+  it('keeps @names in fix messages from mentioning people', () => {
+    const named: FixPlan = { ...plan, fixes: [{ ...plan.fixes[0]!, message: 'Moved section "Ask @octo-team" from CLAUDE.md; @-mentioned rules stay.' }] };
+    expect(renderPrComment(report, named)).toContain('- Moved section "Ask @&#8203;octo-team" from CLAUDE.md; @-mentioned rules stay.\n');
+  });
+
   it('leaves the comment unchanged without changes to make', () => {
     expect(renderPrComment(report)).not.toContain('safe fix');
     expect(renderPrComment(report, { fixes: [], skipped: [], changes: [] })).toBe(renderPrComment(report));

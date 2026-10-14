@@ -37,7 +37,8 @@ export function loadConfig(root: string, file: string | undefined, models: Model
   const name = file ?? CONFIG_FILE;
   let data: unknown;
   try {
-    data = JSON.parse(readFileSync(path, 'utf8'));
+    // Windows PowerShell 5.1 writes UTF-8 with a byte order mark, which JSON.parse rejects.
+    data = JSON.parse(readFileSync(path, 'utf8').replace(/^﻿/, ''));
   } catch (e) {
     throw new Error(`Could not read config ${name}: ${(e as Error).message}`);
   }
@@ -47,6 +48,7 @@ export function loadConfig(root: string, file: string | undefined, models: Model
     const kind = KEYS[key as keyof Config];
     if (kind === 'strings' && !(Array.isArray(value) && value.every((v) => typeof v === 'string' && v)))
       throw new Error(`${name}: "${key}" must be an array of non-empty strings.`);
+    if ((key === 'tools' || key === 'models') && (value as string[]).length === 0) throw new Error(`${name}: "${key}" must not be empty.`);
     if (kind !== 'strings' && !(Number.isInteger(value) && (value as number) >= (kind === 'positive' ? 1 : 0)))
       throw new Error(`${name}: "${key}" must be a ${kind} integer.`);
   }

@@ -25,8 +25,8 @@ describe('planWebFixes', () => {
     const plan = planWebFixes({ files: SAMPLE_REPO });
     expect(plan.fixes.map((f) => f.paths)).toEqual([[RENAME, '.cursor/rules/legacy.mdc']]);
     expect(plan.diff).toContain(`rename from ${RENAME}\nrename to .cursor/rules/legacy.mdc\n`);
-    // The sample has no apps/web folder, so its section is not moved.
-    expect(plan.skipped.map((s) => s.reason)).toContain('Section "Web app": folder apps/web/ does not exist.');
+    // Without a path list folders are unknown, as for the advice; every agent is kept, so the section stays.
+    expect(plan.skipped.find((s) => s.kind === 'scopable-section')!.reason).toMatch(/no target keeps every agent's context/);
   });
 
   it('moves a section once the folder is known and the agents are narrowed', () => {

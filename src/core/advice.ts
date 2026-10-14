@@ -454,9 +454,10 @@ export function guessLanguage(text: string): LanguageGuess {
   const words = prose.toLowerCase().match(/\p{L}+/gu) ?? [];
   if (words.length < 15) return { nonEnglish: false, script: 'Latin' };
   const stop = words.filter((w) => EN_STOPWORDS.has(w)).length / words.length;
-  const diacritics = letters.filter((c) => /[^\u0000-\u007F]/.test(c)).length / letters.length;
-  // Terse English (bullet lists, commands) has few stopwords too, so Latin text also needs diacritics.
-  return { nonEnglish: diacritics > 0.03 && stop < 0.2, script: 'Latin' };
+  // Terse English (bullet lists, commands) has few stopwords too, so Latin text also needs words with
+  // accented letters: a few percent of words in German, French, Spanish or Turkish, none in plain English.
+  const accented = words.filter((w) => /[^\u0000-\u007F]/.test(w)).length / words.length;
+  return { nonEnglish: stop < 0.2 && accented >= 0.04, script: 'Latin' };
 }
 
 /** True when any heading section of the text looks non-English. */

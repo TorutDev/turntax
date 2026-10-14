@@ -51,7 +51,7 @@ Advice (savings are estimates in o200k tokens per turn)
     3 identical lines are loaded twice every turn by cursor. Keep them in one file.
   HIGH contradiction AGENTS.md, CLAUDE.md [saves ~11 tokens/turn]
     Conflicting package manager: "Always use npm ..." (AGENTS.md:3) vs "Always use pnpm ..." (CLAUDE.md:5).
-  MEDIUM scopable-section CLAUDE.md:11 [saves ~128 tokens/turn]
+  MEDIUM scopable-section CLAUDE.md:12 [saves ~128 tokens/turn]
     Section "API package" is mostly about packages/api/. Move it to packages/api/AGENTS.md ...
 ```
 
@@ -118,7 +118,7 @@ Put defaults in `turntax.config.json` in the audited folder (or pass `--config <
 }
 ```
 
-Keys: `tools`, `models`, `turns`, `maxTokens`, `maxIncrease` (applies only with `--compare` or `--baseline`), `sectionTokens`, and `ignore`: repository-relative globs of instruction files to leave out (`*` and `?` within a folder name, `**` across folders, a trailing `/` for a whole folder). Ignored files are also left out of `--compare` and are never changed by `--fix`. Unknown keys and ids are errors.
+Keys: `tools`, `models`, `turns`, `maxTokens`, `maxIncrease` (applies only with `--compare` or `--baseline`), `sectionTokens`, and `ignore`: globs of instruction files to leave out, relative to the audited folder (`*` and `?` within a folder name, `**` across folders, a trailing `/` for a whole folder). Ignored files are also left out of `--compare` and are never changed by `--fix`. Unknown keys and ids are errors.
 
 ## MCP servers
 
@@ -172,7 +172,7 @@ The comparison covers repository instruction files (o200k), per agent and per fi
 
 ## GitHub Action
 
-The repository is also an Action. On pull requests it compares with the base branch, posts one comment (updated on every push), writes the report to the job summary and marks each finding on the line it is about in the pull request's changed files:
+The repository is also an Action. On pull requests it compares with the base branch, posts one comment (updated on every push), writes the report to the job summary and marks findings on the lines they are about in the pull request's changed files (GitHub shows up to 10 warnings and 10 notices per step):
 
 ```yaml
 name: turntax

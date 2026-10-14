@@ -38,7 +38,7 @@ export function planWebFixes(src: FixSource, tools?: ToolId[]): WebFixPlan {
   const linked = linkedCheck(src.linked ?? []);
   const plan = planFixes(src.files, {
     tools,
-    exists: folderExists(known),
+    exists: src.paths ? folderExists(known) : undefined,
     // A repository file that is not loaded (removed from the list, or not downloaded) is never written over.
     readOnly: (path) => linked(path) || (known.has(path) && !loaded.has(path)),
   });

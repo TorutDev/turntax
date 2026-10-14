@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -77,6 +77,7 @@ describe('turntax.config.json', () => {
       [{ turns: '7' }, /turntax\.config\.json: "turns" must be a positive integer/],
       [{ maxIncrease: -1 }, /"maxIncrease" must be a non-negative integer/],
       [{ ignore: 'GEMINI.md' }, /"ignore" must be an array of non-empty strings/],
+      [{ tools: [] }, /"tools" must not be empty/],
       [{ tools: ['vim'] }, /"tools" has unknown tool "vim"/],
       [{ models: ['gpt-0'] }, /"models" has unknown model "gpt-0"/],
       [['codex'], /turntax\.config\.json: expected a JSON object/],
@@ -107,6 +108,27 @@ describe('turntax.config.json', () => {
     expect(await main([dir, '--fix'], {})).toBe(0);
     expect(io.out()).not.toContain('wrong.md');
     expect(io.out()).not.toContain('packages/api/CLAUDE.md');
+  });
+
+  it('reads a config saved with a byte order mark', async () => {
+    const { code, report } = await json([withConfig('﻿' + JSON.stringify({ tools: ['cursor'] }))]);
+    expect(code).toBe(0);
+    expect(report.tools.map((t: { tool: string }) => t.tool)).toEqual(['cursor']);
+  });
+
+  it('keeps planning --fix with ignored files, which agents still read', async () => {
+    // With CLAUDE.md out of view Claude Code would seem to read AGENTS.md instead, and the rule's copy of
+    // the line would look redundant; in reality Claude Code reads CLAUDE.md and the rule only.
+    const line = 'Run the full test suite before every commit you make here.';
+    const dir = mkdtempSync(join(tmpdir(), 'turntax-ignore-'));
+    mkdirSync(join(dir, '.claude/rules'), { recursive: true });
+    writeFileSync(join(dir, 'CLAUDE.md'), '# Guide\n\nKeep functions small and name them after what they return.\n');
+    writeFileSync(join(dir, 'AGENTS.md'), `${line}\n`);
+    writeFileSync(join(dir, '.claude/rules/style.md'), `${line}\n`);
+    writeFileSync(join(dir, 'turntax.config.json'), JSON.stringify({ ignore: ['CLAUDE.md'] }));
+    const io = capture();
+    expect(await main([dir, '--fix'], {})).toBe(0);
+    expect(io.out()).not.toContain('style.md');
   });
 
   it('drops ignored files from the --compare base too', async () => {

@@ -242,6 +242,17 @@ describe('false positives found in the State of report', () => {
     expect(guessLanguage(terse).nonEnglish).toBe(false);
   });
 
+  it('still finds German, French, Spanish and Italian', () => {
+    for (const text of [
+      'Führe vor jedem Commit alle Tests aus und halte Änderungen klein, damit Reviews für alle einfach bleiben.',
+      'Exécutez tous les tests avant chaque commit et gardez les modifications petites et ciblées pour faciliter la relecture.',
+      'Ejecuta todas las pruebas antes de cada commit y mantén los cambios pequeños y enfocados para facilitar la revisión.',
+      'Esegui tutti i test prima di ogni commit e mantieni le modifiche piccole e mirate così la revisione è più semplice.',
+    ])
+      expect(guessLanguage(text).nonEnglish, text).toBe(true);
+    expect(guessLanguage('Ask José before you change the release process, and keep the changelog short and focused on users.').nonEnglish).toBe(false);
+  });
+
   it('does not suggest moving a section into a folder that does not exist', () => {
     const files = [{ path: 'CLAUDE.md', text: mixed.find((f) => f.path === 'CLAUDE.md')!.text }];
     const units = classify(files, ['claude-code']);
