@@ -139,7 +139,6 @@
     <h2 id="findings-title">What the checks found</h2>
     <p class="muted intro">The same static checks the turntax CLI and web page run. A finding is a pointer to look at, not a verdict: some are deliberate choices.</p>
     <div class="panel table-wrap"><table id="findings"></table></div>
-    <p class="muted small axis-note">turntax also flags sections that look non-English. On this sample that check mostly matched terse English (command lists, short bullets), so it is left out here; its raw counts are in the dataset.</p>
     <p class="intro" id="fix-note" style="margin-top:16px"></p>
   </section>
 
@@ -325,8 +324,9 @@ const FINDINGS = [
   ['size-limit', 'medium', 'Past a size recommendation', 'Longer than the vendor recommends, such as CLAUDE.md over 200 lines or a Cursor rule over 500 lines.', (s) => s.findings['size-limit'].medium ?? 0],
   ['oversized-section', 'medium', 'Large always-on section', 'One heading section of 600 or more tokens loads every turn; a procedure could move to an on-demand skill or rule.', (s) => s.findings['oversized-section'].repos],
   { group: 'Heuristic checks (pointers that include false positives)' },
-  ['scopable-section', 'medium', 'Section about one folder', 'An always-loaded section mostly names paths in one folder and might load only when the agent works there. Paths in URLs and labels are also matched.', (s) => s.findings['scopable-section'].repos],
+  ['scopable-section', 'medium', 'Section about one folder', 'An always-loaded section mostly names paths in one existing folder and might load only when the agent works there. Some of these sections are deliberately global.', (s) => s.findings['scopable-section'].repos],
   ['stale-reference', 'medium', 'Missing path', 'A file is named that is not in the repository, although its top-level folder is. Placeholders and generated files are also matched.', (s) => s.findings['stale-reference'].repos],
+  ['non-english', 'low', 'Non-English sections', 'Sections in a non-Latin script, or Latin text with accents and few English words. Translations can be deliberate; the token cost per word differs by language.', (s) => s.findings['non-english'].repos],
 ];
 
 function renderFindings(data) {

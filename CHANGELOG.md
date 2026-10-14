@@ -9,6 +9,8 @@
 - A notice when a selected model's price was checked more than 90 days ago.
 - The web page accepts GitHub links to a folder (`/tree/main/packages/api`) and analyses the whole repository at that branch.
 - Fixed: advice line numbers now point at the line in the file, also when a CLAUDE.md has HTML comments or a rule has frontmatter.
+- Fewer false positives, found while measuring 100 public repositories: terse English is no longer flagged as non-English, a section is suggested for a folder only when the folder exists, and paths with `..` are not checked against files outside the repository.
+- [State of agent instruction files, October 2026](https://torutdev.github.io/turntax/state/): turntax on 100 popular repositories, with pinned commits and `scripts/state-of.mjs` to reproduce it.
 
 ## 0.4.0 (2026-10-13)
 

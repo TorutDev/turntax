@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-10-14T07:26:23.197Z",
- "turntaxVersion": "0.4.0",
- "engineCommit": "66615950344507327a37f52cd9e0e097c2f43823",
+ "generatedAt": "2026-10-14T07:41:09.426Z",
+ "turntaxVersion": "0.5.0",
+ "engineCommit": "5f2ff39f8b3e7ec8e475327feea6bd1fcd6251d8",
  "selection": {
   "query": "stars:>=1000 archived:false fork:false is:public pushed:>=2026-07-14",
   "sort": "stars desc",
@@ -48,10 +48,8 @@
    "agentsReading": 2,
    "agentsEveryTurn": 2,
    "advice": {
-    "total": 1,
-    "byKind": {
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
-    }
+    "total": 0,
+    "byKind": {}
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
    "fixes": { "count": 0, "savingO200k": 0 }
@@ -59,10 +57,10 @@
   {
    "rank": 6,
    "full_name": "openclaw/openclaw",
-   "stars": 391938,
+   "stars": 391937,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "5e9b5749d7104ab17302543a74576be9641e5841",
+   "sha": "addf1939d32103d2f4ffba3d6773b7f0995c2b8b",
    "files": [
     { "path": ".agents/skills/agent-transcript/SKILL.md", "o200k": 558 },
     { "path": ".agents/skills/auto-qa/SKILL.md", "o200k": 3299 },
@@ -159,12 +157,11 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 23,
+    "total": 22,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 11 },
      "oversized-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 9, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 9, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 0, "low": 4 }
    },
@@ -174,7 +171,7 @@
   {
    "rank": 9,
    "full_name": "vinta/awesome-python",
-   "stars": 327269,
+   "stars": 327273,
    "language": "Python",
    "default_branch": "master",
    "sha": "ba49ec7245ec97ba4d4a7b794f985e81548f3bb4",
@@ -201,7 +198,7 @@
   {
    "rank": 11,
    "full_name": "obra/superpowers",
-   "stars": 298811,
+   "stars": 298817,
    "language": "Shell",
    "default_branch": "main",
    "sha": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
@@ -216,10 +213,8 @@
    "agentsReading": 13,
    "agentsEveryTurn": 13,
    "advice": {
-    "total": 1,
-    "byKind": {
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
-    }
+    "total": 0,
+    "byKind": {}
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
    "fixes": { "count": 0, "savingO200k": 0 }
@@ -227,7 +222,7 @@
   {
    "rank": 12,
    "full_name": "mattpocock/skills",
-   "stars": 290155,
+   "stars": 290177,
    "language": "Shell",
    "default_branch": "main",
    "sha": "49dd158d1076134a641b33efb035946536778336",
@@ -254,7 +249,7 @@
   {
    "rank": 14,
    "full_name": "affaan-m/ECC",
-   "stars": 278780,
+   "stars": 278783,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "b92f181b3b748d1abbc2afd94af6aa7d8c8fca29",
@@ -390,13 +385,12 @@
    "agentsReading": 13,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 78,
+    "total": 70,
     "byKind": {
      "duplicate": { "high": 3, "medium": 0, "low": 22 },
      "misconfigured": { "high": 39, "medium": 0, "low": 0 },
      "oversized-section": { "high": 0, "medium": 1, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 5, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 8 }
+     "stale-reference": { "high": 0, "medium": 5, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": true, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": true, "sizeLimit": false },
@@ -405,7 +399,7 @@
   {
    "rank": 15,
    "full_name": "NousResearch/hermes-agent",
-   "stars": 253590,
+   "stars": 253591,
    "language": "Python",
    "default_branch": "main",
    "sha": "0e427d788d253630d38a3a51cd76849e73cd6925",
@@ -430,10 +424,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 3,
+    "total": 2,
     "byKind": {
-     "stale-reference": { "high": 0, "medium": 2, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 2, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -442,7 +435,7 @@
   {
    "rank": 17,
    "full_name": "react/react",
-   "stars": 251138,
+   "stars": 251141,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "07dde64da1abd1525120b9ae49672386486e33c3",
@@ -489,7 +482,7 @@
   {
    "rank": 18,
    "full_name": "deepseek-ai/deepseek-harness",
-   "stars": 249254,
+   "stars": 249267,
    "language": "TypeScript",
    "default_branch": "master",
    "sha": "d743267388641bc76f17c45ce8b4c231aed1d32c",
@@ -546,11 +539,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 10,
+    "total": 8,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 3 },
-     "scopable-section": { "high": 0, "medium": 4, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "scopable-section": { "high": 0, "medium": 4, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 1, "low": 2 }
    },
@@ -581,10 +573,10 @@
   {
    "rank": 20,
    "full_name": "morluto/rea",
-   "stars": 219220,
+   "stars": 219661,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "8dde6370d0809ad04cda3342d4e6f290f48aa063",
+   "sha": "307af044bc0bdc15bc836c549e774220af8f459e",
    "files": [
     { "path": ".agents/skills/rea-changelog-update/SKILL.md", "o200k": 1552 },
     { "path": ".agents/skills/rea-ci-tests-audit/SKILL.md", "o200k": 1267 },
@@ -610,7 +602,7 @@
   {
    "rank": 21,
    "full_name": "anomalyco/opencode",
-   "stars": 213329,
+   "stars": 213334,
    "language": "TypeScript",
    "default_branch": "dev",
    "sha": "3a69bae8459b1aa9b122456a55d9535b23125f33",
@@ -639,11 +631,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 8,
+    "total": 7,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 6 },
-     "oversized-section": { "high": 0, "medium": 1, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
+     "oversized-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -652,10 +643,10 @@
   {
    "rank": 23,
    "full_name": "n8n-io/n8n",
-   "stars": 207313,
+   "stars": 207314,
    "language": "TypeScript",
    "default_branch": "master",
-   "sha": "46761a60a9590dc754764c5bcefe5d3eb5521377",
+   "sha": "d83f95b37720e621feb5c091ff5c4523b10690b7",
    "files": [
     { "path": ".agents/skills/agent-design-language/SKILL.md", "o200k": 206 },
     { "path": ".agents/skills/AGENTS.md", "o200k": 443 },
@@ -722,12 +713,11 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 10,
+    "total": 9,
     "byKind": {
      "oversized-section": { "high": 0, "medium": 2, "low": 0 },
      "scopable-section": { "high": 0, "medium": 4, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 3, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 3, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -736,10 +726,10 @@
   {
    "rank": 25,
    "full_name": "tensorflow/tensorflow",
-   "stars": 200952,
+   "stars": 200953,
    "language": "C++",
    "default_branch": "master",
-   "sha": "23e316cef53655ef6be4809ccdf6f23042bdc58d",
+   "sha": "c2d20ed547c29aaebf67979fbb2e3dd95b5efb6d",
    "files": [
     { "path": "third_party/xla/AGENTS.md", "o200k": 136 },
     { "path": "third_party/xla/xla/AGENTS.md", "o200k": 1761 },
@@ -759,7 +749,7 @@
   {
    "rank": 28,
    "full_name": "ultraworkers/claw-code",
-   "stars": 194897,
+   "stars": 194898,
    "language": "Rust",
    "default_branch": "main",
    "sha": "6d7412d958ebc338722e112d08c5e46d7cd458e1",
@@ -781,12 +771,11 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 6,
+    "total": 4,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 1 },
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 2, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 2, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -795,7 +784,7 @@
   {
    "rank": 30,
    "full_name": "microsoft/vscode",
-   "stars": 193760,
+   "stars": 193761,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "76e9dff43b237f3fcbb8a289ed2f8bdf28105baf",
@@ -857,7 +846,7 @@
   {
    "rank": 31,
    "full_name": "firecrawl/firecrawl",
-   "stars": 191317,
+   "stars": 191320,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "f4fdf7f300415180f45272e893918dbfa3649073",
@@ -911,7 +900,7 @@
   {
    "rank": 35,
    "full_name": "Significant-Gravitas/AutoGPT",
-   "stars": 187565,
+   "stars": 187566,
    "language": "Python",
    "default_branch": "master",
    "sha": "0edeafc5902fb07c89bb6ebd8c5374621b5c6bf6",
@@ -955,14 +944,13 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 15,
+    "total": 13,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 3 },
      "size-limit": { "high": 1, "medium": 4, "low": 0 },
      "oversized-section": { "high": 0, "medium": 1, "low": 0 },
      "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": true, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": true },
@@ -971,7 +959,7 @@
   {
    "rank": 37,
    "full_name": "ollama/ollama",
-   "stars": 183091,
+   "stars": 183092,
    "language": "Go",
    "default_branch": "main",
    "sha": "8718c2bd2363c3f9f422d82bbad322bc2b791d60",
@@ -1042,10 +1030,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 2,
+    "total": 1,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -1054,7 +1041,7 @@
   {
    "rank": 43,
    "full_name": "f/prompts.chat",
-   "stars": 172901,
+   "stars": 172902,
    "language": "HTML",
    "default_branch": "main",
    "sha": "bbd0529530d99fa76ab2f51809b6184ea4b625b8",
@@ -1067,10 +1054,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 3,
+    "total": 1,
     "byKind": {
-     "duplicate": { "high": 1, "medium": 0, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "duplicate": { "high": 1, "medium": 0, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": true, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -1079,7 +1065,7 @@
   {
    "rank": 44,
    "full_name": "huggingface/transformers",
-   "stars": 167699,
+   "stars": 167701,
    "language": "Python",
    "default_branch": "main",
    "sha": "28034545c35acac05793695bd5c878f66e6b544e",
@@ -1095,10 +1081,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 5,
+    "total": 3,
     "byKind": {
-     "duplicate": { "high": 1, "medium": 0, "low": 2 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "duplicate": { "high": 1, "medium": 0, "low": 2 }
     },
     "duplicateLinkPairs": { "high": 1, "low": 2 }
    },
@@ -1108,7 +1093,7 @@
   {
    "rank": 45,
    "full_name": "DietrichGebert/ponytail",
-   "stars": 162990,
+   "stars": 162999,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "2961b52fc1fe6a5a87c7a959a79512e5c2f3ffe5",
@@ -1137,7 +1122,7 @@
   {
    "rank": 48,
    "full_name": "langgenius/dify",
-   "stars": 158411,
+   "stars": 158414,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "2bb1b113343fc6e96e888c70f52ea2108c3a3675",
@@ -1197,11 +1182,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 4,
+    "total": 3,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 2 },
-     "oversized-section": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "oversized-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -1210,7 +1194,7 @@
   {
    "rank": 52,
    "full_name": "clash-verge-rev/clash-verge-rev",
-   "stars": 151218,
+   "stars": 151224,
    "language": "Rust",
    "default_branch": "dev",
    "sha": "d4287970bc7dbe3430c9a33bf2922e355c92c0be",
@@ -1237,7 +1221,7 @@
   {
    "rank": 53,
    "full_name": "anthropics/claude-code",
-   "stars": 150707,
+   "stars": 150711,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "9b4f0d6ef8ceaf62f6b46babb9a4d84bec541a2e",
@@ -1273,10 +1257,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 5,
+    "total": 3,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 4, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 3, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -1288,7 +1271,7 @@
    "stars": 143236,
    "language": "JavaScript",
    "default_branch": "canary",
-   "sha": "2251f43886faac9da45e585a77c07fa2b881f410",
+   "sha": "8521c6ae04998fc8ff87ae0d3de24e1fa4e88803",
    "files": [
     { "path": ".agents/skills/authoring-skills/SKILL.md", "o200k": 913 },
     { "path": ".agents/skills/backport-pr/SKILL.md", "o200k": 987 },
@@ -1327,12 +1310,11 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 10,
+    "total": 6,
     "byKind": {
-     "oversized-section": { "high": 0, "medium": 1, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 6, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 2, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "oversized-section": { "high": 0, "medium": 2, "low": 0 },
+     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 2, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -1353,10 +1335,8 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 1,
-    "byKind": {
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
-    }
+    "total": 0,
+    "byKind": {}
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
    "fixes": { "count": 0, "savingO200k": 0 }
@@ -1364,7 +1344,7 @@
   {
    "rank": 59,
    "full_name": "Shubhamsaboo/awesome-llm-apps",
-   "stars": 141647,
+   "stars": 141649,
    "language": "Python",
    "default_branch": "main",
    "sha": "4bf51ab704fb2c5b3803cd5191b30d7dcdb51dc2",
@@ -1388,7 +1368,7 @@
   {
    "rank": 60,
    "full_name": "github/spec-kit",
-   "stars": 141186,
+   "stars": 141190,
    "language": "Python",
    "default_branch": "main",
    "sha": "96774bc52fd7dccc7185791e1cac7572b9e09dea",
@@ -1409,7 +1389,7 @@
   {
    "rank": 62,
    "full_name": "ripienaar/free-for-dev",
-   "stars": 139503,
+   "stars": 139505,
    "language": "HTML",
    "default_branch": "master",
    "sha": "11383aa2d027c59a08f317dde660dd543f12f45a",
@@ -1433,7 +1413,7 @@
   {
    "rank": 63,
    "full_name": "golang/go",
-   "stars": 139348,
+   "stars": 139350,
    "language": "Go",
    "default_branch": "master",
    "sha": "e60b4c37fa344513cdecfffe6efc3ca48c4a6cb2",
@@ -1455,10 +1435,10 @@
   {
    "rank": 64,
    "full_name": "microsoft/PowerToys",
-   "stars": 139288,
+   "stars": 139289,
    "language": "C",
    "default_branch": "main",
-   "sha": "03e75b28c3fa2da3c243f8d702aa57ed629a2a86",
+   "sha": "1a87b3f285481ba061e37c93bd28c0214f122514",
    "files": [
     { "path": ".claude/CLAUDE.md", "o200k": 313, "linkTo": ".github/copilot-instructions.md" },
     { "path": ".github/copilot-instructions.md", "o200k": 313 },
@@ -1479,11 +1459,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 6,
+    "total": 3,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 1 },
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 3 }
+     "scopable-section": { "high": 0, "medium": 2, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 0, "low": 1 }
    },
@@ -1493,7 +1472,7 @@
   {
    "rank": 65,
    "full_name": "Comfy-Org/ComfyUI",
-   "stars": 137397,
+   "stars": 137403,
    "language": "Python",
    "default_branch": "master",
    "sha": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
@@ -1516,7 +1495,7 @@
   {
    "rank": 66,
    "full_name": "garrytan/gstack",
-   "stars": 136341,
+   "stars": 136342,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "15ebd85cdde6c9a1b2fb707e8573aec18e8f7438",
@@ -1542,7 +1521,7 @@
   {
    "rank": 67,
    "full_name": "nextlevelbuilder/ui-ux-pro-max-skill",
-   "stars": 135618,
+   "stars": 135622,
    "language": "Python",
    "default_branch": "main",
    "sha": "7246805992a42b7bba37d4cac83b01416f0c6c44",
@@ -1600,7 +1579,7 @@
   {
    "rank": 69,
    "full_name": "ggml-org/llama.cpp",
-   "stars": 131114,
+   "stars": 131115,
    "language": "C++",
    "default_branch": "master",
    "sha": "df18bee11e96557b07aa7b12db0976f3c7ac9165",
@@ -1624,7 +1603,7 @@
   {
    "rank": 72,
    "full_name": "Chalarangelo/30-seconds-of-code",
-   "stars": 129192,
+   "stars": 129193,
    "language": "JavaScript",
    "default_branch": "master",
    "sha": "bd756f8b2283a38560efe83cb30af38324d4e9e9",
@@ -1647,7 +1626,7 @@
   {
    "rank": 73,
    "full_name": "openai/codex",
-   "stars": 129112,
+   "stars": 129115,
    "language": "Rust",
    "default_branch": "main",
    "sha": "97771b1d78cf6366bc3946fe9e4bbca4ebee31d1",
@@ -1669,7 +1648,7 @@
   {
    "rank": 74,
    "full_name": "kubernetes/kubernetes",
-   "stars": 128339,
+   "stars": 128340,
    "language": "Go",
    "default_branch": "master",
    "sha": "a8b7c6042103448ba1bb9ec01b052b88d2c4c675",
@@ -1681,10 +1660,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 2,
+    "total": 1,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -1717,7 +1695,7 @@
   {
    "rank": 76,
    "full_name": "Graphify-Labs/graphify",
-   "stars": 126262,
+   "stars": 126264,
    "language": "Python",
    "default_branch": "v8",
    "sha": "041771be72229bb2c8d8205b9cc6871c6be52b91",
@@ -1729,10 +1707,8 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 1,
-    "byKind": {
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
-    }
+    "total": 0,
+    "byKind": {}
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
    "fixes": { "count": 0, "savingO200k": 0 }
@@ -1740,7 +1716,7 @@
   {
    "rank": 77,
    "full_name": "rustdesk/rustdesk",
-   "stars": 125760,
+   "stars": 125763,
    "language": "Rust",
    "default_branch": "master",
    "sha": "9997b7a3b871fe10c6b8d36652fb2e35afba76f8",
@@ -1812,14 +1788,13 @@
    "agentsReading": 6,
    "agentsEveryTurn": 6,
    "advice": {
-    "total": 8,
+    "total": 5,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 1 },
      "size-limit": { "high": 0, "medium": 1, "low": 0 },
      "oversized-section": { "high": 0, "medium": 1, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": true },
@@ -1916,11 +1891,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 961,
+    "total": 960,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 959 },
-     "size-limit": { "high": 1, "medium": 0, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "size-limit": { "high": 1, "medium": 0, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": true },
@@ -1929,7 +1903,7 @@
   {
    "rank": 88,
    "full_name": "browser-use/browser-use",
-   "stars": 117912,
+   "stars": 117915,
    "language": "Python",
    "default_branch": "main",
    "sha": "c75e8476e26d18b7617643bc2ae082fae8eae431",
@@ -1942,12 +1916,11 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 5,
+    "total": 4,
     "byKind": {
      "size-limit": { "high": 1, "medium": 0, "low": 0 },
      "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": true },
@@ -1956,7 +1929,7 @@
   {
    "rank": 92,
    "full_name": "earendil-works/pi",
-   "stars": 114982,
+   "stars": 114986,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "00d8d049552281f051418e52b5ffff34269a732a",
@@ -1979,7 +1952,7 @@
   {
    "rank": 94,
    "full_name": "JuliusBrussee/caveman",
-   "stars": 111581,
+   "stars": 111585,
    "language": "Go",
    "default_branch": "main",
    "sha": "d262ab3882952a59312ff3537cd86d894523c5ab",
@@ -2026,14 +1999,14 @@
    "agentsReading": 13,
    "agentsEveryTurn": 13,
    "advice": {
-    "total": 50,
+    "total": 46,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 17 },
      "size-limit": { "high": 1, "medium": 2, "low": 0 },
      "oversized-section": { "high": 0, "medium": 6, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 9, "low": 0 },
+     "scopable-section": { "high": 0, "medium": 8, "low": 0 },
      "stale-reference": { "high": 0, "medium": 10, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 4 }
+     "non-english": { "high": 0, "medium": 0, "low": 1 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": true, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": true },
@@ -2085,12 +2058,11 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 5,
+    "total": 3,
     "byKind": {
      "oversized-section": { "high": 0, "medium": 1, "low": 0 },
      "scopable-section": { "high": 0, "medium": 1, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -2134,10 +2106,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 3,
+    "total": 1,
     "byKind": {
-     "duplicate": { "high": 1, "medium": 0, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "duplicate": { "high": 1, "medium": 0, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 1, "low": 0 }
    },
@@ -2160,12 +2131,11 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 9,
+    "total": 8,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 0 },
      "oversized-section": { "high": 0, "medium": 1, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 6, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 6, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": true, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -2193,12 +2163,11 @@
    "agentsReading": 6,
    "agentsEveryTurn": 6,
    "advice": {
-    "total": 10,
+    "total": 8,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 0 },
      "size-limit": { "high": 0, "medium": 1, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 6, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "scopable-section": { "high": 0, "medium": 6, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": true, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": true },
@@ -2207,7 +2176,7 @@
   {
    "rank": 103,
    "full_name": "google-gemini/gemini-cli",
-   "stars": 107334,
+   "stars": 107335,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "42c51822084ac25cd5d97ac0023822c5235f88c8",
@@ -2226,10 +2195,9 @@
    "agentsReading": 3,
    "agentsEveryTurn": 3,
    "advice": {
-    "total": 2,
+    "total": 1,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -2238,7 +2206,7 @@
   {
    "rank": 105,
    "full_name": "addyosmani/agent-skills",
-   "stars": 106359,
+   "stars": 106367,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "aeac41d4d005999432bb7312f7ff06383a91d59d",
@@ -2294,10 +2262,10 @@
   {
    "rank": 108,
    "full_name": "pytorch/pytorch",
-   "stars": 104877,
+   "stars": 104878,
    "language": "Python",
    "default_branch": "main",
-   "sha": "3c08cedb287550063a39a8b5cdda3b705e5a1aa2",
+   "sha": "7402bdbec6494134760b295102686e327f92fc78",
    "files": [
     { "path": ".agents/skills/add-uint-support/SKILL.md", "o200k": 2516 },
     { "path": ".agents/skills/aoti-debug/SKILL.md", "o200k": 1661 },
@@ -2331,13 +2299,12 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 9,
+    "total": 8,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 2 },
      "size-limit": { "high": 0, "medium": 2, "low": 0 },
      "scopable-section": { "high": 0, "medium": 1, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 2, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 2, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 1, "low": 1 }
    },
@@ -2347,7 +2314,7 @@
   {
    "rank": 109,
    "full_name": "neovim/neovim",
-   "stars": 103132,
+   "stars": 103134,
    "language": "Vim Script",
    "default_branch": "master",
    "sha": "6edb38ca982c96645185c82c1f5b5cb474487f71",
@@ -2368,7 +2335,7 @@
   {
    "rank": 110,
    "full_name": "fastapi/fastapi",
-   "stars": 103107,
+   "stars": 103108,
    "language": "Python",
    "default_branch": "master",
    "sha": "f5c6e9b4f9cadc1bf0f9a1fd672e621206b63007",
@@ -2389,7 +2356,7 @@
   {
    "rank": 112,
    "full_name": "paperclipai/paperclip",
-   "stars": 101743,
+   "stars": 101749,
    "language": "TypeScript",
    "default_branch": "master",
    "sha": "2c17d3ca52a7840f280f1dd87975a2ad77de3b35",
@@ -2452,13 +2419,12 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 16,
+    "total": 15,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 1 },
      "oversized-section": { "high": 0, "medium": 1, "low": 0 },
      "scopable-section": { "high": 0, "medium": 5, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 8, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 8, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -2530,12 +2496,12 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 16,
+    "total": 15,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 1 },
      "size-limit": { "high": 1, "medium": 0, "low": 0 },
      "oversized-section": { "high": 0, "medium": 4, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 7, "low": 0 },
+     "scopable-section": { "high": 0, "medium": 6, "low": 0 },
      "stale-reference": { "high": 0, "medium": 2, "low": 0 },
      "non-english": { "high": 0, "medium": 0, "low": 1 }
     }
@@ -2546,7 +2512,7 @@
   {
    "rank": 115,
    "full_name": "thedotmack/claude-mem",
-   "stars": 100538,
+   "stars": 100541,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "fef3402e674bebbf72a23aeb735e91c92cd34afd",
@@ -2593,13 +2559,13 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 8,
+    "total": 7,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 0 },
      "size-limit": { "high": 0, "medium": 1, "low": 0 },
      "scopable-section": { "high": 0, "medium": 2, "low": 0 },
      "stale-reference": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 3 }
+     "non-english": { "high": 0, "medium": 0, "low": 2 }
     },
     "duplicateLinkPairs": { "high": 1, "low": 0 }
    },
@@ -2629,11 +2595,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 8,
+    "total": 7,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 6 },
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -2642,7 +2607,7 @@
   {
    "rank": 119,
    "full_name": "ruvnet/RuView",
-   "stars": 97877,
+   "stars": 97879,
    "language": "Rust",
    "default_branch": "main",
    "sha": "a1ca023ee872683d160250d47ae3d4d228af55a0",
@@ -2798,13 +2763,12 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 46,
+    "total": 45,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 34 },
      "size-limit": { "high": 0, "medium": 1, "low": 0 },
      "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 8, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 8, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": true },
@@ -2831,10 +2795,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 3,
+    "total": 2,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 2, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -2843,7 +2806,7 @@
   {
    "rank": 123,
    "full_name": "microsoft/Web-Dev-For-Beginners",
-   "stars": 96946,
+   "stars": 96948,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "78085398be0dea7abaaf5eda914817f46f6ddbbc",
@@ -2910,10 +2873,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 254,
+    "total": 253,
     "byKind": {
-     "duplicate": { "high": 0, "medium": 0, "low": 253 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "duplicate": { "high": 0, "medium": 0, "low": 253 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -2960,12 +2922,12 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 29,
+    "total": 27,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 8 },
      "size-limit": { "high": 0, "medium": 6, "low": 0 },
      "oversized-section": { "high": 0, "medium": 4, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 8, "low": 0 },
+     "scopable-section": { "high": 0, "medium": 6, "low": 0 },
      "stale-reference": { "high": 0, "medium": 2, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 1, "low": 2 }
@@ -3009,10 +2971,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 3,
+    "total": 2,
     "byKind": {
-     "oversized-section": { "high": 0, "medium": 2, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "oversized-section": { "high": 0, "medium": 2, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -3033,10 +2994,8 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 1,
-    "byKind": {
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
-    }
+    "total": 0,
+    "byKind": {}
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
    "fixes": { "count": 0, "savingO200k": 0 }
@@ -3044,7 +3003,7 @@
   {
    "rank": 131,
    "full_name": "localsend/localsend",
-   "stars": 94325,
+   "stars": 94327,
    "language": "Dart",
    "default_branch": "main",
    "sha": "14f3a87426eedffaa9d87d011132eca5501abeb8",
@@ -3069,7 +3028,7 @@
   {
    "rank": 132,
    "full_name": "OpenCut-app/OpenCut",
-   "stars": 94199,
+   "stars": 94202,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "e668010778568641babef2cc40be4703ae6916d6",
@@ -3092,7 +3051,7 @@
   {
    "rank": 133,
    "full_name": "Stirling-Tools/Stirling-PDF",
-   "stars": 94164,
+   "stars": 94165,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "797b2e98feb0a395054a8b223f87c8a08bb486ec",
@@ -3118,14 +3077,13 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 23,
+    "total": 15,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 0 },
      "size-limit": { "high": 0, "medium": 1, "low": 0 },
      "oversized-section": { "high": 0, "medium": 6, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 9, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 4, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 2 }
+     "scopable-section": { "high": 0, "medium": 3, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 4, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 1, "low": 0 }
    },
@@ -3135,7 +3093,7 @@
   {
    "rank": 135,
    "full_name": "vllm-project/vllm",
-   "stars": 93745,
+   "stars": 93747,
    "language": "Python",
    "default_branch": "main",
    "sha": "ec8a3725668418b156fe2fd5c85ae3b1b9e37ad9",
@@ -3186,11 +3144,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 6,
+    "total": 4,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 4, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 3, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -3199,7 +3156,7 @@
   {
    "rank": 138,
    "full_name": "infiniflow/ragflow",
-   "stars": 92176,
+   "stars": 92178,
    "language": "Go",
    "default_branch": "main",
    "sha": "fe12d531399a2d4beefab9239c63dfab65162858",
@@ -3214,11 +3171,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 6,
+    "total": 5,
     "byKind": {
      "scopable-section": { "high": 0, "medium": 4, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -3227,10 +3183,10 @@
   {
    "rank": 139,
    "full_name": "stablyai/orca",
-   "stars": 91878,
+   "stars": 91891,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "9473e73d878ed50dd5625d5938e3ae17b2745df9",
+   "sha": "80f038ed80ea8ea70ad88f942270e84919e092df",
    "files": [
     { "path": "AGENTS.md", "o200k": 2863 },
     { "path": "CLAUDE.md", "o200k": 5 },
@@ -3241,10 +3197,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 2,
+    "total": 1,
     "byKind": {
-     "oversized-section": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "oversized-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -3256,7 +3211,7 @@
    "stars": 91697,
    "language": "Rust",
    "default_branch": "main",
-   "sha": "bc98c8f042315b9cfcd21d5aa93eedfadc5dc597",
+   "sha": "e18de65b75901f8720ff9c9320bb013395de54e5",
    "files": [
     { "path": ".agents/skills/gpui-bench/SKILL.md", "o200k": 6204 },
     { "path": ".agents/skills/gpui-test/SKILL.md", "o200k": 1859 },
@@ -3276,12 +3231,10 @@
    "agentsReading": 13,
    "agentsEveryTurn": 13,
    "advice": {
-    "total": 15,
+    "total": 7,
     "byKind": {
      "duplicate": { "high": 1, "medium": 0, "low": 5 },
-     "scopable-section": { "high": 0, "medium": 4, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 4 }
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 1, "low": 5 }
    },
@@ -3291,10 +3244,10 @@
   {
    "rank": 141,
    "full_name": "home-assistant/core",
-   "stars": 91562,
+   "stars": 91563,
    "language": "Python",
    "default_branch": "dev",
-   "sha": "e6206633ac5c52c2e1be019e2e2cb064eeaefac6",
+   "sha": "8c30e21da90455fda0343b4a8cd1214366e25d94",
    "files": [
     { "path": ".claude/agents/raise-pull-request.md", "o200k": 2477 },
     { "path": ".claude/skills/bump-dependency/SKILL.md", "o200k": 1492 },
@@ -3395,11 +3348,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 90,
+    "total": 89,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 33 },
-     "stale-reference": { "high": 0, "medium": 56, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "stale-reference": { "high": 0, "medium": 56, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -3473,11 +3425,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 5,
+    "total": 3,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 2, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 2, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -3510,11 +3461,10 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 12,
+    "total": 11,
     "byKind": {
      "size-limit": { "high": 1, "medium": 0, "low": 0 },
-     "oversized-section": { "high": 0, "medium": 4, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 3, "low": 0 },
+     "oversized-section": { "high": 0, "medium": 6, "low": 0 },
      "stale-reference": { "high": 0, "medium": 4, "low": 0 }
     }
    },
@@ -3524,7 +3474,7 @@
   {
    "rank": 148,
    "full_name": "OpenHands/OpenHands",
-   "stars": 90845,
+   "stars": 90847,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "bf483c12efbfae5c0ab586293d8bbc92f712bbed",
@@ -3545,9 +3495,9 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 4,
+    "total": 3,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
      "stale-reference": { "high": 0, "medium": 2, "low": 0 }
     }
    },
@@ -3596,10 +3546,8 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 1,
-    "byKind": {
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
-    }
+    "total": 0,
+    "byKind": {}
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
    "fixes": { "count": 0, "savingO200k": 0 }
@@ -3654,7 +3602,7 @@
   {
    "rank": 161,
    "full_name": "Egonex-AI/Understand-Anything",
-   "stars": 86207,
+   "stars": 86210,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "f2d0164f72fe678805c34245a6df36acededfebd",
@@ -3666,10 +3614,9 @@
    "agentsReading": 6,
    "agentsEveryTurn": 6,
    "advice": {
-    "total": 2,
+    "total": 1,
     "byKind": {
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 },
-     "non-english": { "high": 0, "medium": 0, "low": 1 }
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
@@ -3678,7 +3625,7 @@
   {
    "rank": 162,
    "full_name": "unclecode/crawl4ai",
-   "stars": 85489,
+   "stars": 85490,
    "language": "Python",
    "default_branch": "main",
    "sha": "aadd82bebf989f1c36e1b557b8bb2b7c9dae393f",
@@ -3734,9 +3681,9 @@
    "misconfigured": { "repos": 3, "share": 0.03, "high": 3 },
    "size-limit": { "repos": 17, "share": 0.17, "high": 7, "medium": 12 },
    "oversized-section": { "repos": 25, "share": 0.25, "medium": 25 },
-   "scopable-section": { "repos": 50, "share": 0.5, "medium": 50 },
+   "scopable-section": { "repos": 43, "share": 0.43, "medium": 43 },
    "stale-reference": { "repos": 35, "share": 0.35, "medium": 35 },
-   "non-english": { "repos": 43, "share": 0.43, "low": 43 }
+   "non-english": { "repos": 3, "share": 0.03, "low": 3 }
   },
   "duplicates": {
    "any": { "repos": 32, "share": 0.32 },
