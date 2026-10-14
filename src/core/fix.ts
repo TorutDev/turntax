@@ -46,8 +46,7 @@ export interface FixOptions {
   tools?: ToolId[];
   /** Checks whether a repo-relative path exists; the folder a section is about is never created. */
   exists?: (path: string) => boolean;
-  /** Files that must not be changed, such as symlinks and their targets. */
-  /** Files that must not be changed; a string gives the reason shown when a fix is skipped. */
+  /** Files that must not be changed, such as symlinks and their targets; a string gives the reason shown when a fix is skipped. */
   readOnly?: (path: string) => boolean | string;
 }
 
