@@ -1,5 +1,6 @@
 import type { McpRow, Report, ToolSummary } from './audit.js';
 import type { ReportDiff } from './diff.js';
+import { unifiedDiff, type FixPlan } from './fix.js';
 import { DEFERRED_NOTE } from './mcp.js';
 import type { CountMethod } from './types.js';
 
@@ -337,15 +338,72 @@ export function badgeMarkdown(report: Report): string {
 
 export const PR_COMMENT_MARKER = '<!-- turntax-report -->';
 const COMMENT_LIMIT = 60_000;
+/** Most of the comment the fix diff may take; the full report gets the rest. */
+const FIX_DIFF_LIMIT = 20_000;
 
 /**
- * A pull request comment: the change against the base branch first, the full report folded below.
- * Starts with a marker so the GitHub Action can update its own comment instead of adding new ones.
+ * A pull request comment: the change against the base branch first, then the safe fixes (when `fixes`
+ * has changes), the full report folded below. Starts with a marker so the GitHub Action can update its
+ * own comment instead of adding new ones.
  */
-export function renderPrComment(report: Report): string {
+export function renderPrComment(report: Report, fixes?: FixPlan, fixCommand = 'npx turntax --fix'): string {
   const top = report.diff ? renderDiffMarkdown(report.diff) : '## Agent context tax';
   const headline = `Largest per-turn cost: **${fmtTokens(headlineTokens(report))}** o200k tokens (repository files and measured project MCP tools).`;
+  const fixPart = fixes?.changes.length ? ['', renderFixes(fixes, fixCommand)] : [];
+  // GitHub rejects comments over 65,536 characters; everything but the full report counts against the limit.
+  const limit = Math.max(0, COMMENT_LIMIT - [top, headline, ...fixPart].join('\n').length);
   let full = renderMarkdown({ ...report, diff: undefined }).replace(/^# .*\n\n/, '');
-  if (full.length > COMMENT_LIMIT) full = full.slice(0, COMMENT_LIMIT) + '\n\n_Report cut to fit in a comment; the job summary has all of it._\n';
-  return [PR_COMMENT_MARKER, top, '', headline, '', '<details><summary>Full report</summary>', '', full, '</details>', ''].join('\n');
+  if (full.length > limit) full = full.slice(0, limit) + '\n\n_Report cut to fit in a comment; run turntax locally for all of it._\n';
+  return [PR_COMMENT_MARKER, top, '', headline, ...fixPart, '', '<details><summary>Full report</summary>', '', full, '</details>', ''].join('\n');
+}
+
+function renderFixes(plan: FixPlan, command: string): string {
+  const n = plan.fixes.length;
+  const saving = plan.fixes.reduce((a, f) => a + (f.savingTokens ?? 0), 0);
+  let diff = unifiedDiff(plan.changes);
+  let cut = '';
+  if (diff.length > FIX_DIFF_LIMIT) {
+    const end = diff.lastIndexOf('\n', FIX_DIFF_LIMIT);
+    diff = diff.slice(0, end > 0 ? end + 1 : FIX_DIFF_LIMIT);
+    cut = `\n_Diff cut to fit in a comment; run \`${command}\` for all of it._\n`;
+  }
+  // A fence longer than any backtick run in the diff, so moved code blocks cannot close it.
+  const fence = '`'.repeat(Math.max(3, ...[...diff.matchAll(/`+/g)].map((m) => m[0].length + 1)));
+  return [
+    `**${n} safe ${n === 1 ? 'fix' : 'fixes'} available**${saving ? ` (saves ~${fmtTokens(saving)} o200k tokens/turn)` : ''}: run \`${command}\` to preview.`,
+    '',
+    '<details><summary>Fixes</summary>',
+    '',
+    // Section headings in the messages may contain @names; keep them from mentioning people.
+    ...plan.fixes.map((f) => `- ${f.message.replace(/@(?=[A-Za-z0-9])/g, '@&#8203;')}`),
+    '',
+    `${fence}diff`,
+    diff.replace(/\n$/, ''),
+    fence,
+    cut,
+    '</details>',
+  ].join('\n');
+}
+
+/** GitHub workflow command escaping: message data, and property values (file, title). */
+const escapeData = (s: string) => s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+const escapeProperty = (s: string) => escapeData(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
+
+/**
+ * GitHub Actions annotations, one per advice item on a repository file, so findings show inline on a
+ * pull request. `prefix` makes paths relative to the workspace when the audited folder is not its root.
+ */
+export function renderAnnotations(report: Report, prefix = ''): string {
+  let out = '';
+  for (const a of report.advice) {
+    const path = a.paths.find((p) => !p.startsWith('~'));
+    if (!path) continue;
+    const props = [`file=${escapeProperty(prefix + path)}`];
+    // `line` belongs to the first path.
+    if (a.line && path === a.paths[0]) props.push(`line=${a.line}`);
+    props.push(`title=${escapeProperty(`turntax ${a.kind}`)}`);
+    const saving = a.savingTokens ? ` (saves ~${fmtTokens(a.savingTokens)} tokens/turn)` : '';
+    out += `::${a.severity === 'low' ? 'notice' : 'warning'} ${props.join(',')}::${escapeData(a.message + saving)}\n`;
+  }
+  return out;
 }

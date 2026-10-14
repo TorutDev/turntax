@@ -41,17 +41,57 @@ const DEFAULT_SECTION_TOKENS = 600;
 export function buildAdvice(units: LoadedUnit[], files: RepoFile[], opts: AdviceOptions = {}): Advice[] {
   // User-level files take part in checks across files; moving sections or checking paths only makes sense in the repository.
   const repo = units.filter((u) => !u.scope);
+  const raw = rawLines(files);
   const advice: Advice[] = [
     ...misconfigured(units),
     ...sizeLimits(units, files),
     ...duplicates(units),
-    ...contradictions(units),
-    ...sections(repo, opts.sectionTokens ?? DEFAULT_SECTION_TOKENS),
-    ...nonEnglish(units, opts.english),
-    ...staleReferences(repo, opts),
+    ...contradictions(units, raw),
+    ...sections(repo, opts.sectionTokens ?? DEFAULT_SECTION_TOKENS, raw, opts.exists),
+    ...nonEnglish(units, raw, opts.english),
+    ...staleReferences(repo, opts, raw),
   ];
   const order = { high: 0, medium: 1, low: 2 };
   return advice.sort((a, b) => order[a.severity] - order[b.severity] || (b.savingTokens ?? 0) - (a.savingTokens ?? 0));
+}
+
+/** Maps a 1-based line of a unit's text to the line of the file on disk, or undefined when it is not found. */
+type RawLines = (u: LoadedUnit, line: number) => number | undefined;
+
+function rawLines(files: RepoFile[]): RawLines {
+  const byPath = new Map(files.map((f) => [f.path, f.text]));
+  const cache = new Map<string, Array<number | undefined>>();
+  return (u, line) => {
+    const key = `${u.path}\0${u.text}`;
+    let map = cache.get(key);
+    if (!map) cache.set(key, (map = alignLines(u.text, byPath.get(u.path))));
+    return map[line - 1];
+  };
+}
+
+/**
+ * For each line of `text` (what an agent loads: frontmatter, HTML comments or a truncated tail removed),
+ * the 1-based line of `raw` it comes from. Lines are only ever removed, so line i is at raw line i or later.
+ */
+function alignLines(text: string, raw: string | undefined): Array<number | undefined> {
+  if (raw === undefined) return [];
+  const lines = text.split(/\r?\n/);
+  const rawLines = raw.split(/\r?\n/);
+  // Frontmatter removed: the text is the end of the file.
+  const offset = rawLines.length - lines.length;
+  if (offset >= 0 && rawLines.slice(offset).join('\n') === lines.join('\n')) return lines.map((_, i) => offset + i + 1);
+  const out: Array<number | undefined> = [];
+  let next = 0;
+  lines.forEach((line, i) => {
+    const want = line.trim();
+    for (let j = Math.max(next, i); j < rawLines.length; j++) {
+      if (rawLines[j]!.trim() !== want) continue;
+      out[i] = j + 1;
+      next = j + 1;
+      return;
+    }
+  });
+  return out;
 }
 
 /** Units that carry real instruction text (not skill descriptions), grouped by path. */
@@ -182,9 +222,11 @@ interface Directive {
   topic: string;
   value: string;
   path: string;
-  line: number;
+  line: number | undefined;
   text: string;
 }
+
+const at = (d: Directive) => (d.line ? `${d.path}:${d.line}` : d.path);
 
 interface DirectivePattern {
   topic: string;
@@ -255,7 +297,7 @@ function conflicts(a: string, b: string): boolean {
   return true;
 }
 
-function contradictions(units: LoadedUnit[]): Advice[] {
+function contradictions(units: LoadedUnit[], raw: RawLines): Advice[] {
   const found = new Map<string, Advice>();
   const tools = [...new Set(units.map((u) => u.tool))];
   for (const tool of tools) {
@@ -263,7 +305,7 @@ function contradictions(units: LoadedUnit[]): Advice[] {
     for (const u of uniqueByPath(contentUnits(units.filter((x) => x.tool === tool), ['always']))) {
       linesWithFences(u.text).forEach(({ line, inFence }, i) => {
         if (inFence) return;
-        for (const d of directivesIn(line)) directives.push({ ...d, path: u.path, line: i + 1, text: line.trim() });
+        for (const d of directivesIn(line)) directives.push({ ...d, path: u.path, line: raw(u, i + 1), text: line.trim() });
       });
     }
     for (let i = 0; i < directives.length; i++) {
@@ -271,7 +313,7 @@ function contradictions(units: LoadedUnit[]): Advice[] {
         const a = directives[i]!;
         const b = directives[j]!;
         if (a.topic !== b.topic || !conflicts(a.value, b.value)) continue;
-        const key = [a.topic, `${a.path}:${a.line}`, `${b.path}:${b.line}`].join('|');
+        const key = [a.topic, at(a), at(b), a.text, b.text].join('|');
         const prev = found.get(key);
         if (prev) {
           prev.tools.push(tool);
@@ -283,7 +325,7 @@ function contradictions(units: LoadedUnit[]): Advice[] {
           severity: 'high',
           tools: [tool],
           paths: [...new Set([a.path, b.path])],
-          message: `Conflicting ${a.topic}: "${a.text}" (${a.path}:${a.line}) vs "${b.text}" (${b.path}:${b.line}).`,
+          message: `Conflicting ${a.topic}: "${a.text}" (${at(a)}) vs "${b.text}" (${at(b)}).`,
           savingTokens: countO200k(shorter),
           savingNote: 'Removing the outdated line.',
         });
@@ -308,20 +350,21 @@ export function pathRefs(text: string): string[] {
     .filter((r) => r.includes('/') && !/^(https?:|~|\/|[A-Za-z]:|@|<)/.test(r) && !/[*?{}<>$]/.test(r));
 }
 
-function sections(units: LoadedUnit[], threshold: number): Advice[] {
+function sections(units: LoadedUnit[], threshold: number, raw: RawLines, exists?: (path: string) => boolean): Advice[] {
   const out: Advice[] = [];
   for (const u of uniqueByPath(contentUnits(units, ['always']))) {
     const tools = toolsWith(units, u.path, 'always');
     for (const s of splitSections(u.text)) {
       const tokens = countO200k(s.text);
+      // A folder that does not exist (a URL path, a placeholder) is not a place the section can move to.
       const scope = sectionScope(s.text);
-      if (scope) {
+      if (scope && (!exists || exists(scope))) {
         out.push({
           kind: 'scopable-section',
           severity: 'medium',
           tools,
           paths: [u.path],
-          line: s.line,
+          line: raw(u, s.line),
           message: `Section "${s.heading}" is mostly about ${scope}/. Move it to ${scope}/AGENTS.md (or CLAUDE.md), a path-scoped rule, or an instructions file with applyTo so it loads only when the agent works there.`,
           savingTokens: tokens,
           savingNote: 'Saved on turns that do not touch that directory.',
@@ -332,7 +375,7 @@ function sections(units: LoadedUnit[], threshold: number): Advice[] {
           severity: 'medium',
           tools,
           paths: [u.path],
-          line: s.line,
+          line: raw(u, s.line),
           message: `Section "${s.heading}" is ${tokens} tokens and loads every turn. If it is a procedure (release, deploy, migration), move it into an on-demand skill or rule and keep a one-line pointer.`,
           savingTokens: Math.max(0, tokens - 30),
           savingNote: 'Assumes about 30 tokens remain for the skill description or pointer.',
@@ -411,8 +454,10 @@ export function guessLanguage(text: string): LanguageGuess {
   const words = prose.toLowerCase().match(/\p{L}+/gu) ?? [];
   if (words.length < 15) return { nonEnglish: false, script: 'Latin' };
   const stop = words.filter((w) => EN_STOPWORDS.has(w)).length / words.length;
-  const diacritics = letters.filter((c) => /[^\u0000-\u007F]/.test(c)).length / letters.length;
-  return { nonEnglish: stop < 0.12 || (diacritics > 0.03 && stop < 0.2), script: 'Latin' };
+  // Terse English (bullet lists, commands) has few stopwords too, so Latin text also needs words with
+  // accented letters: a few percent of words in German, French, Spanish or Turkish, none in plain English.
+  const accented = words.filter((w) => /[^\u0000-\u007F]/.test(w)).length / words.length;
+  return { nonEnglish: stop < 0.2 && accented >= 0.04, script: 'Latin' };
 }
 
 /** True when any heading section of the text looks non-English. */
@@ -420,7 +465,7 @@ export function hasNonEnglish(text: string): boolean {
   return splitSections(text).some((s) => guessLanguage(s.text).nonEnglish);
 }
 
-function nonEnglish(units: LoadedUnit[], english?: Map<string, string>): Advice[] {
+function nonEnglish(units: LoadedUnit[], raw: RawLines, english?: Map<string, string>): Advice[] {
   const out: Advice[] = [];
   for (const u of uniqueByPath(contentUnits(units, ['always']))) {
     const parts = splitSections(u.text).filter((s) => guessLanguage(s.text).nonEnglish);
@@ -448,7 +493,7 @@ function nonEnglish(units: LoadedUnit[], english?: Map<string, string>): Advice[
         severity: 'low',
         tools,
         paths: [u.path],
-        line: parts[0]!.line,
+        line: raw(u, parts[0]!.line),
         message: `${parts.length} section(s) (${tokens} tokens) in ${script} script look non-English. Pass --english ${u.path}=<english file> or --translate to measure the multiplier.`,
         savingTokens: null,
         savingNote: 'Not measured without an English version.',
@@ -464,11 +509,11 @@ function isNested(path: string): boolean {
   return dir !== '' && !/^\.(claude|github|cursor|windsurf|devin|agents|clinerules|cline|roo|kiro|junie|continue)(\/|$)/.test(dir);
 }
 
-function staleReferences(units: LoadedUnit[], opts: AdviceOptions): Advice[] {
+function staleReferences(units: LoadedUnit[], opts: AdviceOptions, raw: RawLines): Advice[] {
   const out: Advice[] = [];
   for (const u of uniqueByPath(contentUnits(units))) {
     const tools = [...new Set(units.filter((x) => x.path === u.path && x.mode !== 'ignored').map((x) => x.tool))];
-    const missing: Array<{ ref: string; line: string; n: number }> = [];
+    const missing: Array<{ ref: string; line: string; n: number | undefined }> = [];
     linesWithFences(u.text).forEach(({ line, inFence }, i) => {
       if (inFence) return;
       if (opts.exists) {
@@ -477,16 +522,18 @@ function staleReferences(units: LoadedUnit[], opts: AdviceOptions): Advice[] {
           if (!/\/[^/]+\.[A-Za-z0-9]+$/.test(ref)) continue;
           const first = ref.split('/')[0]!;
           if (/^(path|example|foo|your|my)/i.test(first)) continue;
+          // Paths with .. can point outside the repository, where nothing can be checked.
+          if (ref.split('/').includes('..')) continue;
           // Only flag when the top-level folder exists but the file does not: likely moved or deleted.
           // Paths may be written relative to the repository root or to the instruction file.
           const local = resolvePath(u.path, ref);
-          if (opts.exists(first) && !opts.exists(ref) && !(local && opts.exists(local))) missing.push({ ref, line, n: i + 1 });
+          if (opts.exists(first) && !opts.exists(ref) && !(local && opts.exists(local))) missing.push({ ref, line, n: raw(u, i + 1) });
         }
       }
       // Root package.json scripts only apply to root-level instruction files, not nested packages.
       if (opts.packageScripts && !isNested(u.path)) {
         for (const m of line.matchAll(/\b(?:npm|pnpm|yarn|bun) run (?!-)([\w:.-]+)/g)) {
-          if (!opts.packageScripts.has(m[1]!)) missing.push({ ref: `script "${m[1]}"`, line, n: i + 1 });
+          if (!opts.packageScripts.has(m[1]!)) missing.push({ ref: `script "${m[1]}"`, line, n: raw(u, i + 1) });
         }
       }
     });
@@ -497,8 +544,8 @@ function staleReferences(units: LoadedUnit[], opts: AdviceOptions): Advice[] {
       severity: 'medium',
       tools,
       paths: [u.path],
-      line: missing[0]!.n,
-      message: `References that no longer exist: ${[...new Set(missing.map((m) => `${m.ref} (line ${m.n})`))].join(', ')}.`,
+      line: missing.find((m) => m.n)?.n,
+      message: `References that no longer exist: ${[...new Set(missing.map((m) => (m.n ? `${m.ref} (line ${m.n})` : m.ref)))].join(', ')}.`,
       savingTokens: countO200k(uniqueLines.join('\n')),
       savingNote: 'If those lines are obsolete; update them instead if they are still relevant.',
     });

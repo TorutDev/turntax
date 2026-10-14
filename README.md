@@ -8,6 +8,8 @@ npx turntax
 
 Try it in the browser, with nothing uploaded: https://torutdev.github.io/turntax/ — drop a folder or enter a public GitHub repository. Links like `https://torutdev.github.io/turntax/?repo=owner/name` open straight to that repository's report.
 
+[State of agent instruction files, October 2026](https://torutdev.github.io/turntax/state/): what turntax finds in 100 popular repositories, with pinned commits and the script to reproduce it ([`scripts/state-of.mjs`](scripts/state-of.mjs)).
+
 ## Supported agents
 
 Each agent's documented loading rules decide what is sent on every turn, what loads only when the agent works in a folder or touches a matching file, and what is ignored.
@@ -49,7 +51,7 @@ Advice (savings are estimates in o200k tokens per turn)
     3 identical lines are loaded twice every turn by cursor. Keep them in one file.
   HIGH contradiction AGENTS.md, CLAUDE.md [saves ~11 tokens/turn]
     Conflicting package manager: "Always use npm ..." (AGENTS.md:3) vs "Always use pnpm ..." (CLAUDE.md:5).
-  MEDIUM scopable-section CLAUDE.md:11 [saves ~128 tokens/turn]
+  MEDIUM scopable-section CLAUDE.md:12 [saves ~128 tokens/turn]
     Section "API package" is mostly about packages/api/. Move it to packages/api/AGENTS.md ...
 ```
 
@@ -99,6 +101,24 @@ npx turntax --fix --write    # apply them
 Before a fix is kept, the files are classified again with the change applied: every agent must still read every line it read before, including files reached through `@imports`, and as often as before. The only exception is a moved section, which may load only when the agent works in that folder. Otherwise the fix is skipped and the reason is printed. A moved section can reach agents that did not read it before (a nested `AGENTS.md` is read by more agents than a `CLAUDE.md`); the summary names them. By default that check covers every supported agent, so a section of `AGENTS.md` usually stays where it is, because some agents read only the root file. `--tools codex,claude-code` limits the check to the agents you use.
 
 In preview the diff is on stdout and works with `git apply`, and the summary is on stderr; with `--write` the summary is on stdout. `--write` checks that no file changed since it was read and writes nothing if one did. Symlinked files, their targets and files in symlinked folders are never changed. Contradictions and stale references need a person to decide, so `--fix` leaves them alone.
+
+The web page shows the same fixes for any repository you load, with a downloadable `fix.patch`.
+
+## Config file
+
+Put defaults in `turntax.config.json` in the audited folder (or pass `--config <file>`). Command-line flags override it.
+
+```json
+{
+  "tools": ["claude-code", "codex", "cursor"],
+  "models": ["claude-sonnet-5.5", "gpt-6.1-sol"],
+  "maxTokens": 8000,
+  "maxIncrease": 500,
+  "ignore": ["docs/agents/archive/", "**/*.draft.md"]
+}
+```
+
+Keys: `tools`, `models`, `turns`, `maxTokens`, `maxIncrease` (applies only with `--compare` or `--baseline`), `sectionTokens`, and `ignore`: globs of instruction files to leave out, relative to the audited folder (`*` and `?` within a folder name, `**` across folders, a trailing `/` for a whole folder). Ignored files are also left out of `--compare` and are never changed by `--fix`. Unknown keys and ids are errors.
 
 ## MCP servers
 
@@ -152,7 +172,7 @@ The comparison covers repository instruction files (o200k), per agent and per fi
 
 ## GitHub Action
 
-The repository is also an Action. On pull requests it compares with the base branch, posts one comment (updated on every push) and writes the report to the job summary:
+The repository is also an Action. On pull requests it compares with the base branch, posts one comment (updated on every push), writes the report to the job summary and marks findings on the lines they are about in the pull request's changed files (GitHub shows up to 10 warnings and 10 notices per step):
 
 ```yaml
 name: turntax
@@ -165,14 +185,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TorutDev/turntax@v0.4.0
+      - uses: TorutDev/turntax@v0.5.0
         with:
           max-increase: 500      # optional: fail when an agent grows by more than 500 tokens per turn
           # max-tokens: 8000     # optional: absolute budget
           # args: --tools claude-code,cursor
+          # annotations: false   # optional: no findings on the changed lines
 ```
 
-The comment opens with a table of the change per agent and per file, and folds the full report below it. Pull requests from forks get a read-only token, so the comment step is skipped there; the job summary still has the report.
+The comment opens with a table of the change per agent and per file. When `--fix` has safe fixes, it says how many and how many tokens they save, with the diff folded; the full report is folded below. A `turntax.config.json` in the repository is read as well. Pull requests from forks get a read-only token, so the comment step is skipped there; the job summary still has the report.
 
 ## Options
 
@@ -182,7 +203,8 @@ turntax [path]
   --models <ids>            see --list-models (default: claude-sonnet-5.5, gpt-6.1-sol, gemini-3.8-flash)
   --turns <n>               cost projection (default 100)
   --json | --md | --badge   output format (default: terminal table)
-  --pr-comment              Markdown for a pull request comment (change first, full report folded)
+  --pr-comment              Markdown for a pull request comment (change first, fixes and full report folded)
+  --annotations             GitHub Actions annotations, one per finding (--path-prefix <dir> for a subfolder)
   --out <file>              write the output to a file
   --max-tokens <n>          exit 1 when any tool loads more than n o200k tokens per turn (CI gate)
   --include-user            add user-level files and MCP servers from your home directory
@@ -199,7 +221,10 @@ turntax [path]
   --section-tokens <n>      threshold for oversized sections (default 600)
   --fix                     print a diff of the safe fixes (--tools limits the agents whose context is kept)
   --write                   with --fix, apply the changes
+  --config <file>           read defaults from this file (default: turntax.config.json, if any)
 ```
+
+When a selected model's price was checked more than 90 days ago, turntax says so on stderr; check the source or pass `--prices`.
 
 ## Privacy
 

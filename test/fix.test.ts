@@ -160,6 +160,19 @@ describe('scopable sections', () => {
     expect(after(plan, 'packages/api/AGENTS.md')).toBe(API_SECTION.replace(/\n/g, '\r\n'));
   });
 
+  it('names the agents outside --tools that stop reading a moved section', () => {
+    const files: RepoFile[] = [{ path: 'AGENTS.md', text: `# Rules\n\nUse npm.\n\n${API_SECTION}` }];
+    const message = planFixes(files, { exists, tools: ['codex', 'cursor', 'claude-code'] }).fixes[0]!.message;
+    expect(message).toMatch(/ Not kept for [^.]*\bZed\b[^.]* \(outside --tools\)\.$/);
+    expect(message).toMatch(/Not kept for [^.]*JetBrains Junie/);
+    // Agents that read the nested AGENTS.md as well are not named.
+    expect(message).not.toMatch(/Not kept for [^.]*(OpenAI Codex|Cursor|Claude Code|GitHub Copilot)/);
+    const all = planFixes(files, { exists, tools: ['codex', 'cursor', 'claude-code', 'zed', 'junie'] });
+    expect(all.fixes).toEqual([]);
+    const other = planFixes([{ path: 'CLAUDE.md', text: `# Rules\n\n${API_SECTION}` }], { exists, tools: ['claude-code', 'cursor'] });
+    expect(other.fixes[0]!.message).toMatch(/Not kept for GitHub Copilot, Zed, OpenCode \(outside --tools\)\.$/);
+  });
+
   it('keeps a section where it is when an agent would stop reading it', () => {
     // Zed and others read only the root AGENTS.md; a nested copy never reaches them.
     const plan = planFixes([{ path: 'AGENTS.md', text: `# Rules\n\n${API_SECTION}` }], { exists });

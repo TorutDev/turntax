@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>State of agent instruction files, October 2026 · turntax</title>
+<meta name="description" content="How many tokens the agent instruction files of 100 popular public GitHub repositories add to every turn, which files they use, and what static checks find. October 2026.">
+<style>
+  :root {
+    --bg: #f7f6f3; --surface: #ffffff; --surface-2: #f0eee9; --fg: #1b1a18; --muted: #66625b; --line: #e2dfd8;
+    --accent: #3056c9; --accent-soft: #e6ecfb; --bar: #3a63d6;
+    --high: #b42318; --medium: #9a5b00; --low: #3f6b2a;
+    --radius: 12px; color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121211; --surface: #1b1b19; --surface-2: #232320; --fg: #ecebe7; --muted: #a39f97; --line: #2e2d2a;
+      --accent: #8eaaff; --accent-soft: #1f2a48; --bar: #7d9cf5;
+      --high: #ff8b80; --medium: #f2b45a; --low: #9ccb85; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121211; --surface: #1b1b19; --surface-2: #232320; --fg: #ecebe7; --muted: #a39f97; --line: #2e2d2a;
+    --accent: #8eaaff; --accent-soft: #1f2a48; --bar: #7d9cf5;
+    --high: #ff8b80; --medium: #f2b45a; --low: #9ccb85; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 0 16px 72px; }
+  a { color: var(--accent); }
+  code, .mono { font: 13px/1.45 ui-monospace, "Cascadia Code", Consolas, monospace; }
+  h2 { font-size: 20px; margin: 48px 0 8px; letter-spacing: -0.01em; }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .intro { max-width: 70ch; margin-bottom: 16px; }
+
+  header.hero { padding: 56px 0 24px; }
+  .brand { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 40px; }
+  .brand a.home { color: var(--fg); text-decoration: none; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand nav { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; }
+  .eyebrow { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 16px; letter-spacing: -0.02em; max-width: 22ch; }
+  .lede { font-size: 17px; color: var(--muted); max-width: 66ch; }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin-top: 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .stat .label { font-size: 13px; color: var(--muted); }
+  .stat .value { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.05; }
+  .stat .note { font-size: 12px; color: var(--muted); }
+
+  .chart { position: relative; }
+  .bar-row { display: grid; grid-template-columns: minmax(110px, 220px) 1fr; gap: 12px; align-items: center; padding: 5px 0; outline-offset: 2px; }
+  .bar-row .name { font-size: 14px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-row code.name { font-size: 13px; }
+  .bar-track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .bar { height: 14px; background: var(--bar); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .bar-row:hover .bar, .bar-row:focus .bar { filter: brightness(1.12); }
+  .bar-value { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 6px 8px; border-radius: 6px; max-width: min(280px, 80%); transform: translate(-50%, -110%); z-index: 1; }
+  .axis-note { margin-top: 8px; }
+
+  ol.ranked { margin: 0; padding: 0; list-style: none; counter-reset: r; }
+  ol.ranked li { counter-increment: r; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  ol.ranked li:last-child { border-bottom: 0; }
+  ol.ranked li::before { content: counter(r); color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  ol.ranked a { overflow-wrap: anywhere; }
+  ol.ranked .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; white-space: nowrap; color: var(--muted); font-size: 13px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.nowrap { white-space: nowrap; }
+  th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+  th button:hover, th button:focus-visible { color: var(--accent); }
+  th[aria-sort] button { color: var(--fg); }
+  th[aria-sort="ascending"] button::after { content: " ↑"; }
+  th[aria-sort="descending"] button::after { content: " ↓"; }
+  .share-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .share-bar { width: 64px; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; flex: none; }
+  .share-bar span { display: block; height: 100%; background: var(--bar); border-radius: 0 4px 4px 0; }
+  th.group { white-space: normal; padding-top: 14px; }
+  .check-text { margin: 4px 0 0; max-width: 72ch; }
+  .sev { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  .sev-high { color: var(--high); } .sev-medium { color: var(--medium); } .sev-low { color: var(--low); }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 12px 0; }
+  input[type="search"] { flex: 1 1 220px; min-width: 0; max-width: 360px; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+  input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .methods { max-width: 74ch; }
+  .methods ul { padding-left: 20px; margin: 0 0 12px; }
+  .methods li { margin: 4px 0; }
+  .error { color: var(--high); }
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; }
+  @media (max-width: 560px) {
+    .bar-row { grid-template-columns: 1fr; gap: 2px; padding: 6px 0; }
+    .bar-row .name { text-align: left; white-space: normal; overflow-wrap: anywhere; }
+    .share-bar { display: none; }
+    .panel { padding: 12px; }
+    th, td { padding: 7px 6px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="brand">
+      <a class="home" href="../">turntax</a>
+      <nav><a href="../">Analyse a repository</a><a href="https://github.com/TorutDev/turntax/blob/main/docs/how-it-counts.md">How it counts</a><a href="https://github.com/TorutDev/turntax">GitHub</a></nav>
+    </div>
+    <p class="eyebrow muted">Report · October 2026</p>
+    <h1>State of agent instruction files</h1>
+    <p class="lede" id="lede">Loading the dataset…</p>
+    <p class="muted small" id="meta"></p>
+  </header>
+
+  <section aria-label="Key numbers"><div class="stats" id="stats"></div></section>
+
+  <section aria-labelledby="dist-title">
+    <h2 id="dist-title">Instruction tokens sent with every turn</h2>
+    <p class="muted intro">One bar per range of per-turn size. For each repository the size is that of the agent that loads the most always-on instruction text from the repository's files (o200k_base tokens).</p>
+    <div class="panel chart" id="dist"></div>
+    <p class="muted small axis-note" id="dist-note"></p>
+  </section>
+
+  <section aria-labelledby="names-title">
+    <h2 id="names-title">Which files repositories use</h2>
+    <p class="muted intro">Repositories with at least one file of each kind. A repository usually has several kinds.</p>
+    <div class="panel chart" id="names"></div>
+    <p class="muted small axis-note" id="pair-note"></p>
+  </section>
+
+  <section aria-labelledby="findings-title">
+    <h2 id="findings-title">What the checks found</h2>
+    <p class="muted intro">The same static checks the turntax CLI and web page run. A finding is a pointer to look at, not a verdict: some are deliberate choices.</p>
+    <div class="panel table-wrap"><table id="findings"></table></div>
+    <p class="intro" id="fix-note" style="margin-top:16px"></p>
+  </section>
+
+  <section aria-labelledby="heaviest-title">
+    <h2 id="heaviest-title">Largest per-turn instruction context</h2>
+    <p class="muted intro">The ten repositories whose files add the most always-on instruction text for one agent. Large projects, monorepos and agent tools often carry more guidance on purpose; size alone says nothing about quality.</p>
+    <div class="panel"><ol class="ranked" id="heaviest"></ol></div>
+  </section>
+
+  <section aria-labelledby="repos-title">
+    <h2 id="repos-title">All repositories</h2>
+    <p class="muted intro">Select a column header to sort. Each name opens the live turntax report for that repository, which reads its current default branch.</p>
+    <div class="controls">
+      <input id="filter" type="search" placeholder="Filter by name or language" aria-label="Filter repositories by name or language" autocomplete="off" spellcheck="false">
+      <span id="count" class="muted small" role="status"></span>
+    </div>
+    <div class="panel table-wrap"><table id="repos"></table></div>
+  </section>
+
+  <section class="methods" aria-labelledby="methods-title">
+    <h2 id="methods-title">Methods and limitations</h2>
+    <h3>Selection</h3>
+    <ul>
+      <li>GitHub repository search <code id="m-query"></code>, sorted by stars (descending), on <span id="m-date"></span>. <span id="m-search"></span></li>
+      <li>Repositories were taken in that order. A repository counts when its file tree has at least one agent instruction file that turntax recognises, outside dependency and build folders and outside test-data folders (<span id="m-excluded"></span>). <span id="m-scan"></span></li>
+      <li>Every file was read at the default branch's head commit, pinned by SHA (listed in the table and the dataset). Files that instruction files pull in with <code>@path</code> imports were read too. Symbolic links were followed one level.</li>
+    </ul>
+    <h3>Counting</h3>
+    <ul>
+      <li>Which files each agent loads, and when, follows each vendor's documentation as encoded in turntax <span id="m-version"></span>. The audit assumes the agent is started at the repository root.</li>
+      <li id="m-links"></li>
+      <li>Per-turn tokens are the always-loaded repository files only. User-level files (for example <code>~/.claude/CLAUDE.md</code>), MCP server tool definitions and each agent's own system prompt are not counted, so real per-turn context is larger.</li>
+      <li>Counts use OpenAI's o200k_base tokenizer as a common reference. They are not Claude or Gemini tokenizer counts, which differ. Percentiles interpolate linearly between the closest ranks.</li>
+      <li>Numbers are per turn before prompt caching. With caching, most of this text is billed at the cache-read rate after the first turn, but it still takes up context window.</li>
+      <li>Findings and fixes come from static analysis of the files alone (the same as <code>npx turntax</code> and <code>turntax --fix</code>). Nothing was run. In a local checkout the CLI also checks <code>npm run</code> script names against package.json, so it can report a few more missing references.</li>
+      <li>The live report behind each repository link reads the current default branch and includes test and example folders, so its numbers can differ from this snapshot.</li>
+    </ul>
+    <h3>Reproduce</h3>
+    <p>In a checkout of turntax, run <code>npm ci &amp;&amp; npm run build</code>, then <code>GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs</code>. The dataset records the turntax version and the commit of the counting engine. Search ranking and repositories change over time; the pinned SHAs let you re-run turntax on exactly the files measured here.</p>
+    <p class="muted small" id="m-engine"></p>
+  </section>
+
+  <footer>
+    <span>Data: <a href="./2026-10.json">2026-10.json</a> · Script: <a href="https://github.com/TorutDev/turntax/blob/main/scripts/state-of.mjs">scripts/state-of.mjs</a></span>
+    <span>MIT licensed. Read-only: no repository was changed.</span>
+  </footer>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+
+/** Builds an element; children are appended as nodes or text, never parsed as HTML. */
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  node.append(...children);
+  return node;
+}
+
+const fmt = (n) => (n === null || n === undefined ? '–' : Math.round(n).toLocaleString('en-US'));
+const pct = (n, total) => (total ? `${Math.round((n / total) * 100)}%` : '–');
+const plural = (n, one, many = `${one}s`) => `${fmt(n)} ${n === 1 ? one : many}`;
+/** Per-turn size with a symlinked file counted once; reading it under both names is not documented. */
+const perTurn = (r) => r.maxPerTurnLinksOnce ?? r.maxPerTurn;
+const repoLink = (fullName) => `../?repo=${fullName.split('/').map(encodeURIComponent).join('/')}`;
+const longDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** Adds a hover and focus tooltip to bar rows inside a chart panel. */
+function withTip(chart) {
+  const tip = el('div', { class: 'tip', hidden: '' });
+  chart.append(tip);
+  return (row, bar, text) => {
+    const show = () => {
+      tip.textContent = text;
+      const box = chart.getBoundingClientRect();
+      const b = bar.getBoundingClientRect();
+      tip.style.left = `${Math.min(box.width - 145, Math.max(145, b.right - box.left))}px`;
+      tip.style.top = `${b.top - box.top}px`;
+      tip.hidden = false;
+    };
+    const hide = () => (tip.hidden = true);
+    row.addEventListener('mouseenter', show);
+    row.addEventListener('focus', show);
+    row.addEventListener('mouseleave', hide);
+    row.addEventListener('blur', hide);
+  };
+}
+
+function barRows(chart, rows, { code = false } = {}) {
+  const attach = withTip(chart);
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  for (const r of rows) {
+    const bar = el('div', { class: 'bar', style: `width:${r.value ? Math.max(0.5, (r.value / max) * 100) : 0}%` });
+    const row = el(
+      'div',
+      { class: 'bar-row', tabindex: '0', 'aria-label': r.tip },
+      el(code ? 'code' : 'span', { class: 'name', title: r.label }, r.label),
+      el('span', { class: 'bar-track' }, bar, el('span', { class: 'bar-value' }, r.display)),
+    );
+    attach(row, bar, r.tip);
+    chart.append(row);
+  }
+}
+
+function renderHeader(data) {
+  const s = data.summary;
+  const sel = data.selection;
+  const n = s.repos;
+  const pair = s.agentsAndClaudeAtRoot;
+  const top = s.fileNames[0] ?? { name: '–', repos: 0 };
+  $('lede').textContent =
+    `turntax measured the agent instruction files of ${n} of the most-starred public GitHub repositories that have them ` +
+    `and were pushed to since ${longDate(sel.pushedSince)}. In the median repository, the agent that loads the most ` +
+    `instruction text receives ${fmt(s.maxPerTurnO200kLinksOnce.median)} o200k tokens of it with every turn; in one repository in ten it is more than ` +
+    `${fmt(s.maxPerTurnO200kLinksOnce.p90)}. The most common file is ${top.name}, in ${pct(top.repos, n)} of the repositories. ` +
+    `${fmt(pair.repos)} keep both an AGENTS.md and a CLAUDE.md at the root; in ${fmt(pair.linked)} of them one points to the other.`;
+  $('meta').textContent = `Collected ${longDate(data.generatedAt)} · ${plural(sel.scanned, 'repository', 'repositories')} scanned · turntax ${data.turntaxVersion}`;
+}
+
+function renderStats(data) {
+  const s = data.summary;
+  const n = s.repos;
+  const tiles = [
+    ['Repositories', fmt(n), `with instruction files, of ${fmt(data.selection.scanned)} scanned`],
+    ['Median per-turn tokens', fmt(s.maxPerTurnO200kLinksOnce.median), 'o200k, agent that loads the most'],
+    ['90th percentile', fmt(s.maxPerTurnO200kLinksOnce.p90), `75th: ${fmt(s.maxPerTurnO200kLinksOnce.p75)} · max: ${fmt(s.maxPerTurnO200kLinksOnce.max)}`],
+    ['AGENTS.md and CLAUDE.md', pct(s.agentsAndClaudeAtRoot.repos, n), `both at the root; ${fmt(s.agentsAndClaudeAtRoot.linked)} of ${fmt(s.agentsAndClaudeAtRoot.repos)} link one to the other`],
+    ['Agents reading the files', fmt(s.agentsReading.median), `median, of ${Object.keys(data.agentNames).length} agents modelled`],
+    ['Lines loaded twice', pct(s.duplicates.everyTurn.repos, n), 'same lines from two files, every turn, for at least one agent'],
+  ];
+  $('stats').replaceChildren(
+    ...tiles.map(([label, value, note]) => el('div', { class: 'stat' }, el('span', { class: 'label' }, label), el('span', { class: 'value' }, value), el('span', { class: 'note' }, note))),
+  );
+}
+
+const BINS = [
+  [0, 1, '0'],
+  [1, 500, '1–499'],
+  [500, 1000, '500–999'],
+  [1000, 2000, '1,000–1,999'],
+  [2000, 4000, '2,000–3,999'],
+  [4000, 8000, '4,000–7,999'],
+  [8000, 16000, '8,000–15,999'],
+  [16000, Infinity, '16,000 or more'],
+];
+
+function renderDistribution(data) {
+  const values = data.repos.map((r) => perTurn(r).o200k);
+  const n = values.length;
+  const max = Math.max(0, ...values);
+  const rows = BINS.filter(([lo]) => lo <= max).map(([lo, hi, label]) => {
+    const c = values.filter((v) => v >= lo && v < hi).length;
+    return { label: `${label} tokens`, value: c, display: `${fmt(c)} · ${pct(c, n)}`, tip: `${plural(c, 'repository', 'repositories')} (${pct(c, n)}): ${label} o200k tokens per turn` };
+  });
+  barRows($('dist'), rows);
+  const zero = values.filter((v) => v === 0).length;
+  $('dist-note').textContent = zero
+    ? `${plural(zero, 'repository has', 'repositories have')} instruction files only where they load on demand (for example in a subfolder), so nothing is sent with every turn.`
+    : '';
+}
+
+function renderNames(data) {
+  const n = data.summary.repos;
+  const rows = data.summary.fileNames.map((f) => ({
+    label: f.name,
+    value: f.repos,
+    display: `${fmt(f.repos)} · ${pct(f.repos, n)}`,
+    tip: `${f.name}: ${plural(f.repos, 'repository', 'repositories')} (${pct(f.repos, n)})`,
+  }));
+  barRows($('names'), rows, { code: true });
+  const p = data.summary.agentsAndClaudeAtRoot;
+  $('pair-note').textContent =
+    `${fmt(p.repos)} repositories have both AGENTS.md and CLAUDE.md at the root. In ${fmt(p.linked)} of them one file points to the other ` +
+    `(a symbolic link or an @import), so the text is maintained once.`;
+}
+
+/** Rows of the findings table: [kind, severity, title, explanation, repositories]. */
+const FINDINGS = [
+  { group: 'Exact checks' },
+  ['duplicate', 'high', 'Lines loaded twice every turn', 'The same instruction lines reach one agent from two different files on every turn.', (s) => s.duplicates.everyTurn.repos],
+  ['duplicate', 'low', 'Lines kept in two files', 'The same lines are maintained in files that different agents read. No agent pays twice, but the copies can drift.', (s) => s.duplicates.acrossAgents.repos],
+  ['contradiction', 'high', 'Contradiction', 'Two always-loaded lines disagree on the package manager, indentation, quotes or semicolons.', (s) => s.findings.contradiction.repos],
+  ['misconfigured', 'high', 'Misconfigured file', 'A file an agent does not read as written, for example a Cursor rule saved as .md instead of .mdc.', (s) => s.findings.misconfigured.repos],
+  ['size-limit', 'high', 'Past a documented limit', 'Past a limit the agent enforces, such as Codex reading at most 32 KiB of AGENTS.md or Windsurf’s 12,000 characters per rule.', (s) => s.findings['size-limit'].high ?? 0],
+  ['size-limit', 'medium', 'Past a size recommendation', 'Longer than the vendor recommends, such as CLAUDE.md over 200 lines or a Cursor rule over 500 lines.', (s) => s.findings['size-limit'].medium ?? 0],
+  ['oversized-section', 'medium', 'Large always-on section', 'One heading section of 600 or more tokens loads every turn; a procedure could move to an on-demand skill or rule.', (s) => s.findings['oversized-section'].repos],
+  { group: 'Heuristic checks (pointers that include false positives)' },
+  ['duplicate', 'high', 'Linked file read under two names', 'A file and a symbolic link to it (for example CLAUDE.md → AGENTS.md) are both read by an agent that reads both names, such as Cursor. Whether agents skip the second copy is not documented.', (s) => s.duplicates.linkedFileReadTwice.repos],
+  ['scopable-section', 'medium', 'Section about one folder', 'An always-loaded section mostly names paths in one existing folder and might load only when the agent works there. Some of these sections are deliberately global.', (s) => s.findings['scopable-section'].repos],
+  ['stale-reference', 'medium', 'Missing path', 'A file is named that is not in the repository, although its top-level folder is. Placeholders and generated files are also matched.', (s) => s.findings['stale-reference'].repos],
+  ['non-english', 'low', 'Non-English sections', 'Sections in a non-Latin script, or Latin text with accents and few English words. Translations can be deliberate; the token cost per word differs by language.', (s) => s.findings['non-english'].repos],
+];
+
+function renderFindings(data) {
+  const s = data.summary;
+  const n = s.repos;
+  const head = el('thead', {}, el('tr', {}, el('th', { scope: 'col' }, 'Check'), el('th', { class: 'num', scope: 'col' }, 'Repositories'), el('th', { class: 'num', scope: 'col' }, 'Share')));
+  const body = el('tbody');
+  for (const row of FINDINGS) {
+    if (row.group) {
+      body.append(el('tr', {}, el('th', { colspan: '3', scope: 'colgroup', class: 'group' }, row.group)));
+      continue;
+    }
+    const [kind, severity, title, text, count] = row;
+    const c = count(s);
+    const share = el('span', { class: 'share-bar', 'aria-hidden': 'true' }, el('span', { style: `width:${n ? (c / n) * 100 : 0}%` }));
+    body.append(
+      el(
+        'tr',
+        {},
+        el(
+          'td',
+          {},
+          el('div', {}, title),
+          el('span', { class: `sev sev-${severity}` }, `${severity} · ${kind.replace(/-/g, ' ')}`),
+          el('p', { class: 'muted small check-text' }, text),
+        ),
+        el('td', { class: 'num' }, fmt(c)),
+        el('td', { class: 'num' }, el('span', { class: 'share-cell' }, share, pct(c, n))),
+      ),
+    );
+  }
+  $('findings').replaceChildren(head, body);
+  const f = s.fixes;
+  $('fix-note').textContent =
+    `turntax --fix finds changes that lower per-turn tokens in ${plural(f.reposWithSaving, 'repository', 'repositories')} (${pct(f.reposWithSaving, n)}), ` +
+    `while every agent keeps reading every line (a moved section then loads when the agent works in its folder). ` +
+    `The estimated savings of those fixes add up to ${fmt(f.totalSavingO200k)} o200k tokens per turn across the repositories, median ${fmt(f.medianSavingAmongReposWithSavingO200k)} per repository. ` +
+    `${fmt(f.repos - f.reposWithSaving)} more have only fixes without a per-turn saving, such as removing duplicate lines from files that load on demand.`;
+}
+
+function renderHeaviest(data) {
+  const byName = new Map(data.repos.map((r) => [r.full_name, r]));
+  $('heaviest').replaceChildren(
+    ...data.summary.heaviest.map((h) => {
+      const repo = byName.get(h.full_name);
+      const agent = repo ? (data.agentNames[perTurn(repo).agent] ?? '') : '';
+      return el(
+        'li',
+        {},
+        el(
+          'span',
+          {},
+          el('a', { href: repoLink(h.full_name) }, h.full_name),
+          agent ? el('span', { class: 'muted small' }, ` · ${agent}`) : '',
+          h.o200kBothNames !== undefined ? el('span', { class: 'muted small' }, ` · ${fmt(h.o200kBothNames)} if a symlinked file is read under both names`) : '',
+        ),
+        el('span', { class: 'num' }, `${fmt(h.o200k)} tokens`),
+      );
+    }),
+  );
+}
+
+const EXACT_KINDS = ['duplicate', 'contradiction', 'misconfigured', 'size-limit', 'oversized-section'];
+/**
+ * High and medium findings of the exact checks; low ones (copies kept for different agents) cost no tokens.
+ * A symlink and its target read under two names is a heuristic finding, so it is not counted here.
+ */
+const exactFindings = (r) =>
+  EXACT_KINDS.reduce((n, k) => n + (r.advice.byKind[k]?.high ?? 0) + (r.advice.byKind[k]?.medium ?? 0), 0) - (r.advice.duplicateLinkPairs?.high ?? 0);
+
+/** Table columns: sort key, header, and cell. */
+const COLUMNS = [
+  { key: 'rank', label: 'Rank', num: true, get: (r) => r.rank, title: 'Position in the search results (by stars)', cell: (r) => el('td', { class: 'num muted' }, fmt(r.rank)) },
+  { key: 'name', label: 'Repository', get: (r) => r.full_name.toLowerCase(), cell: (r) => el('td', {}, el('a', { href: repoLink(r.full_name) }, r.full_name)) },
+  {
+    key: 'max',
+    label: 'Per turn',
+    num: true,
+    get: (r) => perTurn(r).o200k,
+    title: 'o200k tokens loaded every turn by the agent that loads the most',
+    cell: (r, data) => el('td', { class: 'num', title: data.agentNames[perTurn(r).agent] ?? '' }, fmt(perTurn(r).o200k)),
+  },
+  { key: 'files', label: 'Files', num: true, get: (r) => r.files.length, title: 'Instruction files read, including @imported files', cell: (r) => el('td', { class: 'num' }, fmt(r.files.length)) },
+  { key: 'agents', label: 'Agents', num: true, get: (r) => r.agentsReading, title: 'Agents that read at least one of the files', cell: (r) => el('td', { class: 'num' }, fmt(r.agentsReading)) },
+  {
+    key: 'findings',
+    label: 'Findings',
+    num: true,
+    get: exactFindings,
+    title: 'High and medium findings of the exact checks: duplicates loaded every turn, contradictions, misconfigured files, size limits and large sections',
+    cell: (r) => el('td', { class: 'num' }, fmt(exactFindings(r))),
+  },
+  {
+    key: 'fix',
+    label: 'Fix saving',
+    num: true,
+    get: (r) => r.fixes.savingO200k,
+    title: 'o200k tokens per turn that turntax --fix saves',
+    cell: (r) => el('td', { class: 'num' }, r.fixes.savingO200k ? fmt(r.fixes.savingO200k) : '–'),
+  },
+  { key: 'stars', label: 'Stars', num: true, get: (r) => r.stars, cell: (r) => el('td', { class: 'num' }, fmt(r.stars)) },
+  { key: 'language', label: 'Language', get: (r) => (r.language ?? '').toLowerCase(), cell: (r) => el('td', { class: 'nowrap' }, r.language ?? '–') },
+  {
+    key: 'sha',
+    label: 'Commit',
+    get: (r) => r.sha,
+    cell: (r) => el('td', {}, el('a', { href: `https://github.com/${r.full_name}/tree/${r.sha}`, rel: 'noopener', class: 'mono' }, r.sha.slice(0, 7))),
+  },
+];
+
+const table = { key: 'rank', dir: 1, filter: '' };
+
+function renderRepos(data, focusKey) {
+  const buttons = new Map();
+  const head = el(
+    'tr',
+    {},
+    ...COLUMNS.map((c) => {
+      const button = el('button', { type: 'button', ...(c.title ? { title: c.title } : {}) }, c.label);
+      button.addEventListener('click', () => {
+        if (table.key === c.key) table.dir = -table.dir;
+        else {
+          table.key = c.key;
+          table.dir = c.num && c.key !== 'rank' ? -1 : 1;
+        }
+        renderRepos(data, c.key);
+      });
+      buttons.set(c.key, button);
+      const attrs = { class: c.num ? 'num' : '', scope: 'col' };
+      if (table.key === c.key) attrs['aria-sort'] = table.dir === 1 ? 'ascending' : 'descending';
+      return el('th', attrs, button);
+    }),
+  );
+  const col = COLUMNS.find((c) => c.key === table.key);
+  const q = table.filter.trim().toLowerCase();
+  const rows = data.repos
+    .filter((r) => !q || r.full_name.toLowerCase().includes(q) || (r.language ?? '').toLowerCase().includes(q))
+    .sort((a, b) => {
+      const x = col.get(a);
+      const y = col.get(b);
+      return (x < y ? -1 : x > y ? 1 : 0) * table.dir || a.rank - b.rank;
+    });
+  const body = el('tbody', {}, ...rows.map((r) => el('tr', {}, ...COLUMNS.map((c) => c.cell(r, data)))));
+  $('repos').replaceChildren(el('thead', {}, head), body);
+  $('count').textContent = `${rows.length} of ${data.repos.length} repositories`;
+  if (focusKey) buttons.get(focusKey).focus();
+}
+
+function renderMethods(data) {
+  const sel = data.selection;
+  $('m-query').textContent = sel.query;
+  $('m-date').textContent = longDate(data.generatedAt);
+  $('m-search').textContent = `GitHub reported ${fmt(sel.searchTotal)} matches and returns at most the first ${fmt(sel.searchFetched)}.`;
+  $('m-excluded').textContent = sel.excludedFolders.join(', ');
+  const skipped = [];
+  if (sel.skippedTruncated) skipped.push(`${fmt(sel.skippedTruncated)} whose file tree GitHub truncated (too large to list)`);
+  if (sel.skippedErrors) skipped.push(`${fmt(sel.skippedErrors)} that could not be read`);
+  $('m-scan').textContent =
+    `${fmt(sel.qualifying)} of the first ${fmt(sel.scanned)} repositories qualified${sel.qualifying < sel.target ? ` (target ${fmt(sel.target)})` : ''}` +
+    (skipped.length ? `; skipped: ${skipped.join(' and ')}.` : '.');
+  const both = data.summary.maxPerTurnO200k;
+  $('m-links').textContent =
+    `${fmt(data.summary.reposWithLinkedFiles)} repositories link instruction files with symbolic links (for example CLAUDE.md → AGENTS.md). ` +
+    `The numbers on this page count a linked file once. The turntax CLI counts a link and its target as two files, so an agent that reads both names ` +
+    `(Cursor reads AGENTS.md and CLAUDE.md) is counted as loading the text twice; whether it does is not documented. Counted that way, ` +
+    `the median is ${fmt(both.median)} tokens and the 90th percentile ${fmt(both.p90)}.`;
+  $('m-version').textContent = data.turntaxVersion;
+  $('m-engine').textContent = `turntax ${data.turntaxVersion} · engine commit ${data.engineCommit} · generated ${data.generatedAt}`;
+}
+
+async function main() {
+  let data;
+  try {
+    const res = await fetch('./2026-10.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch (e) {
+    $('lede').textContent = `Could not load the dataset (${e.message}).`;
+    $('lede').classList.add('error');
+    return;
+  }
+  renderHeader(data);
+  renderStats(data);
+  renderDistribution(data);
+  renderNames(data);
+  renderFindings(data);
+  renderHeaviest(data);
+  renderRepos(data);
+  renderMethods(data);
+  $('filter').addEventListener('input', (e) => {
+    table.filter = e.target.value;
+    renderRepos(data);
+  });
+}
+
+main();
+</script>
+</body>
+</html>

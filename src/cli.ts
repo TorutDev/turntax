@@ -1,19 +1,21 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, relative, resolve } from 'node:path';
+import { basename, isAbsolute, posix, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { hasNonEnglish } from './core/advice.js';
 import { audit, type AuditOptions, type McpMeasurement } from './core/audit.js';
 import { classify } from './core/classify.js';
 import { asDiffInput, diffReports, maxIncrease } from './core/diff.js';
-import { planFixes, unifiedDiff } from './core/fix.js';
+import { planFixes, unifiedDiff, type FixPlan } from './core/fix.js';
+import { globMatcher } from './core/glob.js';
 import { parseMcpConfigs, serverKey, toolDefinitionsText, toolNamesText, type McpServer } from './core/mcp.js';
 import { DEFAULT_MODEL_IDS, MODELS, validateModels } from './core/prices.js';
-import { badgeMarkdown, headlineTokens, renderMarkdown, renderPrComment, renderText } from './core/render.js';
+import { badgeMarkdown, headlineTokens, renderAnnotations, renderMarkdown, renderPrComment, renderText } from './core/render.js';
 import { countO200k } from './core/tokenize.js';
 import { TOOL_IDS } from './core/tools.js';
 import type { ModelInfo, RepoFile, ToolId } from './core/types.js';
 import { applyChanges } from './node/apply.js';
+import { CONFIG_FILE, loadConfig, type Config } from './node/config.js';
 import { discover, discoverMcpConfigs, discoverUser, existsIn, linkedPaths, packageScripts } from './node/discover.js';
 import { filesAtRef } from './node/git.js';
 import { measureServer } from './node/mcp.js';
@@ -36,6 +38,8 @@ Options:
   --pr-comment            Print a pull request comment: the change first, the full report folded
   --out <file>            Write the report to a file instead of stdout
   --badge                 Print a shields.io badge snippet
+  --annotations           Print GitHub Actions annotations for the advice, shown inline on pull requests
+  --path-prefix <dir>     With --annotations, the audited folder relative to the repository root
   --max-tokens <n>        Exit with code 1 if any tool loads more than n o200k tokens per turn
                           (repository files plus measured project MCP tools)
   --include-user          Also count user-level files and MCP servers in your home directory
@@ -60,8 +64,16 @@ Options:
                           their folder, misnamed Cursor rules. Every agent keeps reading the moved text;
                           --tools limits the agents whose context is kept
   --write                 With --fix, apply the changes to the files
+  --config <file>         Read defaults from this file (default: ${CONFIG_FILE} in the audited folder, if any)
   -h, --help              Show help
   -v, --version           Show version
+
+Config file keys (all optional; command-line flags override them):
+  tools, models           Lists of ids, like --tools and --models
+  turns, maxTokens, maxIncrease, sectionTokens
+                          Integers, like the matching flags (maxIncrease applies only when comparing)
+  ignore                  Globs of instruction files to leave out, relative to the audited folder (* and ? within a
+                          folder name, ** across folders, a trailing / for a whole folder)
 
 Without --claude-api, --gemini-api or --mcp nothing leaves your machine.
 `;
@@ -82,7 +94,7 @@ function positiveInt(name: string, value: string | undefined, fallback: number):
   return n;
 }
 
-export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env): Promise<number> {
+export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env, now: Date = new Date()): Promise<number> {
   let parsed;
   try {
     parsed = parseArgs({
@@ -98,6 +110,9 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
         'pr-comment': { type: 'boolean' },
         out: { type: 'string' },
         badge: { type: 'boolean' },
+        annotations: { type: 'boolean' },
+        'path-prefix': { type: 'string' },
+        config: { type: 'string' },
         'max-tokens': { type: 'string' },
         'claude-api': { type: 'boolean' },
         'gemini-api': { type: 'boolean' },
@@ -144,31 +159,51 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
       return 0;
     }
 
-    const modelIds = list(o.models) ?? DEFAULT_MODEL_IDS.filter((id) => catalog.some((m) => m.id === id));
+    const root = resolve(positionals[0] ?? '.');
+    let config: Config;
+    try {
+      config = loadConfig(root, o.config, catalog);
+    } catch (e) {
+      throw new UsageError((e as Error).message);
+    }
+    const modelIds = list(o.models) ?? config.models ?? DEFAULT_MODEL_IDS.filter((id) => catalog.some((m) => m.id === id));
     const models = modelIds.map((id) => {
       const m = catalog.find((x) => x.id === id);
       if (!m) throw new UsageError(`Unknown model "${id}". Run --list-models.`);
       return m;
     });
-    const tools = list(o.tools) as ToolId[] | undefined;
+    const tools = (list(o.tools) as ToolId[] | undefined) ?? config.tools;
     for (const t of tools ?? []) if (!TOOL_IDS.includes(t)) throw new UsageError(`Unknown tool "${t}". Use: ${TOOL_IDS.join(', ')}`);
+    const ignored = globMatcher(config.ignore ?? []);
+    const repoFiles = (files: RepoFile[]) => files.filter((f) => !ignored(f.path));
 
-    const root = resolve(positionals[0] ?? '.');
     if (o.write && !o.fix) throw new UsageError('--write needs --fix.');
+    if (o['path-prefix'] !== undefined && !o.annotations) throw new UsageError('--path-prefix needs --annotations.');
+    if (o.annotations) {
+      const other = (['json', 'md', 'pr-comment', 'badge', 'fix'] as const).filter((k) => o[k] !== undefined);
+      if (other.length) throw new UsageError(`--annotations cannot be combined with --${other.join(', --')}.`);
+    }
     if (o.fix) {
       const other: string[] = (
         ['json', 'md', 'pr-comment', 'badge', 'baseline', 'compare', 'max-tokens', 'max-increase', 'include-user', 'mcp'] as const
       ).filter((k) => o[k] !== undefined);
       if (o.write && o.out) other.push('out');
       if (other.length) throw new UsageError(`--fix${o.write ? ' --write' : ''} cannot be combined with --${other.join(', --')}.`);
-      return await fix(root, tools, Boolean(o.write), o.out);
+      return await fix(root, tools, ignored, Boolean(o.write), o.out);
     }
-    const files = await discover(root);
+    const discovered = await discover(root);
+    const files = repoFiles(discovered);
+    // Budgets in the config are for report runs; an --annotations run only prints findings.
+    const gates: Config = o.annotations ? {} : config;
+    const label = (flag: 'max-tokens' | 'max-increase', key: keyof Config) =>
+      o[flag] !== undefined ? `--${flag}` : `${key} in ${o.config ?? CONFIG_FILE}`;
     if (o.baseline && o.compare) throw new UsageError('Use --baseline or --compare, not both.');
+    // The config's maxIncrease applies only when a comparison runs, so plain local runs keep working.
     if (o['max-increase'] !== undefined && !o.baseline && !o.compare)
       throw new UsageError('--max-increase needs --baseline or --compare.');
     const maxIncreaseLimit =
-      o['max-increase'] === undefined ? undefined : nonNegativeInt('max-increase', o['max-increase']);
+      o['max-increase'] === undefined ? gates.maxIncrease : nonNegativeInt('max-increase', o['max-increase']);
+    stalePrices(models, now);
 
     let userFiles: RepoFile[] = [];
     let mcpFiles = discoverMcpConfigs(root);
@@ -230,14 +265,14 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
       tools,
       models,
       counters,
-      turns: positiveInt('turns', o.turns, 100),
+      turns: positiveInt('turns', o.turns, config.turns ?? 100),
       userFiles,
       mcp: { servers, measured },
       advice: {
         exists: existsIn(root),
         packageScripts: packageScripts(root),
         english,
-        sectionTokens: positiveInt('section-tokens', o['section-tokens'], 600),
+        sectionTokens: positiveInt('section-tokens', o['section-tokens'], config.sectionTokens ?? 600),
       },
     });
 
@@ -253,7 +288,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
       const base = await filesAtRef(root, o.compare).catch((e: Error) => {
         throw new UsageError(e.message);
       });
-      const before = await audit(base.files, {
+      const before = await audit(repoFiles(base.files), {
         tools,
         models: [],
         mcp: { servers: parseMcpConfigs(base.mcpConfigs, root).servers },
@@ -264,24 +299,30 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
     const output = o.json
       ? JSON.stringify({ root, ...report }, null, 2) + '\n'
       : o['pr-comment']
-        ? renderPrComment(report)
-        : o.md
-          ? renderMarkdown(report)
-          : o.badge
-            ? badgeMarkdown(report) + '\n'
-            : renderText(report, root) + '\n';
+        ? renderPrComment(
+            report,
+            files.length ? fixPlan(root, discovered, tools, ignored) : undefined,
+            fixCommand(positionals[0], o.config, o.tools),
+          )
+        : o.annotations
+          ? renderAnnotations(report, pathPrefix(o['path-prefix']))
+          : o.md
+            ? renderMarkdown(report)
+            : o.badge
+              ? badgeMarkdown(report) + '\n'
+              : renderText(report, root) + '\n';
     if (o.out) writeFileSync(o.out, output);
     else process.stdout.write(output);
 
     let code = 0;
-    const max = o['max-tokens'] === undefined ? undefined : positiveInt('max-tokens', o['max-tokens'], 0);
+    const max = o['max-tokens'] === undefined ? gates.maxTokens : positiveInt('max-tokens', o['max-tokens'], 0);
     if (max !== undefined && headlineTokens(report) > max) {
-      process.stderr.write(`turntax: ${headlineTokens(report)} o200k tokens per turn exceeds --max-tokens ${max}\n`);
+      process.stderr.write(`turntax: ${headlineTokens(report)} o200k tokens per turn exceeds ${label('max-tokens', 'maxTokens')} ${max}\n`);
       code = 1;
     }
     if (maxIncreaseLimit !== undefined && report.diff && maxIncrease(report.diff) > maxIncreaseLimit) {
       process.stderr.write(
-        `turntax: per-turn tokens grew by ${maxIncrease(report.diff)} vs ${report.diff.base}, more than --max-increase ${maxIncreaseLimit}\n`,
+        `turntax: per-turn tokens grew by ${maxIncrease(report.diff)} vs ${report.diff.base}, more than ${label('max-increase', 'maxIncrease')} ${maxIncreaseLimit}\n`,
       );
       code = 1;
     }
@@ -296,9 +337,15 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env)
   }
 }
 
-async function fix(root: string, tools: ToolId[] | undefined, write: boolean, out: string | undefined): Promise<number> {
-  const files = await discover(root);
-  const plan = planFixes(files, { tools, exists: existsIn(root), readOnly: linkedPaths(root, files) });
+async function fix(
+  root: string,
+  tools: ToolId[] | undefined,
+  ignored: (path: string) => boolean,
+  write: boolean,
+  out: string | undefined,
+): Promise<number> {
+  const discovered = await discover(root);
+  const plan = fixPlan(root, discovered, tools, ignored);
   const log = (line: string) => (write ? process.stdout : process.stderr).write(line + '\n');
   for (const f of plan.fixes) log(`fix: ${f.message}${f.savingTokens ? ` [saves ~${f.savingTokens} tokens/turn]` : ''}`);
   for (const s of plan.skipped) log(`skipped ${s.kind}: ${s.reason}`);
@@ -318,6 +365,48 @@ async function fix(root: string, tools: ToolId[] | undefined, write: boolean, ou
   else process.stdout.write(diff);
   log('Preview only. Run again with --write to apply, or save the diff and use git apply.');
   return 0;
+}
+
+/**
+ * Safe fixes. The plan sees every repository file, ignored ones included, because the agents still read
+ * them and the safety check must see what they read; symlinks, their targets and ignored files are never
+ * written.
+ */
+function fixPlan(root: string, discovered: RepoFile[], tools: ToolId[] | undefined, ignored: (path: string) => boolean): FixPlan {
+  const linked = linkedPaths(root, discovered);
+  return planFixes(discovered, {
+    tools,
+    exists: existsIn(root),
+    readOnly: (p) => (ignored(p) ? `${p} is in the config's ignore list; it is left alone.` : linked(p)),
+  });
+}
+
+/** The --fix command matching the run that made a pull request comment. */
+function fixCommand(path: string | undefined, config: string | undefined, tools: string | undefined): string {
+  const arg = (s: string) => (/^[\w./@:,=-]+$/.test(s) ? s : `"${s}"`);
+  const parts = ['npx turntax'];
+  if (path && path !== '.' && !isAbsolute(path)) parts.push(arg(path));
+  if (config) parts.push('--config', arg(config));
+  if (tools) parts.push('--tools', arg(tools));
+  return [...parts, '--fix'].join(' ');
+}
+
+/** `--path-prefix` as a POSIX folder ending in a slash, or '' for the repository root. */
+function pathPrefix(dir: string | undefined): string {
+  if (!dir) return '';
+  const p = posix.normalize(dir.replace(/\\/g, '/') + '/');
+  return p === './' ? '' : p;
+}
+
+/** One notice when a selected model's price was checked more than 90 days before `now`. */
+function stalePrices(models: ModelInfo[], now: Date): void {
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const stale = models.filter((m) => today - Date.parse(m.checkedAt) > 90 * 86_400_000);
+  if (!stale.length) return;
+  const dates = [...new Set(stale.map((m) => m.checkedAt))].sort();
+  notice(
+    `prices for ${stale.map((m) => m.label).join(', ')} were checked on ${dates.join(', ')}, over 90 days ago; check the sources or pass --prices.`,
+  );
 }
 
 function nonNegativeInt(name: string, value: string): number {
