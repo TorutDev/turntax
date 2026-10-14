@@ -97,13 +97,23 @@
   .sev-high .tag { color: var(--high); } .sev-medium .tag { color: var(--medium); } .sev-low .tag { color: var(--low); }
   .saving { font-weight: 600; }
 
+  .fix-agents { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .fix-agents legend { font-size: 13px; color: var(--muted); margin-bottom: 4px; padding: 0; }
+  .checks { display: flex; flex-wrap: wrap; gap: 2px 16px; }
+  .checks label { font-size: 14px; }
+  #fix-list, #fix-skipped-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; overflow-wrap: anywhere; }
+  #fix-list li + li { border-top: 1px solid var(--line); padding-top: 8px; }
+  #fix-list p { margin: 0; }
+  #fix-actions code { white-space: nowrap; }
+  pre.diff { margin: 16px 0 0; padding: 12px; max-height: 420px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font: 12px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; }
+
   .table-wrap { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
   th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { font-weight: 600; white-space: nowrap; color: var(--muted); font-size: 13px; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .mode { font-size: 12px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); white-space: nowrap; }
-  #file-list { padding-left: 18px; margin: 8px 0; font-size: 14px; }
+  #file-list { padding-left: 18px; margin: 8px 0; font-size: 14px; overflow-wrap: anywhere; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
 </style>
@@ -113,7 +123,7 @@
   <header class="hero">
     <div class="brand">
       <strong>turntax</strong>
-      <nav><a href="https://github.com/TorutDev/turntax/blob/main/docs/how-it-counts.md">How it counts</a><a href="https://github.com/TorutDev/turntax">GitHub</a></nav>
+      <nav><a href="state/">State of agent files</a><a href="https://github.com/TorutDev/turntax/blob/main/docs/how-it-counts.md">How it counts</a><a href="https://github.com/TorutDev/turntax">GitHub</a></nav>
     </div>
     <h1>What your agent instructions cost on every turn</h1>
     <p class="lede">Coding agents re-send their instruction files with every message. turntax applies each agent's documented loading rules, measures what is sent every turn, and shows what to trim.</p>
@@ -180,6 +190,28 @@
 
     <h2>What to trim</h2>
     <ul id="advice"></ul>
+
+    <h2>Fixes</h2>
+    <div class="panel">
+      <fieldset class="fix-agents">
+        <legend>Agents you use</legend>
+        <div id="fix-agents" class="checks"></div>
+      </fieldset>
+      <p class="muted small" style="margin:8px 0 0">By default fixes keep context for every agent, so sections of AGENTS.md often stay put unless you narrow the list.</p>
+      <ul id="fix-list"></ul>
+      <details id="fix-skipped" hidden>
+        <summary>Skipped (<span id="fix-skipped-count"></span>)</summary>
+        <ul id="fix-skipped-list" class="small"></ul>
+      </details>
+      <div id="fix-actions" hidden>
+        <pre id="fix-diff" class="diff"></pre>
+        <div class="buttons" style="justify-content:flex-start">
+          <button id="download-patch" type="button">Download fix.patch</button>
+          <button id="copy-diff" type="button">Copy diff</button>
+        </div>
+        <p class="muted small" style="margin:8px 0 0">Apply with <code>git apply fix.patch</code>, or run <code>npx turntax --fix --write</code> in the repository.</p>
+      </div>
+    </div>
 
     <h2>Files</h2>
     <div class="panel table-wrap"><table id="files"></table></div>

@@ -208,8 +208,9 @@ function renameCursorRules(
   for (const f of [...ws.files.values()]) {
     if (!/^(?:.*\/)?\.cursor\/rules\/.+\.md$/.test(f.path)) continue;
     const to = f.path.replace(/\.md$/, '.mdc');
-    if (readOnly(f.path) || ws.files.has(to)) {
-      skipped.push({ kind: 'misconfigured', paths: [f.path], reason: readOnly(f.path) ?? `${to} already exists.` });
+    const blocked = readOnly(f.path) ?? (ws.files.has(to) ? `${to} already exists.` : readOnly(to));
+    if (blocked) {
+      skipped.push({ kind: 'misconfigured', paths: [f.path], reason: blocked });
       continue;
     }
     const next = ws.trial(new Map([[f.path, null], [to, f.text]]));
@@ -391,13 +392,15 @@ function moveScopableSections(ws: Workspace, opts: FixOptions, readOnly: (path: 
         const readers = [...new Set(ws.units.filter((u) => u.path === path && u.mode === 'always' && u.part !== 'description').map((u) => u.tool))];
         const reads = (l: Loaded, tool: ToolId) => keysOf(body).some((k) => l.get(tool)?.has(k));
         const added = [...trial.loaded.keys()].filter((tool) => !reads(ws.state.loaded, tool) && reads(trial.loaded, tool));
+        const dropped = opts.tools ? leftOut(ws.files, trial.files, body, opts.tools) : [];
         ws.commit(trial);
         fixes.push({
           kind: 'scopable-section',
           paths: [path, t.path],
           message:
             `Moved section "${heading}" from ${path} to ${t.path}${existing ? '' : ' (new file)'}; ${names(readers)} load it only when working in ${scope}/.` +
-            (added.length ? ` Now also read there by ${names(added)}.` : ''),
+            (added.length ? ` Now also read there by ${names(added)}.` : '') +
+            (dropped.length ? ` Not kept for ${names(dropped)} (outside --tools).` : ''),
           savingTokens: countO200k(body),
         });
         moved = true;
@@ -411,6 +414,14 @@ function moveScopableSections(ws: Workspace, opts: FixOptions, readOnly: (path: 
         });
     }
   }
+}
+
+/** Agents outside `tools` that read some of `body` before the move and none of those lines after it. */
+function leftOut(before: Map<string, RepoFile>, after: Map<string, RepoFile>, body: string, tools: ToolId[]): ToolId[] {
+  const others = TOOLS.map((t) => t.id).filter((id) => !tools.includes(id));
+  const was = loadedLines(classify([...before.values()], others));
+  const now = loadedLines(classify([...after.values()], others));
+  return others.filter((tool) => keysOf(body).some((k) => was.get(tool)?.has(k) && !now.get(tool)?.has(k)));
 }
 
 function moveBlocker(body: string, scope: string, opts: FixOptions): string | null {

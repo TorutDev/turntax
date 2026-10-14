@@ -1,6 +1,6 @@
 {
   "name": "turntax",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Measure the per-turn token cost of AI coding-agent instruction files (AGENTS.md, CLAUDE.md, Cursor, Copilot, Cline, Roo, Kiro, Windsurf and more) for every agent that reads them.",
   "license": "MIT",
   "author": "TORUT LTD",

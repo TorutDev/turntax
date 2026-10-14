@@ -22,9 +22,18 @@ export interface RepoTree {
   links: string[];
   /** GitHub cut the listing short; very large repos may be incomplete. */
   truncated: boolean;
+  /** The folder after the ref in a /tree/ URL (tree/main/packages/api); the whole repository is listed. */
+  subdir?: string;
 }
 
-export class GitHubError extends Error {}
+export class GitHubError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+  }
+}
 
 const REPO_RE = /^(?:(?:https?:\/\/)?(?:www\.)?github\.com\/)?([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/([A-Za-z0-9._-]+?)(?:\.git)?(?:\/tree\/([^\s?#]+?))?\/?$/i;
 
@@ -50,7 +59,7 @@ async function api(url: string, fetchFn: typeof fetch, notFound: string): Promis
     throw new GitHubError('Could not reach GitHub. Check your connection and try again.');
   }
   if (res.ok) return res.json();
-  if (res.status === 404) throw new GitHubError(notFound);
+  if (res.status === 404) throw new GitHubError(notFound, 404);
   if ((res.status === 403 || res.status === 429) && res.headers.get('x-ratelimit-remaining') === '0') {
     const reset = Number(res.headers.get('x-ratelimit-reset'));
     const at = reset ? new Date(reset * 1000) : null;
@@ -73,13 +82,26 @@ export async function fetchRepoTree(repo: RepoInput, fetchFn: typeof fetch = glo
     ref = info.default_branch;
   }
   const notFound = repo.ref ? `Branch, tag or commit "${ref}" not found in ${owner}/${name}, or the repository is private.` : missingRepo;
-  const tree = (await api(`${base}/git/trees/${encodePath(ref)}?recursive=1`, fetchFn, notFound)) as {
-    tree?: Array<{ path: string; type: string; mode?: string }>;
-    truncated?: boolean;
-  };
-  const blobs = (tree.tree ?? []).filter((e) => e.type === 'blob');
-  const links = blobs.filter((e) => e.mode === '120000').map((e) => e.path);
-  return { owner, name, ref, paths: blobs.map((e) => e.path), links, truncated: tree.truncated === true };
+  // A /tree/ URL may name a folder after the ref (tree/main/packages/api). On 404, try the first segment,
+  // then the first two (branches like feature/x): at most three tree requests, as the unauthenticated
+  // limit is 60 per hour.
+  const segments = ref.split('/');
+  const candidates = repo.ref ? [...new Set([ref, segments[0]!, segments.slice(0, 2).join('/')])] : [ref];
+  for (let i = 0; ; i++) {
+    const candidate = candidates[i]!;
+    let tree: { tree?: Array<{ path: string; type: string; mode?: string }>; truncated?: boolean };
+    try {
+      tree = (await api(`${base}/git/trees/${encodePath(candidate)}?recursive=1`, fetchFn, notFound)) as typeof tree;
+    } catch (e) {
+      if (e instanceof GitHubError && e.status === 404 && i + 1 < candidates.length) continue;
+      throw e;
+    }
+    const blobs = (tree.tree ?? []).filter((e) => e.type === 'blob');
+    const links = blobs.filter((e) => e.mode === '120000').map((e) => e.path);
+    const subdir = ref.slice(candidate.length + 1);
+    const paths = blobs.map((e) => e.path);
+    return { owner, name, ref: candidate, paths, links, truncated: tree.truncated === true, ...(subdir ? { subdir } : {}) };
+  }
 }
 
 export function rawUrl(repo: { owner: string; name: string; ref: string }, path: string): string {
@@ -89,6 +111,8 @@ export function rawUrl(repo: { owner: string; name: string; ref: string }, path:
 export type RawReader = ((path: string) => Promise<string | null>) & {
   /** Paths that could not be downloaded, including those past the fetch limit. */
   failed: string[];
+  /** The in-repo path each symlink read so far points to, by link path. */
+  targets: Map<string, string>;
 };
 
 /** Reads files over raw.githubusercontent.com, following in-repo symlinks once; null on any failure or past `limit` fetches. */
@@ -113,13 +137,14 @@ export function rawReader(
       let text = await get(path);
       if (text !== null && repo.links?.includes(path)) {
         const target = /^[^\n]{1,512}$/.test(text.trim()) ? resolvePath(path, text.trim()) : null;
+        if (target) read.targets.set(path, target);
         // Followed once: a link to another link would otherwise be counted as its path text.
         text = target && !repo.links.includes(target) ? await get(target) : null;
       }
       if (text === null) read.failed.push(path);
       return text;
     },
-    { failed: [] as string[] },
+    { failed: [] as string[], targets: new Map<string, string>() },
   );
   return read;
 }

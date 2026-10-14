@@ -104,6 +104,57 @@ describe('sections', () => {
   });
 });
 
+describe('line numbers', () => {
+  const API = [
+    '## API package',
+    '',
+    'The API lives in `packages/api/` and its handlers are in `packages/api/handlers/`.',
+    'Every handler in `packages/api/handlers/` must validate input with the shared schema module.',
+    'Database access goes through `packages/api/db.ts` only; do not import the driver elsewhere.',
+    'Write integration tests for handlers next to them in `packages/api/handlers/`.',
+    'Use structured logging in the API package and never log request bodies or headers.',
+    'Return problem+json errors from the API with a stable error code for each failure.',
+    'Old helpers were in `packages/api/legacy.ts` and must not be used.',
+  ];
+  const exists = (p: string) => ['packages', 'packages/api', 'packages/api/handlers', 'packages/api/db.ts'].includes(p);
+  const lineOf = (text: string, needle: string) => text.split(/\r?\n/).findIndex((l) => l.startsWith(needle)) + 1;
+
+  it('points at the line in the file on disk for the mixed fixture', () => {
+    const raw = mixed.find((f) => f.path === 'CLAUDE.md')!.text;
+    expect(of('scopable-section').find((a) => a.paths[0] === 'CLAUDE.md')!.line).toBe(lineOf(raw, '## API package'));
+    const stale = of('stale-reference').find((a) => a.paths[0] === 'CLAUDE.md')!;
+    expect(stale.line).toBe(lineOf(raw, 'Old helpers'));
+    expect(stale.message).toContain(`(line ${lineOf(raw, 'Old helpers')})`);
+    const conflict = of('contradiction').find((a) => a.message.includes('package manager'))!;
+    expect(conflict.message).toContain(`(CLAUDE.md:${lineOf(raw, 'Always use pnpm')})`);
+  });
+
+  it('counts the HTML comments that Claude Code strips from CLAUDE.md', () => {
+    for (const eol of ['\n', '\r\n']) {
+      const text = ['# Guide', '', '<!--', 'A note for maintainers', 'over several lines.', '-->', '', 'Use pnpm.', '', ...API].join(eol);
+      const files = [{ path: 'CLAUDE.md', text }];
+      const advice = buildAdvice(classify(files, ['claude-code']), files, { exists });
+      expect(advice.find((a) => a.kind === 'scopable-section')!.line).toBe(10);
+      const stale = advice.find((a) => a.kind === 'stale-reference')!;
+      expect(stale.line).toBe(18);
+      expect(stale.message).toContain('packages/api/legacy.ts (line 18)');
+    }
+  });
+
+  it('counts the frontmatter of rule files', () => {
+    const rules = [
+      { path: '.claude/rules/api.md', tool: 'claude-code' as const, fm: ['---', 'description: API notes', '---'] },
+      { path: '.cursor/rules/api.mdc', tool: 'cursor' as const, fm: ['---', 'description: API notes', 'alwaysApply: true', '---'] },
+    ];
+    for (const r of rules) {
+      const files = [{ path: r.path, text: [...r.fm, '', ...API].join('\r\n') }];
+      const advice = buildAdvice(classify(files, [r.tool]), files, { exists });
+      expect(advice.find((a) => a.kind === 'scopable-section')!.line).toBe(r.fm.length + 2);
+      expect(advice.find((a) => a.kind === 'stale-reference')!.line).toBe(r.fm.length + 10);
+    }
+  });
+});
+
 describe('size limits', () => {
   it('flags CLAUDE.md over 200 lines and Codex AGENTS.md over 32 KiB', () => {
     const files = [
@@ -182,5 +233,25 @@ describe('non-English text', () => {
   it('guesses scripts and leaves English alone', () => {
     expect(guessLanguage('Always run the tests before you commit and keep the change small and focused on one thing.').nonEnglish).toBe(false);
     expect(guessLanguage('Всегда запускайте тесты перед коммитом и держите изменения маленькими и сфокусированными.').script).toBe('Cyrillic');
+  });
+});
+
+describe('false positives found in the State of report', () => {
+  it('leaves terse English without stopwords alone', () => {
+    const terse = '- Build: pnpm build\n- Lint: pnpm lint --fix\n- Types: pnpm typecheck\n- Docs: pnpm docs:dev\n- Release: changesets, conventional commits, squash merges only\n- Style: prettier, eslint, strict TypeScript, named exports';
+    expect(guessLanguage(terse).nonEnglish).toBe(false);
+  });
+
+  it('does not suggest moving a section into a folder that does not exist', () => {
+    const files = [{ path: 'CLAUDE.md', text: mixed.find((f) => f.path === 'CLAUDE.md')!.text }];
+    const units = classify(files, ['claude-code']);
+    expect(buildAdvice(units, files, { exists: () => false }).some((a) => a.kind === 'scopable-section')).toBe(false);
+    expect(buildAdvice(units, files, { exists: (p) => p.startsWith('packages') }).some((a) => a.kind === 'scopable-section')).toBe(true);
+  });
+
+  it('does not check paths that leave the repository', () => {
+    const files = [{ path: 'CLAUDE.md', text: 'Shared config lives in `../shared/config.json` next to this repository.\n' }];
+    const a = buildAdvice(classify(files, ['claude-code']), files, { exists: (p) => p === '..' });
+    expect(a.some((x) => x.kind === 'stale-reference')).toBe(false);
   });
 });

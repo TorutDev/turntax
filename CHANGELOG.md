@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 (2026-10-14)
+
+- The web page previews `--fix` for any loaded repository or folder, with the agents you use as checkboxes and a downloadable `fix.patch`.
+- The GitHub Action marks each finding on its line in the pull request (`annotations` input, `--annotations` and `--path-prefix` in the CLI), and the pull request comment lists the safe fixes with their diff.
+- `turntax.config.json` (or `--config <file>`) holds defaults for `tools`, `models`, `turns`, `maxTokens`, `maxIncrease`, `sectionTokens` and `ignore` globs; flags override it.
+- When `--tools` narrows `--fix`, a moved section's message names the agents outside `--tools` that stop reading it.
+- A notice when a selected model's price was checked more than 90 days ago.
+- The web page accepts GitHub links to a folder (`/tree/main/packages/api`) and analyses the whole repository at that branch.
+- Fixed: advice line numbers now point at the line in the file, also when a CLAUDE.md has HTML comments or a rule has frontmatter.
+
 ## 0.4.0 (2026-10-13)
 
 - `--fix` prints a diff of safe fixes: duplicate lines an agent already reads every turn from another file, sections that can load only in the folder they are about (moved to a nested `CLAUDE.md` / `AGENTS.md` or a Claude Code rule with `paths:`), and `.md` files in `.cursor/rules` renamed to `.mdc`. `--write` applies them.

@@ -68,6 +68,43 @@ describe('fetchRepoTree', () => {
     expect((fetchFn.mock.calls[0] as unknown as [string])[0]).toBe('https://api.github.com/repos/o/r/git/trees/feature/a%20b?recursive=1');
   });
 
+  it('treats the part after the ref in a /tree/ URL as a folder when the full ref is missing', async () => {
+    const fetchFn = vi.fn(async (url: string) =>
+      url.includes('/git/trees/main?') ? jsonResponse({ truncated: false, tree: [{ path: 'AGENTS.md', type: 'blob' }] }) : jsonResponse({ message: 'Not Found' }, 404),
+    );
+    const tree = await fetchRepoTree(parseRepoInput('https://github.com/o/r/tree/main/packages/api/src')!, asFetch(fetchFn));
+    expect(tree).toMatchObject({ ref: 'main', subdir: 'packages/api/src', paths: ['AGENTS.md'] });
+    expect(fetchFn.mock.calls.map((c) => c[0])).toEqual([
+      'https://api.github.com/repos/o/r/git/trees/main/packages/api/src?recursive=1',
+      'https://api.github.com/repos/o/r/git/trees/main?recursive=1',
+    ]);
+  });
+
+  it('keeps a branch name with a slash when it resolves', async () => {
+    const fetchFn = vi.fn(async () => jsonResponse({ truncated: false, tree: [] }));
+    const tree = await fetchRepoTree({ owner: 'o', name: 'r', ref: 'feature/x' }, asFetch(fetchFn));
+    expect(tree.ref).toBe('feature/x');
+    expect(tree).not.toHaveProperty('subdir');
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives up after three tree requests and names the ref as given', async () => {
+    const fetchFn = vi.fn(async () => jsonResponse({ message: 'Not Found' }, 404));
+    await expect(fetchRepoTree({ owner: 'o', name: 'r', ref: 'main/a/b/c' }, asFetch(fetchFn))).rejects.toThrow(
+      'Branch, tag or commit "main/a/b/c" not found in o/r, or the repository is private.',
+    );
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not retry other errors or the default branch', async () => {
+    const limited = vi.fn(async () => jsonResponse({}, 403, { 'x-ratelimit-remaining': '0' }));
+    await expect(fetchRepoTree({ owner: 'o', name: 'r', ref: 'main/docs' }, asFetch(limited))).rejects.toThrow(/60 per hour/);
+    expect(limited).toHaveBeenCalledTimes(1);
+    const missing = vi.fn(async (url: string) => (url.endsWith('/repos/o/r') ? jsonResponse({ default_branch: 'release/1' }) : jsonResponse({}, 404)));
+    await expect(fetchRepoTree({ owner: 'o', name: 'r' }, asFetch(missing))).rejects.toThrow(GitHubError);
+    expect(missing).toHaveBeenCalledTimes(2);
+  });
+
   it('explains a missing or private repository', async () => {
     const fetchFn = vi.fn(async () => jsonResponse({ message: 'Not Found' }, 404));
     const err = await fetchRepoTree({ owner: 'o', name: 'r' }, asFetch(fetchFn)).catch((e: unknown) => e);
@@ -123,6 +160,7 @@ describe('rawReader', () => {
     const read = rawReader({ ...repo, links: ['docs/CLAUDE.md'] }, asFetch(fetchFn));
     expect(await read('docs/CLAUDE.md')).toBe('shared rules');
     expect((fetchFn.mock.calls[1] as unknown as [string])[0]).toBe('https://raw.githubusercontent.com/o/r/release/1.0/AGENTS.md');
+    expect(read.targets).toEqual(new Map([['docs/CLAUDE.md', 'AGENTS.md']]));
   });
 
   it('does not count a link to another link as text', async () => {

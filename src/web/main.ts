@@ -1,11 +1,12 @@
 import { audit, type Report } from '../core/audit.js';
 import { addImports, isInstructionFile, isSkippedDir } from '../core/files.js';
+import { planWebFixes } from './fixes.js';
 import { fetchRepoTree, GitHubError, parseRepoInput, rawReader } from './github.js';
 import { DEFAULT_MODEL_IDS, MODELS } from '../core/prices.js';
 import { SAMPLE_REPO } from './sample.js';
 import { badgeMarkdown, fmtTokens, fmtUsd, groupFiles, groupTools, renderMarkdown } from '../core/render.js';
 import { TOOLS } from '../core/tools.js';
-import type { RepoFile } from '../core/types.js';
+import type { RepoFile, ToolId } from '../core/types.js';
 
 /**
  * Browser front end. Everything runs locally with the offline o200k tokenizer.
@@ -29,12 +30,26 @@ interface LoadedRepo {
   truncated: boolean;
 }
 
-const state: { files: Map<string, RepoFile>; allPaths: Set<string> | null; report: Report | null; repo: LoadedRepo | null } = {
+const state: {
+  files: Map<string, RepoFile>;
+  allPaths: Set<string> | null;
+  /** Symlinks of loaded GitHub repositories and the paths they point to; fixes leave them alone. */
+  linked: Set<string>;
+  report: Report | null;
+  repo: LoadedRepo | null;
+  /** The patch shown in the Fixes panel. */
+  fixDiff: string;
+} = {
   files: new Map(),
   allPaths: null,
+  linked: new Set(),
   report: null,
   repo: null,
+  fixDiff: '',
 };
+
+/** Agents unchecked under "Agents you use"; kept while the page is open. */
+const fixExcluded = new Set<ToolId>();
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -153,6 +168,7 @@ async function loadRepo(input: string, fromLink = false): Promise<void> {
   repoStatus('');
   state.files.clear();
   state.allPaths = null;
+  state.linked.clear();
   setRepo(null, fromLink);
   const gen = generation;
   const current = () => gen === generation;
@@ -162,11 +178,15 @@ async function loadRepo(input: string, fromLink = false): Promise<void> {
     const read = rawReader(tree);
     await loadSource({ paths: new Set(tree.paths.filter(keepPath)), read }, current);
     if (!current()) return;
+    for (const p of [...tree.links, ...read.targets.values()]) state.linked.add(p);
     const where = `${tree.owner}/${tree.name}@${tree.ref}`;
-    if (!state.files.size) repoStatus(`No agent instruction files found in ${where}.${tree.truncated ? ` ${TRUNCATED_NOTE}` : ''}`);
+    const notes: string[] = [];
+    if (tree.subdir) notes.push(`Showing the whole repository at ${tree.ref}; folder ${tree.subdir} is not analysed on its own.`);
+    if (!state.files.size) notes.push(`No agent instruction files found in ${where}.${tree.truncated ? ` ${TRUNCATED_NOTE}` : ''}`);
     else setRepo({ owner: tree.owner, name: tree.name, ref: tree.ref, explicitRef: !!repo.ref, truncated: tree.truncated });
     if (read.failed.length)
-      repoStatus(`${read.failed.length} file(s) could not be downloaded and are not counted: ${read.failed.slice(0, 5).join(', ')}${read.failed.length > 5 ? ', …' : ''}`, true);
+      notes.push(`${read.failed.length} file(s) could not be downloaded and are not counted: ${read.failed.slice(0, 5).join(', ')}${read.failed.length > 5 ? ', …' : ''}`);
+    repoStatus(notes.join(' '), read.failed.length > 0);
   } catch (e) {
     if (!current()) return;
     repoStatus(e instanceof GitHubError ? e.message : 'Could not load the repository.', true);
@@ -327,11 +347,58 @@ function renderFiles(report: Report): void {
   );
 }
 
+function renderFixAgents(report: Report): void {
+  $('fix-agents').replaceChildren(
+    ...report.tools.map((t) => {
+      const input = el('input', { type: 'checkbox' }) as HTMLInputElement;
+      input.checked = !fixExcluded.has(t.tool);
+      input.addEventListener('change', () => {
+        if (input.checked) fixExcluded.delete(t.tool);
+        else fixExcluded.add(t.tool);
+        renderFixes(report);
+      });
+      return el('label', {}, input, ` ${t.name}`);
+    }),
+  );
+}
+
+function renderFixes(report: Report): void {
+  const agents = report.tools.map((t) => t.tool);
+  const kept = agents.filter((id) => !fixExcluded.has(id));
+  // All checked is the CLI default: keep the context of every supported agent.
+  const plan = planWebFixes(
+    { files: [...state.files.values()], paths: state.allPaths ?? [], linked: state.linked },
+    kept.length === agents.length ? undefined : kept,
+  );
+  state.fixDiff = plan.diff;
+  $('fix-list').replaceChildren(
+    ...(plan.changes.length
+      ? plan.fixes.map((f) =>
+          el(
+            'li',
+            {},
+            el('p', {}, f.message),
+            ...(f.savingTokens ? [el('p', { class: 'muted small saving' }, `Saves about ${fmtTokens(f.savingTokens)} o200k tokens per turn.`)] : []),
+          ),
+        )
+      : [el('li', {}, 'Nothing to fix automatically.')]),
+  );
+  $('fix-skipped').hidden = !plan.skipped.length;
+  $('fix-skipped-count').textContent = String(plan.skipped.length);
+  $('fix-skipped-list').replaceChildren(
+    ...plan.skipped.map((s) => el('li', {}, el('span', { class: 'muted' }, `${s.kind.replace(/-/g, ' ')}: `), s.reason)),
+  );
+  $('fix-actions').hidden = !plan.changes.length;
+  $('fix-diff').textContent = plan.diff;
+}
+
 function renderReport(report: Report): void {
   $('results').hidden = false;
   renderCards(report);
   renderChart(report);
   renderAdvice(report);
+  renderFixAgents(report);
+  renderFixes(report);
   renderFiles(report);
   ($('badge') as HTMLTextAreaElement).value = badgeMarkdown(report);
 }
@@ -398,6 +465,7 @@ function setupInputs(): void {
   $('sample').addEventListener('click', async () => {
     state.files.clear();
     state.allPaths = null;
+    state.linked.clear();
     setRepo(null);
     for (const f of SAMPLE_REPO) state.files.set(f.path, f);
     await run();
@@ -415,6 +483,7 @@ function setupInputs(): void {
   $('clear').addEventListener('click', () => {
     state.files.clear();
     state.allPaths = null;
+    state.linked.clear();
     setRepo(null);
     void run();
   });
@@ -427,12 +496,18 @@ function setupInputs(): void {
   $('copy-install').addEventListener('click', () => void navigator.clipboard.writeText('npx turntax'));
   $('copy-badge').addEventListener('click', () => void navigator.clipboard.writeText(($('badge') as HTMLTextAreaElement).value));
   $('download-md').addEventListener('click', () => {
-    if (!state.report) return;
-    const url = URL.createObjectURL(new Blob([renderMarkdown(state.report)], { type: 'text/markdown' }));
-    const a = el('a', { href: url, download: 'turntax-report.md' });
-    a.click();
-    URL.revokeObjectURL(url);
+    if (state.report) download('turntax-report.md', renderMarkdown(state.report), 'text/markdown');
   });
+  $('download-patch').addEventListener('click', () => {
+    if (state.fixDiff) download('fix.patch', state.fixDiff, 'text/x-diff');
+  });
+  $('copy-diff').addEventListener('click', () => void navigator.clipboard.writeText(state.fixDiff));
+}
+
+function download(name: string, text: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  el('a', { href: url, download: name }).click();
+  URL.revokeObjectURL(url);
 }
 
 setupAgents();
