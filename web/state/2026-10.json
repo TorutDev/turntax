@@ -1,13 +1,13 @@
 {
- "generatedAt": "2026-10-14T07:41:09.426Z",
+ "generatedAt": "2026-10-14T07:59:51.912Z",
  "turntaxVersion": "0.5.0",
- "engineCommit": "5f2ff39f8b3e7ec8e475327feea6bd1fcd6251d8",
+ "engineCommit": "898cc13ac754d0d954fdde40882b930c891ce204",
  "selection": {
   "query": "stars:>=1000 archived:false fork:false is:public pushed:>=2026-07-14",
   "sort": "stars desc",
   "pushedSince": "2026-07-14",
   "minStars": 1000,
-  "searchTotal": 28274,
+  "searchTotal": 28273,
   "searchFetched": 1000,
   "searchIncomplete": false,
   "scanned": 163,
@@ -57,10 +57,10 @@
   {
    "rank": 6,
    "full_name": "openclaw/openclaw",
-   "stars": 391937,
+   "stars": 391936,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "addf1939d32103d2f4ffba3d6773b7f0995c2b8b",
+   "sha": "dce5ffaacbcfa7a421d8e29f13b834c678ddbe51",
    "files": [
     { "path": ".agents/skills/agent-transcript/SKILL.md", "o200k": 558 },
     { "path": ".agents/skills/auto-qa/SKILL.md", "o200k": 3299 },
@@ -171,7 +171,7 @@
   {
    "rank": 9,
    "full_name": "vinta/awesome-python",
-   "stars": 327273,
+   "stars": 327274,
    "language": "Python",
    "default_branch": "master",
    "sha": "ba49ec7245ec97ba4d4a7b794f985e81548f3bb4",
@@ -198,7 +198,7 @@
   {
    "rank": 11,
    "full_name": "obra/superpowers",
-   "stars": 298817,
+   "stars": 298826,
    "language": "Shell",
    "default_branch": "main",
    "sha": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
@@ -222,7 +222,7 @@
   {
    "rank": 12,
    "full_name": "mattpocock/skills",
-   "stars": 290177,
+   "stars": 290206,
    "language": "Shell",
    "default_branch": "main",
    "sha": "49dd158d1076134a641b33efb035946536778336",
@@ -249,7 +249,7 @@
   {
    "rank": 14,
    "full_name": "affaan-m/ECC",
-   "stars": 278783,
+   "stars": 278796,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "b92f181b3b748d1abbc2afd94af6aa7d8c8fca29",
@@ -399,7 +399,7 @@
   {
    "rank": 15,
    "full_name": "NousResearch/hermes-agent",
-   "stars": 253591,
+   "stars": 253598,
    "language": "Python",
    "default_branch": "main",
    "sha": "0e427d788d253630d38a3a51cd76849e73cd6925",
@@ -482,7 +482,7 @@
   {
    "rank": 18,
    "full_name": "deepseek-ai/deepseek-harness",
-   "stars": 249267,
+   "stars": 249272,
    "language": "TypeScript",
    "default_branch": "master",
    "sha": "d743267388641bc76f17c45ce8b4c231aed1d32c",
@@ -552,7 +552,7 @@
   {
    "rank": 19,
    "full_name": "TheAlgorithms/Python",
-   "stars": 225237,
+   "stars": 225238,
    "language": "Python",
    "default_branch": "master",
    "sha": "e1a2a8b016001309a73d5fec4818c35cca139795",
@@ -573,20 +573,20 @@
   {
    "rank": 20,
    "full_name": "morluto/rea",
-   "stars": 219661,
+   "stars": 220242,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "307af044bc0bdc15bc836c549e774220af8f459e",
+   "sha": "cf6ea097116bdf3578b1e02e35c772d8aa92db00",
    "files": [
     { "path": ".agents/skills/rea-changelog-update/SKILL.md", "o200k": 1552 },
     { "path": ".agents/skills/rea-ci-tests-audit/SKILL.md", "o200k": 1267 },
     { "path": ".agents/skills/rea-tool-design/SKILL.md", "o200k": 181 },
     { "path": ".agents/skills/reverse-engineer-anything/SKILL.md", "o200k": 4817 },
-    { "path": "AGENTS.md", "o200k": 1804 },
+    { "path": "AGENTS.md", "o200k": 2023 },
     { "path": "website/AGENTS.md", "o200k": 820 }
    ],
-   "agents": { "claude-code": 1804, "codex": 1971, "cursor": 1804, "copilot": 1804, "windsurf": 1804, "roo-code": 1804, "kiro": 1804, "junie": 1804, "zed": 1804, "goose": 1804, "amp": 1804, "opencode": 1804 },
-   "maxPerTurn": { "o200k": 1971, "agent": "codex" },
+   "agents": { "claude-code": 2023, "codex": 2190, "cursor": 2023, "copilot": 2023, "windsurf": 2023, "roo-code": 2023, "kiro": 2023, "junie": 2023, "zed": 2023, "goose": 2023, "amp": 2023, "opencode": 2023 },
+   "maxPerTurn": { "o200k": 2190, "agent": "codex" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -602,7 +602,7 @@
   {
    "rank": 21,
    "full_name": "anomalyco/opencode",
-   "stars": 213334,
+   "stars": 213341,
    "language": "TypeScript",
    "default_branch": "dev",
    "sha": "3a69bae8459b1aa9b122456a55d9535b23125f33",
@@ -643,10 +643,10 @@
   {
    "rank": 23,
    "full_name": "n8n-io/n8n",
-   "stars": 207314,
+   "stars": 207316,
    "language": "TypeScript",
    "default_branch": "master",
-   "sha": "d83f95b37720e621feb5c091ff5c4523b10690b7",
+   "sha": "da3491fc8786525670e24d35a2c136a0482b32cc",
    "files": [
     { "path": ".agents/skills/agent-design-language/SKILL.md", "o200k": 206 },
     { "path": ".agents/skills/AGENTS.md", "o200k": 443 },
@@ -726,10 +726,10 @@
   {
    "rank": 25,
    "full_name": "tensorflow/tensorflow",
-   "stars": 200953,
+   "stars": 200954,
    "language": "C++",
    "default_branch": "master",
-   "sha": "c2d20ed547c29aaebf67979fbb2e3dd95b5efb6d",
+   "sha": "93c25e08ab544051c88f6c09a9783272049a0503",
    "files": [
     { "path": "third_party/xla/AGENTS.md", "o200k": 136 },
     { "path": "third_party/xla/xla/AGENTS.md", "o200k": 1761 },
@@ -784,7 +784,7 @@
   {
    "rank": 30,
    "full_name": "microsoft/vscode",
-   "stars": 193761,
+   "stars": 193763,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "76e9dff43b237f3fcbb8a289ed2f8bdf28105baf",
@@ -846,7 +846,7 @@
   {
    "rank": 31,
    "full_name": "firecrawl/firecrawl",
-   "stars": 191320,
+   "stars": 191326,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "f4fdf7f300415180f45272e893918dbfa3649073",
@@ -870,7 +870,7 @@
   {
    "rank": 34,
    "full_name": "avelino/awesome-go",
-   "stars": 188308,
+   "stars": 188309,
    "language": "Go",
    "default_branch": "main",
    "sha": "97f67008f6cee4bd641150cfb26a2be06a7dfa93",
@@ -900,7 +900,7 @@
   {
    "rank": 35,
    "full_name": "Significant-Gravitas/AutoGPT",
-   "stars": 187566,
+   "stars": 187565,
    "language": "Python",
    "default_branch": "master",
    "sha": "0edeafc5902fb07c89bb6ebd8c5374621b5c6bf6",
@@ -959,7 +959,7 @@
   {
    "rank": 37,
    "full_name": "ollama/ollama",
-   "stars": 183092,
+   "stars": 183094,
    "language": "Go",
    "default_branch": "main",
    "sha": "8718c2bd2363c3f9f422d82bbad322bc2b791d60",
@@ -981,10 +981,10 @@
   {
    "rank": 40,
    "full_name": "flutter/flutter",
-   "stars": 180144,
+   "stars": 180145,
    "language": "Dart",
    "default_branch": "master",
-   "sha": "1d71d2fd583ba7d25ea7f491b28293fe0d3ca9a5",
+   "sha": "84d209df3544763fd3f2b28263687a7ddacfa843",
    "files": [
     { "path": ".agents/skills/analyze-github-flake/SKILL.md", "o200k": 1089 },
     { "path": ".agents/skills/bump-dart/SKILL.md", "o200k": 1050 },
@@ -1041,7 +1041,7 @@
   {
    "rank": 43,
    "full_name": "f/prompts.chat",
-   "stars": 172902,
+   "stars": 172906,
    "language": "HTML",
    "default_branch": "main",
    "sha": "bbd0529530d99fa76ab2f51809b6184ea4b625b8",
@@ -1065,10 +1065,10 @@
   {
    "rank": 44,
    "full_name": "huggingface/transformers",
-   "stars": 167701,
+   "stars": 167702,
    "language": "Python",
    "default_branch": "main",
-   "sha": "28034545c35acac05793695bd5c878f66e6b544e",
+   "sha": "08917bd9e73d7e0472550783b05255c202faa0c2",
    "files": [
     { "path": ".ai/AGENTS.md", "o200k": 792 },
     { "path": ".github/copilot-instructions.md", "o200k": 773 },
@@ -1093,7 +1093,7 @@
   {
    "rank": 45,
    "full_name": "DietrichGebert/ponytail",
-   "stars": 162999,
+   "stars": 163013,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "2961b52fc1fe6a5a87c7a959a79512e5c2f3ffe5",
@@ -1122,10 +1122,10 @@
   {
    "rank": 48,
    "full_name": "langgenius/dify",
-   "stars": 158414,
+   "stars": 158417,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "2bb1b113343fc6e96e888c70f52ea2108c3a3675",
+   "sha": "e421dcc1f53291e79dd62ae63f10e1d92d283ba3",
    "files": [
     { "path": ".agents/skills/backend-code-review/SKILL.md", "o200k": 534 },
     { "path": ".agents/skills/e2e-cucumber-playwright/SKILL.md", "o200k": 556 },
@@ -1157,7 +1157,7 @@
   {
    "rank": 49,
    "full_name": "langflow-ai/langflow",
-   "stars": 155643,
+   "stars": 155645,
    "language": "Python",
    "default_branch": "main",
    "sha": "a21cd0b51bcc0bc9dfe1865465aad6f41c242a9a",
@@ -1194,7 +1194,7 @@
   {
    "rank": 52,
    "full_name": "clash-verge-rev/clash-verge-rev",
-   "stars": 151224,
+   "stars": 151230,
    "language": "Rust",
    "default_branch": "dev",
    "sha": "d4287970bc7dbe3430c9a33bf2922e355c92c0be",
@@ -1221,7 +1221,7 @@
   {
    "rank": 53,
    "full_name": "anthropics/claude-code",
-   "stars": 150711,
+   "stars": 150712,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "9b4f0d6ef8ceaf62f6b46babb9a4d84bec541a2e",
@@ -1268,7 +1268,7 @@
   {
    "rank": 57,
    "full_name": "vercel/next.js",
-   "stars": 143236,
+   "stars": 143237,
    "language": "JavaScript",
    "default_branch": "canary",
    "sha": "8521c6ae04998fc8ff87ae0d3de24e1fa4e88803",
@@ -1344,7 +1344,7 @@
   {
    "rank": 59,
    "full_name": "Shubhamsaboo/awesome-llm-apps",
-   "stars": 141649,
+   "stars": 141651,
    "language": "Python",
    "default_branch": "main",
    "sha": "4bf51ab704fb2c5b3803cd5191b30d7dcdb51dc2",
@@ -1368,7 +1368,7 @@
   {
    "rank": 60,
    "full_name": "github/spec-kit",
-   "stars": 141190,
+   "stars": 141192,
    "language": "Python",
    "default_branch": "main",
    "sha": "96774bc52fd7dccc7185791e1cac7572b9e09dea",
@@ -1389,7 +1389,7 @@
   {
    "rank": 62,
    "full_name": "ripienaar/free-for-dev",
-   "stars": 139505,
+   "stars": 139508,
    "language": "HTML",
    "default_branch": "master",
    "sha": "11383aa2d027c59a08f317dde660dd543f12f45a",
@@ -1413,7 +1413,7 @@
   {
    "rank": 63,
    "full_name": "golang/go",
-   "stars": 139350,
+   "stars": 139352,
    "language": "Go",
    "default_branch": "master",
    "sha": "e60b4c37fa344513cdecfffe6efc3ca48c4a6cb2",
@@ -1438,7 +1438,7 @@
    "stars": 139289,
    "language": "C",
    "default_branch": "main",
-   "sha": "1a87b3f285481ba061e37c93bd28c0214f122514",
+   "sha": "da5def38f7ebaa259ef482101ea47776297e1e9c",
    "files": [
     { "path": ".claude/CLAUDE.md", "o200k": 313, "linkTo": ".github/copilot-instructions.md" },
     { "path": ".github/copilot-instructions.md", "o200k": 313 },
@@ -1472,7 +1472,7 @@
   {
    "rank": 65,
    "full_name": "Comfy-Org/ComfyUI",
-   "stars": 137403,
+   "stars": 137406,
    "language": "Python",
    "default_branch": "master",
    "sha": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
@@ -1495,7 +1495,7 @@
   {
    "rank": 66,
    "full_name": "garrytan/gstack",
-   "stars": 136342,
+   "stars": 136344,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "15ebd85cdde6c9a1b2fb707e8573aec18e8f7438",
@@ -1521,7 +1521,7 @@
   {
    "rank": 67,
    "full_name": "nextlevelbuilder/ui-ux-pro-max-skill",
-   "stars": 135622,
+   "stars": 135625,
    "language": "Python",
    "default_branch": "main",
    "sha": "7246805992a42b7bba37d4cac83b01416f0c6c44",
@@ -1556,7 +1556,7 @@
   {
    "rank": 68,
    "full_name": "excalidraw/excalidraw",
-   "stars": 133837,
+   "stars": 133839,
    "language": "TypeScript",
    "default_branch": "master",
    "sha": "541653c7c9d587d463a47daacff9fb30e45a52e7",
@@ -1626,7 +1626,7 @@
   {
    "rank": 73,
    "full_name": "openai/codex",
-   "stars": 129115,
+   "stars": 129117,
    "language": "Rust",
    "default_branch": "main",
    "sha": "97771b1d78cf6366bc3946fe9e4bbca4ebee31d1",
@@ -1648,10 +1648,10 @@
   {
    "rank": 74,
    "full_name": "kubernetes/kubernetes",
-   "stars": 128340,
+   "stars": 128341,
    "language": "Go",
    "default_branch": "master",
-   "sha": "a8b7c6042103448ba1bb9ec01b052b88d2c4c675",
+   "sha": "19c504053ed551f6e5ab5b5fd7c3345a6dcd8593",
    "files": [
     { "path": "AGENTS.md", "o200k": 377 }
    ],
@@ -1695,7 +1695,7 @@
   {
    "rank": 76,
    "full_name": "Graphify-Labs/graphify",
-   "stars": 126264,
+   "stars": 126265,
    "language": "Python",
    "default_branch": "v8",
    "sha": "041771be72229bb2c8d8205b9cc6871c6be52b91",
@@ -1716,7 +1716,7 @@
   {
    "rank": 77,
    "full_name": "rustdesk/rustdesk",
-   "stars": 125763,
+   "stars": 125767,
    "language": "Rust",
    "default_branch": "master",
    "sha": "9997b7a3b871fe10c6b8d36652fb2e35afba76f8",
@@ -1742,7 +1742,7 @@
   {
    "rank": 78,
    "full_name": "shadcn-ui/ui",
-   "stars": 125548,
+   "stars": 125549,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "30a58d4498f270af1c1e981a7d78a15cf5740841",
@@ -1803,7 +1803,7 @@
   {
    "rank": 81,
    "full_name": "nodejs/node",
-   "stars": 122480,
+   "stars": 122481,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "87db28b6bac0bb3e2919a7843c02ff798a31cd1f",
@@ -1903,7 +1903,7 @@
   {
    "rank": 88,
    "full_name": "browser-use/browser-use",
-   "stars": 117915,
+   "stars": 117917,
    "language": "Python",
    "default_branch": "main",
    "sha": "c75e8476e26d18b7617643bc2ae082fae8eae431",
@@ -1929,7 +1929,7 @@
   {
    "rank": 92,
    "full_name": "earendil-works/pi",
-   "stars": 114986,
+   "stars": 114997,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "00d8d049552281f051418e52b5ffff34269a732a",
@@ -1952,7 +1952,7 @@
   {
    "rank": 94,
    "full_name": "JuliusBrussee/caveman",
-   "stars": 111585,
+   "stars": 111591,
    "language": "Go",
    "default_branch": "main",
    "sha": "d262ab3882952a59312ff3537cd86d894523c5ab",
@@ -2015,7 +2015,7 @@
   {
    "rank": 95,
    "full_name": "supabase/supabase",
-   "stars": 111514,
+   "stars": 111515,
    "language": "TypeScript",
    "default_branch": "master",
    "sha": "f1082e28c741c3fbaf792bd702ef3371d37d8914",
@@ -2176,7 +2176,7 @@
   {
    "rank": 103,
    "full_name": "google-gemini/gemini-cli",
-   "stars": 107335,
+   "stars": 107336,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "42c51822084ac25cd5d97ac0023822c5235f88c8",
@@ -2206,7 +2206,7 @@
   {
    "rank": 105,
    "full_name": "addyosmani/agent-skills",
-   "stars": 106367,
+   "stars": 106373,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "aeac41d4d005999432bb7312f7ff06383a91d59d",
@@ -2262,7 +2262,7 @@
   {
    "rank": 108,
    "full_name": "pytorch/pytorch",
-   "stars": 104878,
+   "stars": 104879,
    "language": "Python",
    "default_branch": "main",
    "sha": "7402bdbec6494134760b295102686e327f92fc78",
@@ -2314,7 +2314,7 @@
   {
    "rank": 109,
    "full_name": "neovim/neovim",
-   "stars": 103134,
+   "stars": 103136,
    "language": "Vim Script",
    "default_branch": "master",
    "sha": "6edb38ca982c96645185c82c1f5b5cb474487f71",
@@ -2356,7 +2356,7 @@
   {
    "rank": 112,
    "full_name": "paperclipai/paperclip",
-   "stars": 101749,
+   "stars": 101757,
    "language": "TypeScript",
    "default_branch": "master",
    "sha": "2c17d3ca52a7840f280f1dd87975a2ad77de3b35",
@@ -2460,7 +2460,7 @@
   {
    "rank": 114,
    "full_name": "nexu-io/open-design",
-   "stars": 101023,
+   "stars": 101029,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "1343f374c63d7866f4f3ff5d48ef038eba647f1b",
@@ -2512,7 +2512,7 @@
   {
    "rank": 115,
    "full_name": "thedotmack/claude-mem",
-   "stars": 100541,
+   "stars": 100546,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "fef3402e674bebbf72a23aeb735e91c92cd34afd",
@@ -2607,7 +2607,7 @@
   {
    "rank": 119,
    "full_name": "ruvnet/RuView",
-   "stars": 97879,
+   "stars": 97880,
    "language": "Rust",
    "default_branch": "main",
    "sha": "a1ca023ee872683d160250d47ae3d4d228af55a0",
@@ -3003,7 +3003,7 @@
   {
    "rank": 131,
    "full_name": "localsend/localsend",
-   "stars": 94327,
+   "stars": 94329,
    "language": "Dart",
    "default_branch": "main",
    "sha": "14f3a87426eedffaa9d87d011132eca5501abeb8",
@@ -3028,7 +3028,7 @@
   {
    "rank": 132,
    "full_name": "OpenCut-app/OpenCut",
-   "stars": 94202,
+   "stars": 94204,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "e668010778568641babef2cc40be4703ae6916d6",
@@ -3051,7 +3051,7 @@
   {
    "rank": 133,
    "full_name": "Stirling-Tools/Stirling-PDF",
-   "stars": 94165,
+   "stars": 94166,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "797b2e98feb0a395054a8b223f87c8a08bb486ec",
@@ -3093,10 +3093,10 @@
   {
    "rank": 135,
    "full_name": "vllm-project/vllm",
-   "stars": 93747,
+   "stars": 93749,
    "language": "Python",
    "default_branch": "main",
-   "sha": "ec8a3725668418b156fe2fd5c85ae3b1b9e37ad9",
+   "sha": "aa0c433a3e5ee65641b7996e56c018ce91f9273d",
    "files": [
     { "path": ".agents/skills/check-api-compat/SKILL.md", "o200k": 1401 },
     { "path": ".agents/skills/ci-fails-buildkite/SKILL.md", "o200k": 372 },
@@ -3130,7 +3130,7 @@
   {
    "rank": 137,
    "full_name": "louislam/uptime-kuma",
-   "stars": 92433,
+   "stars": 92434,
    "language": "JavaScript",
    "default_branch": "master",
    "sha": "b092505f894d66669b67f46e1da72b51016eceab",
@@ -3156,10 +3156,10 @@
   {
    "rank": 138,
    "full_name": "infiniflow/ragflow",
-   "stars": 92178,
+   "stars": 92180,
    "language": "Go",
    "default_branch": "main",
-   "sha": "fe12d531399a2d4beefab9239c63dfab65162858",
+   "sha": "c2457770a90332487c67f57f73bc3d9a6808e119",
    "files": [
     { "path": ".agents/skills/go-naming/SKILL.md", "o200k": 74 },
     { "path": ".github/copilot-instructions.md", "o200k": 156 },
@@ -3183,10 +3183,10 @@
   {
    "rank": 139,
    "full_name": "stablyai/orca",
-   "stars": 91891,
+   "stars": 91905,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "80f038ed80ea8ea70ad88f942270e84919e092df",
+   "sha": "b84d371a9fa1c93bcd8fce16cdc30db0d8b6f000",
    "files": [
     { "path": "AGENTS.md", "o200k": 2863 },
     { "path": "CLAUDE.md", "o200k": 5 },
@@ -3208,7 +3208,7 @@
   {
    "rank": 140,
    "full_name": "zed-industries/zed",
-   "stars": 91697,
+   "stars": 91699,
    "language": "Rust",
    "default_branch": "main",
    "sha": "e18de65b75901f8720ff9c9320bb013395de54e5",
@@ -3247,7 +3247,7 @@
    "stars": 91563,
    "language": "Python",
    "default_branch": "dev",
-   "sha": "8c30e21da90455fda0343b4a8cd1214366e25d94",
+   "sha": "bc8dea32f1567ccd6b8c6224e58b35c086f0f136",
    "files": [
     { "path": ".claude/agents/raise-pull-request.md", "o200k": 2477 },
     { "path": ".claude/skills/bump-dependency/SKILL.md", "o200k": 1492 },
@@ -3381,7 +3381,7 @@
   {
    "rank": 144,
    "full_name": "storybookjs/storybook",
-   "stars": 91287,
+   "stars": 91288,
    "language": "TypeScript",
    "default_branch": "next",
    "sha": "8af3851827d5a18d570eba7d8b0a520b5d62727c",
@@ -3507,7 +3507,7 @@
   {
    "rank": 149,
    "full_name": "astral-sh/uv",
-   "stars": 90737,
+   "stars": 90738,
    "language": "Rust",
    "default_branch": "main",
    "sha": "62faed3351cfee2121b3c28b937b1f4b93233a93",
@@ -3602,7 +3602,7 @@
   {
    "rank": 161,
    "full_name": "Egonex-AI/Understand-Anything",
-   "stars": 86210,
+   "stars": 86214,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "f2d0164f72fe678805c34245a6df36acededfebd",
@@ -3625,7 +3625,7 @@
   {
    "rank": 162,
    "full_name": "unclecode/crawl4ai",
-   "stars": 85490,
+   "stars": 85492,
    "language": "Python",
    "default_branch": "main",
    "sha": "aadd82bebf989f1c36e1b557b8bb2b7c9dae393f",
@@ -3648,7 +3648,7 @@
   {
    "rank": 163,
    "full_name": "laravel/laravel",
-   "stars": 85099,
+   "stars": 85100,
    "language": "Blade",
    "default_branch": "13.x",
    "sha": "f4000aeb018fcbf71d4a13e3ee4b80c7e2d45be5",
@@ -3721,10 +3721,10 @@
    { "full_name": "JuliusBrussee/caveman", "o200k": 12187 },
    { "full_name": "browser-use/browser-use", "o200k": 11612 },
    { "full_name": "modelcontextprotocol/servers", "o200k": 11166 },
-   { "full_name": "oven-sh/bun", "o200k": 9030, "o200kLinksOnce": 4964 },
-   { "full_name": "ant-design/ant-design", "o200k": 7978, "o200kLinksOnce": 6339 },
-   { "full_name": "deepseek-ai/deepseek-harness", "o200k": 7948, "o200kLinksOnce": 5136 },
-   { "full_name": "pytorch/pytorch", "o200k": 7680, "o200kLinksOnce": 5021 }
+   { "full_name": "vercel/next.js", "o200k": 7254 },
+   { "full_name": "ant-design/ant-design", "o200k": 6339, "o200kBothNames": 7978 },
+   { "full_name": "n8n-io/n8n", "o200k": 6241 },
+   { "full_name": "denoland/deno", "o200k": 6070 }
   ]
  }
 }

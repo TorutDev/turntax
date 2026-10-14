@@ -392,8 +392,12 @@ function renderHeaviest(data) {
 }
 
 const EXACT_KINDS = ['duplicate', 'contradiction', 'misconfigured', 'size-limit', 'oversized-section'];
-/** High and medium findings of the exact checks; low ones (copies kept for different agents) cost no tokens. */
-const exactFindings = (r) => EXACT_KINDS.reduce((n, k) => n + (r.advice.byKind[k]?.high ?? 0) + (r.advice.byKind[k]?.medium ?? 0), 0);
+/**
+ * High and medium findings of the exact checks; low ones (copies kept for different agents) cost no tokens.
+ * A symlink and its target read under two names is a heuristic finding, so it is not counted here.
+ */
+const exactFindings = (r) =>
+  EXACT_KINDS.reduce((n, k) => n + (r.advice.byKind[k]?.high ?? 0) + (r.advice.byKind[k]?.medium ?? 0), 0) - (r.advice.duplicateLinkPairs?.high ?? 0);
 
 /** Table columns: sort key, header, and cell. */
 const COLUMNS = [

@@ -47,7 +47,8 @@ export interface FixOptions {
   /** Checks whether a repo-relative path exists; the folder a section is about is never created. */
   exists?: (path: string) => boolean;
   /** Files that must not be changed, such as symlinks and their targets. */
-  readOnly?: (path: string) => boolean;
+  /** Files that must not be changed; a string gives the reason shown when a fix is skipped. */
+  readOnly?: (path: string) => boolean | string;
 }
 
 const RANK: Record<LoadMode, number> = { ignored: 0, manual: 1, 'on-demand': 2, always: 3 };
@@ -168,12 +169,11 @@ export function planFixes(input: RepoFile[], opts: FixOptions = {}): FixPlan {
     opts.tools,
   );
   // Files reached only through @imports (a README, docs) are for people too; they are never changed.
-  const readOnly = (path: string): string | null =>
-    !isInstructionFile(path)
-      ? `${path} is not an agent instruction file (it is @imported); it is left alone.`
-      : opts.readOnly?.(path)
-        ? `${path} is a symlink, in a symlinked folder or the target of a symlink; it is left alone.`
-        : null;
+  const readOnly = (path: string): string | null => {
+    if (!isInstructionFile(path)) return `${path} is not an agent instruction file (it is @imported); it is left alone.`;
+    const reason = opts.readOnly?.(path);
+    return typeof reason === 'string' ? reason : reason ? `${path} is a symlink, in a symlinked folder or the target of a symlink; it is left alone.` : null;
+  };
   const original = new Map(ws.files);
   const renames = new Map<string, string>();
   const fixes: Fix[] = [];

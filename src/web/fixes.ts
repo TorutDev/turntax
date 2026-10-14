@@ -38,9 +38,13 @@ export function planWebFixes(src: FixSource, tools?: ToolId[]): WebFixPlan {
   const linked = linkedCheck(src.linked ?? []);
   const plan = planFixes(src.files, {
     tools,
-    exists: src.paths ? folderExists(known) : undefined,
+    // Without a path list (sample, pasted files) no folder is known to exist, so no section is moved.
+    exists: src.paths ? folderExists(known) : () => false,
     // A repository file that is not loaded (removed from the list, or not downloaded) is never written over.
     readOnly: (path) => linked(path) || (known.has(path) && !loaded.has(path)),
   });
-  return { ...plan, diff: unifiedDiff(plan.changes) };
+  const skipped = src.paths
+    ? plan.skipped
+    : plan.skipped.map((s) => ({ ...s, reason: s.reason.replace(/folder (\S+) does not exist\./, 'folder $1 is not known here; load the whole folder or repository to move sections.') }));
+  return { ...plan, skipped, diff: unifiedDiff(plan.changes) };
 }

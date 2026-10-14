@@ -108,6 +108,7 @@ describe('turntax.config.json', () => {
     expect(await main([dir, '--fix'], {})).toBe(0);
     expect(io.out()).not.toContain('wrong.md');
     expect(io.out()).not.toContain('packages/api/CLAUDE.md');
+    expect(io.err()).toContain(".cursor/rules/wrong.md is in the config's ignore list; it is left alone.");
   });
 
   it('reads a config saved with a byte order mark', async () => {

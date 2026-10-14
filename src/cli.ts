@@ -374,7 +374,11 @@ async function fix(
  */
 function fixPlan(root: string, discovered: RepoFile[], tools: ToolId[] | undefined, ignored: (path: string) => boolean): FixPlan {
   const linked = linkedPaths(root, discovered);
-  return planFixes(discovered, { tools, exists: existsIn(root), readOnly: (p) => ignored(p) || linked(p) });
+  return planFixes(discovered, {
+    tools,
+    exists: existsIn(root),
+    readOnly: (p) => (ignored(p) ? `${p} is in the config's ignore list; it is left alone.` : linked(p)),
+  });
 }
 
 /** The --fix command matching the run that made a pull request comment. */

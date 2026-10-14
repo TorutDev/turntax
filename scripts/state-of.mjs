@@ -9,7 +9,7 @@
  * Every file is read at the default branch's head commit, pinned by SHA.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -429,9 +429,14 @@ async function main() {
   const version = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version;
   const engineCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
   // The recorded commit must be the code that counted: no uncommitted engine changes.
-  const dirty = execFileSync('git', ['status', '--porcelain', '--', 'src', 'scripts', 'package.json'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  const dirty = execFileSync('git', ['status', '--porcelain', '--', 'src', 'scripts', 'package.json', 'package-lock.json'], { cwd: ROOT, encoding: 'utf8' }).trim();
   if (dirty) {
     console.error(`Uncommitted changes in the engine; commit them and run npm run build first:\n${dirty}`);
+    process.exit(1);
+  }
+  const committed = Number(execFileSync('git', ['log', '-1', '--format=%ct'], { cwd: ROOT, encoding: 'utf8' }).trim()) * 1000;
+  if (statSync(resolve(ROOT, 'dist/core/audit.js')).mtimeMs < committed) {
+    console.error('dist/ is older than the last commit; run npm run build first.');
     process.exit(1);
   }
 
