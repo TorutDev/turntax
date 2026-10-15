@@ -352,9 +352,30 @@ export function renderPrComment(report: Report, fixes?: FixPlan, fixCommand = 'n
   const fixPart = fixes?.changes.length ? ['', renderFixes(fixes, fixCommand)] : [];
   // GitHub rejects comments over 65,536 characters; everything but the full report counts against the limit.
   const limit = Math.max(0, COMMENT_LIMIT - [top, headline, ...fixPart].join('\n').length);
-  let full = renderMarkdown({ ...report, diff: undefined }).replace(/^# .*\n\n/, '');
+  // Headings and messages quote instruction files, which may contain @names; keep them from mentioning people.
+  let full = noMentions(renderMarkdown({ ...report, diff: undefined }).replace(/^# .*\n\n/, ''));
   if (full.length > limit) full = full.slice(0, limit) + '\n\n_Report cut to fit in a comment; run turntax locally for all of it._\n';
   return [PR_COMMENT_MARKER, top, '', headline, ...fixPart, '', '<details><summary>Full report</summary>', '', full, '</details>', ''].join('\n');
+}
+
+/** Breaks @name mentions in Markdown prose with a zero-width space; code spans and fenced blocks stay as they are. */
+export function noMentions(markdown: string): string {
+  let fence: string | null = null;
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+      if (marker && (fence === null || marker.startsWith(fence))) {
+        fence = fence === null ? marker : null;
+        return line;
+      }
+      if (fence !== null) return line;
+      return line
+        .split(/(`+[^`]*`+)/)
+        .map((part, i) => (i % 2 ? part : part.replace(/@(?=[A-Za-z0-9])/g, '@&#8203;')))
+        .join('');
+    })
+    .join('\n');
 }
 
 function renderFixes(plan: FixPlan, command: string): string {
@@ -374,8 +395,7 @@ function renderFixes(plan: FixPlan, command: string): string {
     '',
     '<details><summary>Fixes</summary>',
     '',
-    // Section headings in the messages may contain @names; keep them from mentioning people.
-    ...plan.fixes.map((f) => `- ${f.message.replace(/@(?=[A-Za-z0-9])/g, '@&#8203;')}`),
+    ...plan.fixes.map((f) => `- ${noMentions(f.message)}`),
     '',
     `${fence}diff`,
     diff.replace(/\n$/, ''),
