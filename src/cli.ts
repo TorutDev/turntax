@@ -15,6 +15,8 @@ import { countO200k } from './core/tokenize.js';
 import { TOOL_IDS } from './core/tools.js';
 import type { ModelInfo, RepoFile, ToolId } from './core/types.js';
 import { applyChanges } from './node/apply.js';
+import { runInit } from './node/init.js';
+import { runMcp } from './node/mcp-server.js';
 import { CONFIG_FILE, loadConfig, type Config } from './node/config.js';
 import { discover, discoverMcpConfigs, discoverUser, existsIn, linkedPaths, packageScripts } from './node/discover.js';
 import { filesAtRef } from './node/git.js';
@@ -27,6 +29,8 @@ const HELP = `turntax ${VERSION}
 Measure the token tax that agent instruction files add to every turn.
 
 Usage: turntax [path] [options]
+       turntax init [path]     Add the GitHub Action workflow and a turntax.config.json (see turntax init --help)
+       turntax mcp             Run turntax as an MCP server over stdio (see turntax mcp --help)
 
 Options:
   --tools <list>          Tools to report: ${TOOL_IDS.join(', ')} (default: tools with files)
@@ -95,6 +99,9 @@ function positiveInt(name: string, value: string | undefined, fallback: number):
 }
 
 export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env, now: Date = new Date()): Promise<number> {
+  // Subcommands; a folder named like one is audited as ./init or ./mcp.
+  if (argv[0] === 'init') return runInit(argv.slice(1));
+  if (argv[0] === 'mcp') return runMcp(argv.slice(1), env);
   let parsed;
   try {
     parsed = parseArgs({
