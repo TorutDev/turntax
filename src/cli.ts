@@ -6,7 +6,7 @@ import { hasNonEnglish } from './core/advice.js';
 import { audit, type AuditOptions, type McpMeasurement } from './core/audit.js';
 import { classify } from './core/classify.js';
 import { asDiffInput, diffReports, maxIncrease } from './core/diff.js';
-import { planFixes, unifiedDiff, type FixPlan } from './core/fix.js';
+import { unifiedDiff } from './core/fix.js';
 import { globMatcher } from './core/glob.js';
 import { parseMcpConfigs, serverKey, toolDefinitionsText, toolNamesText, type McpServer } from './core/mcp.js';
 import { DEFAULT_MODEL_IDS, MODELS, validateModels } from './core/prices.js';
@@ -18,7 +18,8 @@ import { applyChanges } from './node/apply.js';
 import { runInit } from './node/init.js';
 import { runMcp } from './node/mcp-server.js';
 import { CONFIG_FILE, loadConfig, type Config } from './node/config.js';
-import { discover, discoverMcpConfigs, discoverUser, existsIn, linkedPaths, packageScripts } from './node/discover.js';
+import { discover, discoverMcpConfigs, discoverUser, existsIn, packageScripts } from './node/discover.js';
+import { fixLines, fixPlan } from './node/fix-plan.js';
 import { filesAtRef } from './node/git.js';
 import { measureServer } from './node/mcp.js';
 import { anthropicCounter, geminiCounter, translateToEnglish } from './node/remote.js';
@@ -354,8 +355,7 @@ async function fix(
   const discovered = await discover(root);
   const plan = fixPlan(root, discovered, tools, ignored);
   const log = (line: string) => (write ? process.stdout : process.stderr).write(line + '\n');
-  for (const f of plan.fixes) log(`fix: ${f.message}${f.savingTokens ? ` [saves ~${f.savingTokens} tokens/turn]` : ''}`);
-  for (const s of plan.skipped) log(`skipped ${s.kind}: ${s.reason}`);
+  for (const line of fixLines(plan)) log(line);
   if (!plan.changes.length) {
     // An empty patch, so an earlier patch in the same file is not applied again.
     if (out && !write) writeFileSync(out, '');
@@ -372,20 +372,6 @@ async function fix(
   else process.stdout.write(diff);
   log('Preview only. Run again with --write to apply, or save the diff and use git apply.');
   return 0;
-}
-
-/**
- * Safe fixes. The plan sees every repository file, ignored ones included, because the agents still read
- * them and the safety check must see what they read; symlinks, their targets and ignored files are never
- * written.
- */
-function fixPlan(root: string, discovered: RepoFile[], tools: ToolId[] | undefined, ignored: (path: string) => boolean): FixPlan {
-  const linked = linkedPaths(root, discovered);
-  return planFixes(discovered, {
-    tools,
-    exists: existsIn(root),
-    readOnly: (p) => (ignored(p) ? `${p} is in the config's ignore list; it is left alone.` : linked(p)),
-  });
 }
 
 /** The --fix command matching the run that made a pull request comment. */

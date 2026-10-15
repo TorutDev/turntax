@@ -1,0 +1,19 @@
+{
+  "name": "turntax",
+  "version": "0.6.0",
+  "description": "Measure the per-turn token cost of AI coding-agent instruction files (AGENTS.md, CLAUDE.md, Cursor rules and more) and MCP servers, and preview safe fixes.",
+  "author": {
+    "name": "TORUT LTD",
+    "url": "https://github.com/TorutDev"
+  },
+  "homepage": "https://github.com/TorutDev/turntax#readme",
+  "repository": "https://github.com/TorutDev/turntax",
+  "license": "MIT",
+  "keywords": ["context", "tokens", "agents-md", "claude-md", "mcp", "cost"],
+  "mcpServers": {
+    "turntax": {
+      "command": "npx",
+      "args": ["-y", "turntax@0.6.0", "mcp"]
+    }
+  }
+}
