@@ -85,7 +85,7 @@ export const TOOLS = [
     name: 'fix_preview',
     title: 'Preview safe fixes',
     description:
-      'Unified diff of the safe fixes turntax --fix would make: duplicate lines, sections that can load only in their folder, misnamed Cursor rules. Every agent keeps reading the moved text. Read-only: nothing is applied.',
+      'Unified diff of the safe fixes turntax --fix would make: duplicate lines, sections that can load only in their folder, large procedures moved into an on-demand skill, misnamed Cursor rules. Every agent keeps reading the moved text. Read-only: nothing is applied.',
     inputSchema: {
       type: 'object',
       properties: {

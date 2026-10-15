@@ -2,7 +2,7 @@
 
 ## 0.6.0 (2026-10-15)
 
-- `turntax init` writes the GitHub Action workflow and a `turntax.config.json` with the agents that read the repository; existing files are kept unless `--force`, and `--dry-run` shows what it would write.
+- `turntax init` writes the GitHub Action workflow and a starter `turntax.config.json` (no agent list unless `--tools`, so every agent that reads a file is reported and gated); existing files are kept unless `--force`, and `--dry-run` shows what it would write.
 - `turntax mcp` runs turntax as a read-only MCP server with `audit` and `fix_preview` tools, and the repository is a Claude Code plugin marketplace (`/plugin install turntax@turntax`) with a `/turntax:context-tax` command.
 - `--fix` moves large procedure sections (release, deploy, setup and the like, or mostly numbered steps) into an on-demand skill for Claude Code or Codex, leaving a one-line pointer, when every protected agent keeps the text.
 - The [State of agent instruction files](https://torutdev.github.io/turntax/state/) is a monthly edition, collected by GitHub Actions on the 1st of each month, with a trend view from the second edition and `?edition=YYYY-MM` links.

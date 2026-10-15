@@ -105,7 +105,7 @@ npx turntax --fix --write    # apply them
 - **oversized-section**: moves a large procedure (a section of at least `--section-tokens`, 600 by default, whose heading names a release, deploy, setup or similar procedure, or that is mostly numbered steps; each subsection must pass too) into a new skill, `.claude/skills/<name>/SKILL.md` for Claude Code or `.agents/skills/<name>/SKILL.md` for Codex, and leaves the heading with a one-line pointer. Only the skill's name and description load every turn. Other agents do not read skills, so by default this fix usually needs `--tools claude-code` or `--tools codex`.
 - **misconfigured**: renames `.md` files in `.cursor/rules` to `.mdc`.
 
-Before a fix is kept, the files are classified again with the change applied: every agent must still read every line it read before, including files reached through `@imports`, and as often as before. The only exception is a moved section, which may load only when the agent works in that folder. Otherwise the fix is skipped and the reason is printed. A moved section can reach agents that did not read it before (a nested `AGENTS.md` is read by more agents than a `CLAUDE.md`); the summary names them. By default that check covers every supported agent, so a section of `AGENTS.md` usually stays where it is, because some agents read only the root file. `--tools codex,claude-code` limits the check to the agents you use.
+Before a fix is kept, the files are classified again with the change applied: every agent must still read every line it read before, including files reached through `@imports`, and as often as before. The exceptions are moved text: a section moved into a folder may load only when the agent works there, and a procedure moved into a skill only when the skill is used. Otherwise the fix is skipped and the reason is printed. A moved section can reach agents that did not read it before (a nested `AGENTS.md` is read by more agents than a `CLAUDE.md`); the summary names them. By default that check covers every supported agent, so a section of `AGENTS.md` usually stays where it is, because some agents read only the root file. `--tools codex,claude-code` limits the check to the agents you use.
 
 In preview the diff is on stdout and works with `git apply`, and the summary is on stderr; with `--write` the summary is on stdout. `--write` checks that no file changed since it was read and writes nothing if one did. Symlinked files, their targets and files in symlinked folders are never changed. Contradictions and stale references need a person to decide, so `--fix` leaves them alone.
 
@@ -247,7 +247,7 @@ turntax mcp                 run turntax as an MCP server over stdio (see below)
 claude mcp add turntax -- npx -y turntax mcp
 ```
 
-For Cursor and other clients, add `{ "mcpServers": { "turntax": { "command": "npx", "args": ["-y", "turntax", "mcp"] } } }` to their MCP config.
+For Cursor and clients with an `mcpServers` map, add `{ "mcpServers": { "turntax": { "command": "npx", "args": ["-y", "turntax", "mcp"] } } }` to their MCP config (VS Code's `.vscode/mcp.json` calls the map `servers`). On native Windows, run it through `cmd /c npx -y turntax mcp` if your client cannot start `npx` directly.
 
 This repository is also a Claude Code plugin marketplace. The plugin adds the server and a `/turntax:context-tax` command:
 

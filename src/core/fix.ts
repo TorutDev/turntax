@@ -323,7 +323,18 @@ function removeDuplicates(ws: Workspace, readOnly: (path: string) => string | nu
   }
 }
 
-const slugOf = (heading: string) => heading.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'section';
+/** A folder-safe name; accents are folded first, so "Sürüm yayınlama" becomes surum-yayinlama. */
+const slugOf = (heading: string) =>
+  heading
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/ı/g, 'i')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'section';
+
+/** Personal files (CLAUDE.local.md) are usually not committed; their text must not move into shared files. */
+const isPersonal = (path: string) => /\.local\.md$/i.test(path);
 
 /** Where a section about `scope` can live so it loads only there: the same file name nested, AGENTS.md, or a Claude rule. */
 function targets(source: string, scope: string, heading: string): Array<{ path: string; header: string }> {
@@ -353,7 +364,7 @@ function movableSections(text: string): Array<{ heading: string; body: string; s
 }
 
 function moveScopableSections(ws: Workspace, opts: FixOptions, readOnly: (path: string) => string | null, fixes: Fix[], skipped: SkippedFix[]): void {
-  const sources = [...new Set(ws.units.filter((u) => u.mode === 'always' && u.part === 'full').map((u) => u.path))].sort();
+  const sources = [...new Set(ws.units.filter((u) => u.mode === 'always' && u.part === 'full' && !isPersonal(u.path)).map((u) => u.path))].sort();
   const tried = new Set<string>();
   for (const path of sources) {
     // Sections are found in the raw file so that comments and formatting move as they are.
@@ -483,7 +494,8 @@ function skillSlug(ws: Workspace, opts: FixOptions, dir: string, heading: string
 
 /** What the section is and when to use it, at most 200 characters, safe in a double-quoted YAML string. */
 function skillDescription(heading: string, source: string): string {
-  const clean = (s: string) => s.replace(/["\\]/g, '').replace(/\s+/g, ' ').trim();
+  // Quotes, backslashes and control characters cannot be part of a double-quoted YAML value as written.
+  const clean = (s: string) => s.replace(/["\\\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
   const text = (h: string) => `${h} (moved from ${clean(source)} by turntax). Use when the task involves ${h.toLowerCase()}.`;
   let h = clean(heading);
   if (text(h).length > 200) h = h.slice(0, Math.max(0, Math.floor((200 - text('').length) / 2))).trimEnd();
@@ -502,7 +514,7 @@ function moveProcedureSections(ws: Workspace, opts: FixOptions, readOnly: (path:
     const scope = sectionScope(x.body);
     return !scope || (opts.exists !== undefined && !opts.exists(scope));
   };
-  const sources = [...new Set(ws.units.filter((u) => u.mode === 'always' && u.part === 'full').map((u) => u.path))].sort();
+  const sources = [...new Set(ws.units.filter((u) => u.mode === 'always' && u.part === 'full' && !isPersonal(u.path)).map((u) => u.path))].sort();
   const tried = new Set<string>();
   for (const path of sources) {
     for (;;) {
@@ -531,7 +543,8 @@ function moveProcedureSections(ws: Workspace, opts: FixOptions, readOnly: (path:
         }
         const pointer = `${lines[start]}\n\nSee the \`${slug}\` skill.`;
         const rest = [...lines.slice(0, start), pointer, ...(tail.length ? ['', ...tail] : [])].join('\n').replace(/\n*$/, '\n');
-        const skill = `---\nname: ${slug}\ndescription: "${description}"\n---\n\n${body}\n`;
+        // Quoted, so a slug like "2024" stays a string for strict YAML loaders.
+        const skill = `---\nname: "${slug}"\ndescription: "${description}"\n---\n\n${body}\n`;
         const trial = ws.trial(
           new Map([
             [path, rest.replace(/\n/g, eol)],

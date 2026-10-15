@@ -430,7 +430,7 @@ function renderFindings(data) {
   const f = s.fixes;
   $('fix-note').textContent =
     `turntax --fix finds changes that lower per-turn tokens in ${plural(f.reposWithSaving, 'repository', 'repositories')} (${pct(f.reposWithSaving, n)}), ` +
-    `while every agent keeps reading every line (a moved section then loads when the agent works in its folder). ` +
+    `while every agent keeps reading every line (moved text then loads when the agent works in that folder or uses that skill). ` +
     `The estimated savings of those fixes add up to ${fmt(f.totalSavingO200k)} o200k tokens per turn across the repositories, median ${fmt(f.medianSavingAmongReposWithSavingO200k)} per repository. ` +
     `${fmt(f.repos - f.reposWithSaving)} more have only fixes without a per-turn saving, such as removing duplicate lines from files that load on demand.`;
 }

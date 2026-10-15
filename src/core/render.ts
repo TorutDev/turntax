@@ -347,7 +347,7 @@ const FIX_DIFF_LIMIT = 20_000;
  * own comment instead of adding new ones.
  */
 export function renderPrComment(report: Report, fixes?: FixPlan, fixCommand = 'npx turntax --fix'): string {
-  const top = report.diff ? renderDiffMarkdown(report.diff) : '## Agent context tax';
+  const top = report.diff ? noMentions(renderDiffMarkdown(report.diff)) : '## Agent context tax';
   const headline = `Largest per-turn cost: **${fmtTokens(headlineTokens(report))}** o200k tokens (repository files and measured project MCP tools).`;
   const fixPart = fixes?.changes.length ? ['', renderFixes(fixes, fixCommand)] : [];
   // GitHub rejects comments over 65,536 characters; everything but the full report counts against the limit.
@@ -372,7 +372,8 @@ export function noMentions(markdown: string): string {
       if (fence !== null) return line;
       return line
         .split(/(`+[^`]*`+)/)
-        .map((part, i) => (i % 2 ? part : part.replace(/@(?=[A-Za-z0-9])/g, '@&#8203;')))
+        // Not after a word character, so email addresses (a@b.com) stay as they are.
+        .map((part, i) => (i % 2 ? part : part.replace(/(^|[^\w.+-])@(?=[A-Za-z0-9])/g, '$1@&#8203;')))
         .join('');
     })
     .join('\n');

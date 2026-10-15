@@ -20,8 +20,8 @@ describe('renderPrComment with fixes', () => {
   });
 
   it('breaks mentions in prose but not in code', () => {
-    expect(noMentions('Ask @octo-team about `@docs/x.md`\n```\n@keep\n```\nthen @me.')).toBe(
-      'Ask @&#8203;octo-team about `@docs/x.md`\n```\n@keep\n```\nthen @&#8203;me.',
+    expect(noMentions('Ask @octo-team about `@docs/x.md`\n```\n@keep\n```\nthen @me or mail a@b.com.')).toBe(
+      'Ask @&#8203;octo-team about `@docs/x.md`\n```\n@keep\n```\nthen @&#8203;me or mail a@b.com.',
     );
   });
 

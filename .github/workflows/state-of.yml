@@ -24,10 +24,13 @@ concurrency:
 jobs:
   edition:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
+          # The write token is used only by the push below, not while npm installs dependencies.
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -42,11 +45,19 @@ jobs:
         run: |
           day="${INPUT_DATE:-$(date -u +%F)}"
           node scripts/state-of.mjs --date "$day"
+          # More than five unreadable repositories would shift the sample; publish nothing then.
+          errors=$(node -p "require('./web/state/${day:0:7}.json').selection.skippedErrors")
+          if [ "$errors" -gt 5 ]; then
+            echo "::error::$errors repositories could not be read; the edition is not published."
+            exit 1
+          fi
           echo "edition=${day:0:7}" >> "$GITHUB_OUTPUT"
       - name: Commit to main
         id: commit
         env:
           EDITION: ${{ steps.collect.outputs.edition }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           git add web/state/*.json
           if git diff --cached --quiet; then
@@ -56,8 +67,9 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "State of agent instruction files, $EDITION"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git pull --rebase "$remote" main
+          git push "$remote" HEAD:main
           echo "pushed=true" >> "$GITHUB_OUTPUT"
       - name: Deploy the page
         if: steps.commit.outputs.pushed == 'true'

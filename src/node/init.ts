@@ -1,14 +1,11 @@
 import { existsSync, lstatSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { classify, detectTools } from '../core/classify.js';
 import type { FileChange } from '../core/fix.js';
-import { parseMcpConfigs } from '../core/mcp.js';
 import { TOOL_IDS } from '../core/tools.js';
 import type { ToolId } from '../core/types.js';
 import { applyChanges } from './apply.js';
 import { CONFIG_FILE } from './config.js';
-import { discover, discoverMcpConfigs } from './discover.js';
 
 const VERSION: string = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
 
@@ -18,13 +15,13 @@ const HELP = `Usage: turntax init [path] [options]
 Add the turntax GitHub Action and a ${CONFIG_FILE} to a repository.
 
 Writes ${WORKFLOW_FILE}, which runs turntax on every pull request, and ${CONFIG_FILE}
-with the agents that read files in the repository. Existing files are kept unless --force.
+that lists no agents (every agent that reads a file is reported). Existing files are kept unless --force.
 
   path                    Repository root (default: .)
 
 Options:
   --tools <list>          Agents for the config: ${TOOL_IDS.join(', ')}
-                          (default: the agents that read files in the repository)
+                          (default: none, so every agent that reads a file is reported and gated)
   --max-increase <n>      Fail a pull request when an agent's per-turn tokens grow by more than n (default: 500)
   --force                 Overwrite existing files
   --dry-run               Print the files instead of writing them
@@ -67,14 +64,16 @@ export async function runInit(argv: string[]): Promise<number> {
   const increase = o['max-increase'] ?? '500';
   if (!/^\d+$/.test(increase)) return usage('--max-increase must be a non-negative integer');
 
-  let tools: ToolId[];
+  // Without --tools the config names no agents, so the report and the pull request gate cover every agent
+  // that reads a file, including agents whose files are added later.
+  let tools: ToolId[] = [];
   if (o.tools !== undefined) {
     const given = o.tools.split(',').map((s) => s.trim()).filter(Boolean);
     if (!given.length) return usage('--tools needs at least one tool.');
     const unknown = given.find((t) => !TOOL_IDS.includes(t as ToolId));
     if (unknown) return usage(`Unknown tool "${unknown}". Use: ${TOOL_IDS.join(', ')}`);
     tools = TOOL_IDS.filter((id) => given.includes(id));
-  } else tools = await detected(root);
+  }
   if (!existsSync(join(root, '.git')))
     process.stderr.write(`turntax: ${root} has no .git; GitHub runs only workflows in .github/workflows at the repository root.\n`);
 
@@ -82,8 +81,10 @@ export async function runInit(argv: string[]): Promise<number> {
     { path: WORKFLOW_FILE, text: workflow(Number(increase)), note: '' },
     {
       path: CONFIG_FILE,
-      text: JSON.stringify(tools.length ? { tools } : {}, null, 2) + '\n',
-      note: tools.length ? ` (tools: ${tools.join(', ')})` : ' (no agent reads files here yet, so every agent with files is reported)',
+      text: JSON.stringify(tools.length ? { tools, ignore: [] } : { ignore: [] }, null, 2) + '\n',
+      note: tools.length
+        ? ` (tools: ${tools.join(', ')}; agents outside this list are not reported or gated)`
+        : ' (every agent that reads a file is reported; add "tools" to limit it)',
     },
   ];
   const dry = Boolean(o['dry-run']);
@@ -128,13 +129,6 @@ function isFolder(p: string): boolean {
   } catch {
     return false;
   }
-}
-
-/** The agents a default report covers: those that read files here or have an enabled MCP server configured here. */
-async function detected(root: string): Promise<ToolId[]> {
-  const servers = parseMcpConfigs(discoverMcpConfigs(root), root).servers.filter((s) => !s.disabled);
-  const found = new Set([...detectTools(classify(await discover(root))), ...servers.map((s) => s.tool)]);
-  return TOOL_IDS.filter((id) => found.has(id));
 }
 
 /** Matches the README's Action example; tools come from the config file. */

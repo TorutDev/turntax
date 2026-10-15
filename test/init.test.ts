@@ -25,22 +25,25 @@ const read = (dir: string, path: string) => readFileSync(join(dir, path), 'utf8'
 afterEach(() => vi.restoreAllMocks());
 
 describe('init', () => {
-  it('writes the workflow and a config with the agents a default report covers', async () => {
+  it('writes the workflow and a config that names no agents, so the report stays the same', async () => {
     const dir = repo();
-    let io = capture();
-    expect(await main([dir, '--json'], {})).toBe(0);
-    const reported = JSON.parse(io.out()).tools.map((t: { tool: string }) => t.tool);
-    io = capture();
+    const reported = async () => {
+      const io = capture();
+      expect(await main([dir, '--json'], {})).toBe(0);
+      return JSON.parse(io.out()).tools.map((t: { tool: string }) => t.tool);
+    };
+    const before = await reported();
+    const io = capture();
     expect(await main(['init', dir], {})).toBe(0);
     expect(io.err()).toBe('');
     expect(io.out()).toContain(`created ${WORKFLOW_FILE}\n`);
-    expect(io.out()).toContain(`created ${CONFIG_FILE} (tools: ${reported.join(', ')})\n`);
+    expect(io.out()).toContain(`created ${CONFIG_FILE} (every agent that reads a file is reported; add "tools" to limit it)\n`);
     expect(io.out()).toContain(`Commit ${WORKFLOW_FILE} and ${CONFIG_FILE}.`);
     expect(io.out()).toContain('npx turntax');
     expect(io.out()).toContain('--fix');
 
-    expect(reported.length).toBeGreaterThan(1);
-    expect(loadConfig(dir, undefined, MODELS)).toEqual({ tools: reported });
+    expect(loadConfig(dir, undefined, MODELS)).toEqual({ ignore: [] });
+    expect(await reported()).toEqual(before);
 
     const yml = read(dir, WORKFLOW_FILE);
     const lines = yml.split('\n');
@@ -88,9 +91,9 @@ describe('init', () => {
     io = capture();
     expect(await main(['init', dir, '--force', '--tools', 'cursor'], {})).toBe(0);
     expect(io.out()).toContain(`overwritten ${WORKFLOW_FILE}`);
-    expect(io.out()).toContain(`overwritten ${CONFIG_FILE} (tools: cursor)`);
+    expect(io.out()).toContain(`overwritten ${CONFIG_FILE} (tools: cursor; agents outside this list are not reported or gated)`);
     expect(read(dir, WORKFLOW_FILE)).toContain(`TorutDev/turntax@v${VERSION}`);
-    expect(loadConfig(dir, undefined, MODELS)).toEqual({ tools: ['cursor'] });
+    expect(loadConfig(dir, undefined, MODELS)).toEqual({ tools: ['cursor'], ignore: [] });
   });
 
   it('prints the files without writing them with --dry-run', async () => {
@@ -101,29 +104,20 @@ describe('init', () => {
     expect(existsSync(join(dir, CONFIG_FILE))).toBe(false);
     expect(io.out()).toContain(`would create ${WORKFLOW_FILE}:\n\nname: turntax\n`);
     expect(io.out()).toMatch(/^ {10}max-increase: 0 +# /m);
-    expect(io.out()).toContain(`would create ${CONFIG_FILE} (tools: claude-code, cursor):\n\n{\n  "tools": [\n    "claude-code",\n    "cursor"\n  ]\n}\n`);
+    expect(io.out()).toContain(
+      `would create ${CONFIG_FILE} (tools: claude-code, cursor; agents outside this list are not reported or gated):\n\n` +
+        '{\n  "tools": [\n    "claude-code",\n    "cursor"\n  ],\n  "ignore": []\n}\n',
+    );
     expect(io.out()).toContain('Dry run: nothing was written.');
     expect(io.out()).not.toContain('Next steps');
   });
 
-  it('writes a config without tools when no agent reads anything, and warns without .git', async () => {
+  it('warns without .git', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'turntax-init-empty-'));
     const io = capture();
     expect(await main(['init', dir], {})).toBe(0);
     expect(io.err()).toMatch(/has no \.git/);
-    expect(io.out()).toContain('no agent reads files here yet');
-    expect(read(dir, CONFIG_FILE)).toBe('{}\n');
-    expect(loadConfig(dir, undefined, MODELS)).toEqual({});
-  });
-
-  it('lists agents that only have an enabled MCP server, as a default report does', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'turntax-init-mcp-'));
-    mkdirSync(join(dir, '.cursor'));
-    writeFileSync(join(dir, '.mcp.json'), '{ "mcpServers": { "docs": { "command": "node" } } }\n');
-    writeFileSync(join(dir, '.cursor/mcp.json'), '{ "mcpServers": { "off": { "command": "node", "disabled": true } } }\n');
-    capture();
-    expect(await main(['init', dir], {})).toBe(0);
-    expect(loadConfig(dir, undefined, MODELS)).toEqual({ tools: ['claude-code'] });
+    expect(read(dir, CONFIG_FILE)).toBe('{\n  "ignore": []\n}\n');
   });
 
   it('exits with code 2 on usage errors and writes nothing', async () => {

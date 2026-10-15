@@ -275,7 +275,7 @@ describe('procedure sections', () => {
       [SKILL, true],
       ['CLAUDE.md', false],
     ]);
-    expect(after(plan, SKILL)).toBe(`---\nname: release-process\ndescription: "${description}"\n---\n\n${RELEASE}`);
+    expect(after(plan, SKILL)).toBe(`---\nname: "release-process"\ndescription: "${description}"\n---\n\n${RELEASE}`);
     expect(after(plan, 'CLAUDE.md')).toBe('# Project\n\nUse npm.\n\n## Release process\n\nSee the `release-process` skill.\n\n## Code style\n\n- Keep functions small.\n');
     expect(plan.fixes).toEqual([
       {
@@ -299,7 +299,7 @@ describe('procedure sections', () => {
     const plan = planFixes([{ path: 'AGENTS.md', text }], { tools: ['codex'] });
     expect(plan.fixes.map((f) => f.paths)).toEqual([['AGENTS.md', '.agents/skills/release-process/SKILL.md']]);
     expect(plan.fixes[0]!.message).toMatch(/; OpenAI Codex load it only when the skill is used\. Not kept for Claude Code, Cursor, /);
-    expect(after(plan, '.agents/skills/release-process/SKILL.md')).toMatch(/^---\nname: release-process\ndescription: "Release process \(moved from AGENTS\.md by turntax\)\./);
+    expect(after(plan, '.agents/skills/release-process/SKILL.md')).toMatch(/^---\nname: "release-process"\ndescription: "Release process \(moved from AGENTS\.md by turntax\)\./);
     expect(plan.changes.some((c) => c.path.startsWith('.claude/'))).toBe(false);
   });
 
@@ -347,12 +347,23 @@ describe('procedure sections', () => {
     );
   });
 
+  it('never moves text out of a personal CLAUDE.local.md', () => {
+    const plan = planFixes([{ path: 'CLAUDE.local.md', text: `# Mine\n\n${RELEASE}` }], { tools: ['claude-code'] });
+    expect(plan.changes).toEqual([]);
+  });
+
+  it('folds accents into the skill name', () => {
+    const text = `# Rehber\n\n${RELEASE.replace('## Release process', '## Sürüm yayınlama')}`;
+    const plan = planFixes([{ path: 'CLAUDE.md', text }], { tools: ['claude-code'] });
+    expect(plan.changes.map((c) => c.path)).toContain('.claude/skills/surum-yayinlama/SKILL.md');
+  });
+
   it('adds -2 to the skill name when a skill folder of that name exists', () => {
-    const existing = { path: SKILL, text: '---\nname: release-process\ndescription: Tag a release.\n---\n\nTag and push.\n' };
+    const existing = { path: SKILL, text: '---\nname: "release-process"\ndescription: Tag a release.\n---\n\nTag and push.\n' };
     const plan = planFixes([{ path: 'CLAUDE.md', text: `# Project\n\n${RELEASE}` }, existing], { tools: ['claude-code'] });
     expect(plan.fixes.map((f) => f.paths)).toEqual([['CLAUDE.md', '.claude/skills/release-process-2/SKILL.md']]);
     expect(after(plan, 'CLAUDE.md')).toBe('# Project\n\n## Release process\n\nSee the `release-process-2` skill.\n');
-    expect(after(plan, '.claude/skills/release-process-2/SKILL.md')).toMatch(/^---\nname: release-process-2\n/);
+    expect(after(plan, '.claude/skills/release-process-2/SKILL.md')).toMatch(/^---\nname: "release-process-2"\n/);
     // A folder on disk counts too, even without a loaded SKILL.md.
     const onDisk = planFixes([{ path: 'CLAUDE.md', text: `# Project\n\n${RELEASE}` }], {
       tools: ['claude-code'],
@@ -376,7 +387,7 @@ describe('procedure sections', () => {
   it('prints a diff that git apply accepts, keeping CRLF', () => {
     const crlf = text.replace(/\n/g, '\r\n');
     const plan = planFixes([{ path: 'CLAUDE.md', text: crlf }], { tools: ['claude-code'] });
-    expect(after(plan, SKILL)).toMatch(/^---\r\nname: release-process\r\n[\s\S]*\r\n28\. Step 28[^\n]*\r\n$/);
+    expect(after(plan, SKILL)).toMatch(/^---\r\nname: "release-process"\r\n[\s\S]*\r\n28\. Step 28[^\n]*\r\n$/);
     expect(after(plan, 'CLAUDE.md')).toBe('# Project\r\n\r\nUse npm.\r\n\r\n## Release process\r\n\r\nSee the `release-process` skill.\r\n\r\n## Code style\r\n\r\n- Keep functions small.\r\n');
     const dir = mkdtempSync(join(tmpdir(), 'turntax-skill-'));
     writeFileSync(join(dir, 'CLAUDE.md'), crlf);
