@@ -327,7 +327,7 @@ function removeDuplicates(ws: Workspace, readOnly: (path: string) => string | nu
 const slugOf = (heading: string) =>
   heading
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/ı/g, 'i')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')

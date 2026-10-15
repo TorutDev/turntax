@@ -372,8 +372,8 @@ export function noMentions(markdown: string): string {
       if (fence !== null) return line;
       return line
         .split(/(`+[^`]*`+)/)
-        // Not after a word character, so email addresses (a@b.com) stay as they are.
-        .map((part, i) => (i % 2 ? part : part.replace(/(^|[^\w.+-])@(?=[A-Za-z0-9])/g, '$1@&#8203;')))
+        // Not after a letter or digit, so email addresses (a@b.com) stay as they are.
+        .map((part, i) => (i % 2 ? part : part.replace(/(^|[^A-Za-z0-9])@(?=[A-Za-z0-9])/g, '$1@&#8203;')))
         .join('');
     })
     .join('\n');

@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-          # The write token is used only by the push below, not while npm installs dependencies.
+          # Not stored in .git, so npm ci cannot read it from there; the push step adds it to its remote.
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
