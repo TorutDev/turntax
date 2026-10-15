@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 /**
  * Builds the "State of agent instruction files" dataset from popular public GitHub repositories.
+ * One edition per month, named after the selection date (default: today, UTC).
  *
  *   npm run build
- *   GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs [--limit 100] [--out web/state/2026-10.json]
+ *   GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs [--limit 100] [--date YYYY-MM-DD] [--out web/state/YYYY-MM.json]
+ *   node scripts/state-of.mjs --index-only [--out web/state/YYYY-MM.json]
+ *
+ * --date reproduces an edition's selection (its selection.date): repositories pushed to in the 92 days before it.
+ * After writing, editions.json next to --out is rebuilt from every YYYY-MM.json in that folder;
+ * --index-only only rebuilds it, without the network or a token.
  *
  * Talks only to api.github.com (with the token) and raw.githubusercontent.com (without it).
  * Every file is read at the default branch's head commit, pinned by SHA.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -23,8 +29,8 @@ import { TOOLS } from '../dist/core/tools.js';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const MIN_STARS = 1000;
-const PUSHED_SINCE = '2026-07-14';
-const QUERY = `stars:>=${MIN_STARS} archived:false fork:false is:public pushed:>=${PUSHED_SINCE}`;
+/** Repositories pushed to in this many days before the selection date count as active. */
+const PUSHED_WINDOW_DAYS = 92;
 const MAX_RESULTS = 1000;
 /** Folders that hold test data or examples; instruction files inside them are not counted. Case-insensitive. */
 const TEST_DIRS = new Set(['test', 'tests', '__tests__', 'fixtures', '__fixtures__', 'testdata', 'examples', 'example', 'samples']);
@@ -32,19 +38,29 @@ const TEST_DIRS = new Set(['test', 'tests', '__tests__', 'fixtures', '__fixtures
 const MAX_BYTES = 2 * 1024 * 1024;
 const REPO_CONCURRENCY = 4;
 const FILE_CONCURRENCY = 8;
+/** Edition files are named after their month. */
+const EDITION_FILE = /^(\d{4}-\d{2})\.json$/;
 
 const { values: args } = parseArgs({
   options: {
     limit: { type: 'string', default: '100' },
-    out: { type: 'string', default: resolve(ROOT, 'web/state/2026-10.json') },
+    date: { type: 'string' },
+    out: { type: 'string' },
+    'index-only': { type: 'boolean', default: false },
   },
 });
 const LIMIT = Number(args.limit);
 if (!Number.isInteger(LIMIT) || LIMIT <= 0) fail('--limit must be a positive integer.');
-const OUT = resolve(args.out);
+const DATE = args.date ?? new Date().toISOString().slice(0, 10);
+const day = new Date(`${DATE}T00:00:00Z`);
+if (!/^\d{4}-\d{2}-\d{2}$/.test(DATE) || Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== DATE) fail('--date must be a date as YYYY-MM-DD.');
+const EDITION = DATE.slice(0, 7);
+const PUSHED_SINCE = new Date(day.getTime() - PUSHED_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+const QUERY = `stars:>=${MIN_STARS} archived:false fork:false is:public pushed:>=${PUSHED_SINCE}`;
+const OUT = resolve(args.out ?? resolve(ROOT, 'web/state', `${EDITION}.json`));
 
 const TOKEN = process.env.GITHUB_TOKEN;
-if (!TOKEN) fail('GITHUB_TOKEN is not set. Run: GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs');
+if (!TOKEN && !args['index-only']) fail('GITHUB_TOKEN is not set. Run: GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs');
 
 function fail(message) {
   process.stderr.write(`state-of: ${message}\n`);
@@ -116,14 +132,20 @@ async function api(path, accept = 'application/vnd.github+json') {
 async function raw(fullName, sha, path) {
   const url = `https://raw.githubusercontent.com/${fullName}/${sha}/${encodePath(path)}`;
   for (let attempt = 0; attempt < 5; attempt++) {
+    let wait = 1500 * (attempt + 1);
     try {
       const res = await fetch(url, { headers: { 'User-Agent': 'turntax-state-of' } });
       if (res.ok) return new TextDecoder('utf-8', { ignoreBOM: true }).decode(await res.arrayBuffer());
       if (res.status === 404) return null;
+      // Requests without a token are rate limited per address, and CI runners share addresses.
+      if (res.status === 429) {
+        wait = (Number(res.headers.get('retry-after')) || 60) * 1000;
+        log(`  raw.githubusercontent.com rate limit: waiting ${wait / 1000}s`);
+      }
     } catch {
       // retried below
     }
-    await sleep(1500 * (attempt + 1));
+    await sleep(wait);
   }
   throw new Error(`could not download ${fullName}@${sha}:${path}`);
 }
@@ -486,12 +508,14 @@ async function main() {
   for (const r of repos) delete r._rootPair;
 
   const data = {
+    edition: EDITION,
     generatedAt,
     turntaxVersion: version,
     engineCommit,
     selection: {
       query: QUERY,
       sort: 'stars desc',
+      date: DATE,
       pushedSince: PUSHED_SINCE,
       minStars: MIN_STARS,
       searchTotal: search.total,
@@ -516,6 +540,50 @@ async function main() {
   const text = JSON.stringify(data, null, 1).replace(/\{\n\s+([^{}[\]]*?)\n\s*\}/g, (_, body) => `{ ${body.replace(/\n\s+/g, ' ')} }`);
   writeFileSync(OUT, text + '\n');
   log(`Wrote ${OUT}: ${repos.length} repos, ${scanned} scanned, ${skipped.truncated} truncated, ${skipped.errors} errors.`);
+  writeIndex(dirname(OUT));
 }
 
-main().catch((e) => fail(e.message));
+/** The figures of one edition that the trend view compares; per-turn sizes count a symlinked file once, as the report does. */
+function trendOf(edition, file, data) {
+  const s = data.summary;
+  const fileShare = (name) => s.fileNames.find((f) => f.name === name)?.share ?? 0;
+  return {
+    edition,
+    file,
+    generatedAt: data.generatedAt,
+    turntaxVersion: data.turntaxVersion,
+    repos: s.repos,
+    medianO200k: s.maxPerTurnO200kLinksOnce.median,
+    p90O200k: s.maxPerTurnO200kLinksOnce.p90,
+    agentsMdShare: fileShare('AGENTS.md'),
+    claudeMdShare: fileShare('CLAUDE.md'),
+    agentsAndClaudeAtRootShare: s.agentsAndClaudeAtRoot.share,
+    findingShares: {
+      // Duplicates between two different files, as on the report: a symlink and its target are one file.
+      'duplicate-every-turn': s.duplicates.everyTurn.share,
+      'duplicate-across-agents': s.duplicates.acrossAgents.share,
+      ...Object.fromEntries(ADVICE_KINDS.filter((k) => k !== 'duplicate').map((k) => [k, s.findings[k].share])),
+    },
+  };
+}
+
+/** Rebuilds editions.json in dir from the edition files there, oldest first. */
+function writeIndex(dir) {
+  const editions = readdirSync(dir)
+    .map((name) => EDITION_FILE.exec(name))
+    .filter(Boolean)
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([file, edition]) => trendOf(edition, file, JSON.parse(readFileSync(resolve(dir, file), 'utf8'))));
+  const path = resolve(dir, 'editions.json');
+  // One edition per line, so the file stays diffable.
+  writeFileSync(path, editions.length ? `[\n${editions.map((e) => JSON.stringify(e)).join(',\n')}\n]\n` : '[]\n');
+  log(`Wrote ${path}: ${editions.length} edition${editions.length === 1 ? '' : 's'}.`);
+}
+
+if (args['index-only']) {
+  try {
+    writeIndex(dirname(OUT));
+  } catch (e) {
+    fail(e.message);
+  }
+} else main().catch((e) => fail(e.message));
