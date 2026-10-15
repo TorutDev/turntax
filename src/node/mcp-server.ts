@@ -233,7 +233,7 @@ async function auditText({ root, tools, models }: ToolArgs): Promise<string> {
 /** The fix plan as `turntax --fix` prints it: fixes, skipped fixes, then the diff. */
 async function fixPreviewText({ root, tools }: ToolArgs): Promise<string> {
   const config = loadConfig(root, undefined, MODELS);
-  const plan = fixPlan(root, await discover(root), tools ?? config.tools, globMatcher(config.ignore ?? []));
+  const plan = fixPlan(root, await discover(root), tools ?? config.tools, globMatcher(config.ignore ?? []), config.sectionTokens);
   const lines = fixLines(plan);
   if (!plan.changes.length) return [...lines, 'Nothing to fix automatically.'].join('\n');
   const command = `npx turntax${tools ? ` --tools ${tools.join(',')}` : ''} --fix --write`;

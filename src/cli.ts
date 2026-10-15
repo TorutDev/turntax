@@ -66,8 +66,9 @@ Options:
   --prices <file.json>    Use your own price table (same shape as --list-models --json)
   --section-tokens <n>    Flag always-loaded sections at or above n o200k tokens (default: 600)
   --fix                   Print a diff of the safe fixes: duplicate lines, sections that can load only in
-                          their folder, misnamed Cursor rules. Every agent keeps reading the moved text;
-                          --tools limits the agents whose context is kept
+                          their folder, large procedure sections moved into a skill, misnamed Cursor rules.
+                          Every agent keeps reading the moved text; --tools limits the agents whose
+                          context is kept
   --write                 With --fix, apply the changes to the files
   --config <file>         Read defaults from this file (default: ${CONFIG_FILE} in the audited folder, if any)
   -h, --help              Show help
@@ -184,6 +185,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
     for (const t of tools ?? []) if (!TOOL_IDS.includes(t)) throw new UsageError(`Unknown tool "${t}". Use: ${TOOL_IDS.join(', ')}`);
     const ignored = globMatcher(config.ignore ?? []);
     const repoFiles = (files: RepoFile[]) => files.filter((f) => !ignored(f.path));
+    const sectionTokens = positiveInt('section-tokens', o['section-tokens'], config.sectionTokens ?? 600);
 
     if (o.write && !o.fix) throw new UsageError('--write needs --fix.');
     if (o['path-prefix'] !== undefined && !o.annotations) throw new UsageError('--path-prefix needs --annotations.');
@@ -197,7 +199,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
       ).filter((k) => o[k] !== undefined);
       if (o.write && o.out) other.push('out');
       if (other.length) throw new UsageError(`--fix${o.write ? ' --write' : ''} cannot be combined with --${other.join(', --')}.`);
-      return await fix(root, tools, ignored, Boolean(o.write), o.out);
+      return await fix(root, tools, ignored, sectionTokens, Boolean(o.write), o.out);
     }
     const discovered = await discover(root);
     const files = repoFiles(discovered);
@@ -280,7 +282,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
         exists: existsIn(root),
         packageScripts: packageScripts(root),
         english,
-        sectionTokens: positiveInt('section-tokens', o['section-tokens'], config.sectionTokens ?? 600),
+        sectionTokens,
       },
     });
 
@@ -309,7 +311,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
       : o['pr-comment']
         ? renderPrComment(
             report,
-            files.length ? fixPlan(root, discovered, tools, ignored) : undefined,
+            files.length ? fixPlan(root, discovered, tools, ignored, sectionTokens) : undefined,
             fixCommand(positionals[0], o.config, o.tools),
           )
         : o.annotations
@@ -349,11 +351,12 @@ async function fix(
   root: string,
   tools: ToolId[] | undefined,
   ignored: (path: string) => boolean,
+  sectionTokens: number,
   write: boolean,
   out: string | undefined,
 ): Promise<number> {
   const discovered = await discover(root);
-  const plan = fixPlan(root, discovered, tools, ignored);
+  const plan = fixPlan(root, discovered, tools, ignored, sectionTokens);
   const log = (line: string) => (write ? process.stdout : process.stderr).write(line + '\n');
   for (const line of fixLines(plan)) log(line);
   if (!plan.changes.length) {

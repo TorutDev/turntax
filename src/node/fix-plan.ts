@@ -7,10 +7,17 @@ import { existsIn, linkedPaths } from './discover.js';
  * them and the safety check must see what they read; symlinks, their targets and ignored files are never
  * written.
  */
-export function fixPlan(root: string, discovered: RepoFile[], tools: ToolId[] | undefined, ignored: (path: string) => boolean): FixPlan {
+export function fixPlan(
+  root: string,
+  discovered: RepoFile[],
+  tools: ToolId[] | undefined,
+  ignored: (path: string) => boolean,
+  sectionTokens?: number,
+): FixPlan {
   const linked = linkedPaths(root, discovered);
   return planFixes(discovered, {
     tools,
+    sectionTokens,
     exists: existsIn(root),
     readOnly: (p) => (ignored(p) ? `${p} is in the config's ignore list; it is left alone.` : linked(p)),
   });
