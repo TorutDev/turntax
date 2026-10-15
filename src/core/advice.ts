@@ -376,7 +376,7 @@ function sections(units: LoadedUnit[], threshold: number, raw: RawLines, exists?
           tools,
           paths: [u.path],
           line: raw(u, s.line),
-          message: `Section "${s.heading}" is ${tokens} tokens and loads every turn. If it is a procedure (release, deploy, migration), move it into an on-demand skill or rule and keep a one-line pointer.`,
+          message: `Section "${s.heading}" is ${tokens} tokens and loads every turn. If it is a procedure (release, deploy, migration), move it into an on-demand skill or rule and keep a one-line pointer; --fix does this for procedure sections when a skill keeps the agents' context.`,
           savingTokens: Math.max(0, tokens - 30),
           savingNote: 'Assumes about 30 tokens remain for the skill description or pointer.',
         });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { audit, type Report } from '../src/core/audit.js';
 import { planFixes, unifiedDiff, type FixPlan } from '../src/core/fix.js';
-import { renderAnnotations, renderPrComment } from '../src/core/render.js';
+import { noMentions, renderAnnotations, renderPrComment } from '../src/core/render.js';
 import { existsIn } from '../src/node/discover.js';
 import { fixture, loadFixture } from './helpers.js';
 
@@ -17,6 +17,12 @@ describe('renderPrComment with fixes', () => {
     expect(comment).toContain('```diff\n' + unifiedDiff(plan.changes));
     expect(comment.indexOf('safe fixes')).toBeLessThan(comment.indexOf('<details><summary>Full report</summary>'));
     expect(renderPrComment(report, plan, 'npx turntax packages/web --fix')).toContain('run `npx turntax packages/web --fix` to preview');
+  });
+
+  it('breaks mentions in prose but not in code', () => {
+    expect(noMentions('Ask @octo-team about `@docs/x.md`\n```\n@keep\n```\nthen @me or mail a@b.com.')).toBe(
+      'Ask @&#8203;octo-team about `@docs/x.md`\n```\n@keep\n```\nthen @&#8203;me or mail a@b.com.',
+    );
   });
 
   it('keeps @names in fix messages from mentioning people', () => {

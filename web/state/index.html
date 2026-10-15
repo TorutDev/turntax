@@ -3,28 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>State of agent instruction files, October 2026 · turntax</title>
-<meta name="description" content="How many tokens the agent instruction files of 100 popular public GitHub repositories add to every turn, which files they use, and what static checks find. October 2026.">
+<title>State of agent instruction files · turntax</title>
+<meta name="description" content="How many tokens the agent instruction files of popular public GitHub repositories add to every turn, which files they use, and what static checks find. A new edition every month.">
 <style>
   :root {
     --bg: #f7f6f3; --surface: #ffffff; --surface-2: #f0eee9; --fg: #1b1a18; --muted: #66625b; --line: #e2dfd8;
     --accent: #3056c9; --accent-soft: #e6ecfb; --bar: #3a63d6;
     --high: #b42318; --medium: #9a5b00; --low: #3f6b2a;
+    --series-1: #3a63d6; --series-2: #eb6834;
     --radius: 12px; color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #121211; --surface: #1b1b19; --surface-2: #232320; --fg: #ecebe7; --muted: #a39f97; --line: #2e2d2a;
       --accent: #8eaaff; --accent-soft: #1f2a48; --bar: #7d9cf5;
-      --high: #ff8b80; --medium: #f2b45a; --low: #9ccb85; color-scheme: dark;
+      --high: #ff8b80; --medium: #f2b45a; --low: #9ccb85;
+      --series-1: #3987e5; --series-2: #d95926; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #121211; --surface: #1b1b19; --surface-2: #232320; --fg: #ecebe7; --muted: #a39f97; --line: #2e2d2a;
     --accent: #8eaaff; --accent-soft: #1f2a48; --bar: #7d9cf5;
-    --high: #ff8b80; --medium: #f2b45a; --low: #9ccb85; color-scheme: dark;
+    --high: #ff8b80; --medium: #f2b45a; --low: #9ccb85;
+    --series-1: #3987e5; --series-2: #d95926; color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 1080px; margin: 0 auto; padding: 0 16px 72px; }
   a { color: var(--accent); }
@@ -92,6 +96,34 @@
   input[type="search"] { flex: 1 1 220px; min-width: 0; max-width: 360px; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
   input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+  .edition-picker { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 14px; }
+  select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; max-width: 100%; }
+  select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .trend-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+  .trend-grid .panel { display: flex; flex-direction: column; }
+  .trend-grid h3 { margin: 0 0 4px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: auto 0 8px; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+  .legend li { display: flex; align-items: center; gap: 6px; }
+  .legend .key { width: 16px; height: 2px; border-radius: 1px; }
+  .key.s1 { background: var(--series-1); } .key.s2 { background: var(--series-2); }
+  svg.trend-chart { display: block; width: 100%; height: auto; overflow: visible; }
+  .trend-chart .grid { stroke: var(--line); stroke-width: 1; }
+  .trend-chart .current { fill: var(--accent-soft); fill-opacity: 0.7; }
+  .trend-chart .guide { stroke: var(--muted); stroke-width: 1; }
+  .trend-chart .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .trend-chart .tick.now { fill: var(--fg); font-weight: 600; }
+  .trend-chart .end-label { fill: var(--fg); font-size: 11px; }
+  .trend-chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .trend-chart .line.s1 { stroke: var(--series-1); } .trend-chart .line.s2 { stroke: var(--series-2); }
+  .trend-chart .dot { stroke: var(--surface); stroke-width: 2; }
+  .trend-chart .dot.s1 { fill: var(--series-1); } .trend-chart .dot.s2 { fill: var(--series-2); }
+  .trend-chart .hit { fill: transparent; outline: none; }
+  .trend-chart .hit:focus-visible { fill: var(--accent-soft); fill-opacity: 0.5; }
+  details.trend-values { margin-top: 12px; }
+  details.trend-values summary { cursor: pointer; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+  tr.now td { font-weight: 600; }
+
   .methods { max-width: 74ch; }
   .methods ul { padding-left: 20px; margin: 0 0 12px; }
   .methods li { margin: 4px 0; }
@@ -113,13 +145,37 @@
       <a class="home" href="../">turntax</a>
       <nav><a href="../">Analyse a repository</a><a href="https://github.com/TorutDev/turntax/blob/main/docs/how-it-counts.md">How it counts</a><a href="https://github.com/TorutDev/turntax">GitHub</a></nav>
     </div>
-    <p class="eyebrow muted">Report · October 2026</p>
+    <p class="eyebrow muted" id="eyebrow">Report</p>
     <h1>State of agent instruction files</h1>
     <p class="lede" id="lede">Loading the dataset…</p>
     <p class="muted small" id="meta"></p>
+    <p class="edition-picker" id="edition-picker" hidden><label for="edition">Edition</label><select id="edition"></select></p>
   </header>
 
   <section aria-label="Key numbers"><div class="stats" id="stats"></div></section>
+
+  <section aria-labelledby="trend-title" id="trend" hidden>
+    <h2 id="trend-title">Across editions</h2>
+    <p class="muted intro">The headline numbers of every monthly edition. Each edition measures the most-starred active repositories at the time, so the set of repositories changes between editions, and each records the turntax version that counted it. The highlighted month is the edition shown on this page.</p>
+    <div class="trend-grid">
+      <div class="panel">
+        <h3>Per-turn instruction tokens</h3>
+        <p class="muted small">o200k tokens for the agent that loads the most; a symlinked file counted once.</p>
+        <ul class="legend" id="trend-tokens-legend"></ul>
+        <div class="chart" id="trend-tokens"></div>
+      </div>
+      <div class="panel">
+        <h3>Repositories with each file</h3>
+        <p class="muted small">Share of the repositories with at least one file of that name.</p>
+        <ul class="legend" id="trend-files-legend"></ul>
+        <div class="chart" id="trend-files"></div>
+      </div>
+    </div>
+    <details class="trend-values">
+      <summary>Values by edition</summary>
+      <div class="panel table-wrap"><table id="trend-table"></table></div>
+    </details>
+  </section>
 
   <section aria-labelledby="dist-title">
     <h2 id="dist-title">Instruction tokens sent with every turn</h2>
@@ -177,12 +233,12 @@
       <li>The live report behind each repository link reads the current default branch and includes test and example folders, so its numbers can differ from this snapshot.</li>
     </ul>
     <h3>Reproduce</h3>
-    <p>In a checkout of turntax, run <code>npm ci &amp;&amp; npm run build</code>, then <code>GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs</code>. The dataset records the turntax version and the commit of the counting engine. Search ranking and repositories change over time; the pinned SHAs let you re-run turntax on exactly the files measured here.</p>
+    <p>A scheduled GitHub Actions workflow collects a new edition on the first day of each month. To reproduce this edition's selection, run <code>npm ci &amp;&amp; npm run build</code> in a checkout of turntax, then <code id="m-reproduce"></code>. The dataset records the turntax version and the commit of the counting engine. Search ranking and repositories change over time; the pinned SHAs let you re-run turntax on exactly the files measured here.</p>
     <p class="muted small" id="m-engine"></p>
   </section>
 
   <footer>
-    <span>Data: <a href="./2026-10.json">2026-10.json</a> · Script: <a href="https://github.com/TorutDev/turntax/blob/main/scripts/state-of.mjs">scripts/state-of.mjs</a></span>
+    <span>Data: <a id="data-link" href="./editions.json">editions.json</a> · All editions: <a href="./editions.json">editions.json</a> · Script: <a href="https://github.com/TorutDev/turntax/blob/main/scripts/state-of.mjs">scripts/state-of.mjs</a></span>
     <span>MIT licensed. Read-only: no repository was changed.</span>
   </footer>
 </main>
@@ -204,6 +260,16 @@ const plural = (n, one, many = `${one}s`) => `${fmt(n)} ${n === 1 ? one : many}`
 const perTurn = (r) => r.maxPerTurnLinksOnce ?? r.maxPerTurn;
 const repoLink = (fullName) => `../?repo=${fullName.split('/').map(encodeURIComponent).join('/')}`;
 const longDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+/** "2026-10" as "October 2026" (or "Oct" with month: 'short' and no year). */
+const monthName = (edition, month = 'long', year = 'numeric') =>
+  new Date(`${edition}-01T00:00:00Z`).toLocaleDateString('en-GB', { month, ...(year ? { year } : {}), timeZone: 'UTC' });
+const fmtShare = (v) => `${Math.round(v * 100)}%`;
+
+async function getJSON(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+  return res.json();
+}
 
 /** Adds a hover and focus tooltip to bar rows inside a chart panel. */
 function withTip(chart) {
@@ -364,7 +430,7 @@ function renderFindings(data) {
   const f = s.fixes;
   $('fix-note').textContent =
     `turntax --fix finds changes that lower per-turn tokens in ${plural(f.reposWithSaving, 'repository', 'repositories')} (${pct(f.reposWithSaving, n)}), ` +
-    `while every agent keeps reading every line (a moved section then loads when the agent works in its folder). ` +
+    `while every agent keeps reading every line (moved text then loads when the agent works in that folder or uses that skill). ` +
     `The estimated savings of those fixes add up to ${fmt(f.totalSavingO200k)} o200k tokens per turn across the repositories, median ${fmt(f.medianSavingAmongReposWithSavingO200k)} per repository. ` +
     `${fmt(f.repos - f.reposWithSaving)} more have only fixes without a per-turn saving, such as removing duplicate lines from files that load on demand.`;
 }
@@ -496,21 +562,169 @@ function renderMethods(data) {
     `(Cursor reads AGENTS.md and CLAUDE.md) is counted as loading the text twice; whether it does is not documented. Counted that way, ` +
     `the median is ${fmt(both.median)} tokens and the 90th percentile ${fmt(both.p90)}.`;
   $('m-version').textContent = data.turntaxVersion;
+  // Editions before selection.date was recorded were selected on the day they were generated.
+  const date = sel.date ?? data.generatedAt.slice(0, 10);
+  $('m-reproduce').textContent = `GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs --date ${date}${sel.target !== 100 ? ` --limit ${sel.target}` : ''}`;
   $('m-engine').textContent = `turntax ${data.turntaxVersion} · engine commit ${data.engineCommit} · generated ${data.generatedAt}`;
 }
 
+/** Title, edition picker and data link for the edition shown. */
+function renderEdition(editions, entry, wanted) {
+  const month = monthName(entry.edition);
+  document.title = `State of agent instruction files, ${month} · turntax`;
+  $('eyebrow').textContent = `Report · ${month}`;
+  $('data-link').href = `./${entry.file}`;
+  $('data-link').textContent = entry.file;
+  if (wanted && wanted !== entry.edition) $('meta').textContent = `There is no edition ${wanted}; this is the latest. ${$('meta').textContent}`;
+  if (editions.length < 2) return;
+  const select = $('edition');
+  select.replaceChildren(...[...editions].reverse().map((e) => Object.assign(el('option', { value: e.edition }, monthName(e.edition)), { selected: e === entry })));
+  select.addEventListener('change', () => {
+    const url = new URL(location.href);
+    if (select.value === editions.at(-1).edition) url.searchParams.delete('edition');
+    else url.searchParams.set('edition', select.value);
+    location.assign(url);
+  });
+  $('edition-picker').hidden = false;
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** Like el() for SVG elements. */
+function svg(tag, attrs = {}, ...children) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  node.append(...children);
+  return node;
+}
+
+/** Smallest of 1, 1.5, 2, 3, 4, 5, 6 or 8 times a power of ten that is at least v. */
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  const k = 10 ** Math.floor(Math.log10(v));
+  return [1, 1.5, 2, 3, 4, 5, 6, 8, 10].map((m) => m * k).find((m) => m >= v);
+}
+
+/** A line chart of a few series over the editions, starting at zero, with the shown edition highlighted. */
+function trendChart(chart, legend, { editions, current, series, max, format, label }) {
+  const W = 360, H = 200, L = 44, R = 72, T = 10, B = 34;
+  const pw = W - L - R;
+  const ph = H - T - B;
+  const n = editions.length;
+  const x = (i) => L + (i * pw) / (n - 1);
+  const y = (v) => T + ph - (v / max) * ph;
+  const root = svg('svg', { class: 'trend-chart', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': label });
+  const ci = editions.indexOf(current);
+  root.append(svg('rect', { class: 'current', x: x(ci) - 8, y: T, width: 16, height: ph }));
+  for (const v of [0, max / 2, max]) {
+    root.append(svg('line', { class: 'grid', x1: L, x2: L + pw, y1: y(v), y2: y(v) }), svg('text', { class: 'tick', x: L - 6, y: y(v) + 4, 'text-anchor': 'end' }, format(v)));
+  }
+  // At most six month labels, always including the latest edition.
+  const step = Math.ceil(n / 6);
+  editions.forEach((e, i) => {
+    if ((n - 1 - i) % step) return;
+    const cls = e === current ? 'tick now' : 'tick';
+    root.append(
+      svg('text', { class: cls, x: x(i), y: T + ph + 15, 'text-anchor': 'middle' }, monthName(e.edition, 'short', null)),
+      svg('text', { class: cls, x: x(i), y: T + ph + 28, 'text-anchor': 'middle' }, e.edition.slice(0, 4)),
+    );
+  });
+  const guide = svg('line', { class: 'guide', y1: T, y2: T + ph, visibility: 'hidden' });
+  root.append(guide);
+  for (const s of series) root.append(svg('polyline', { class: `line ${s.cls}`, points: editions.map((e, i) => `${x(i)},${y(s.get(e))}`).join(' ') }));
+  const dots = editions.map((e, i) => series.map((s) => svg('circle', { class: `dot ${s.cls}`, cx: x(i), cy: y(s.get(e)), r: 4 })));
+  root.append(...dots.flat());
+  // Direct labels at the line ends, nudged apart when they would overlap.
+  const ends = series.map((s) => ({ text: s.short, y: y(s.get(editions[n - 1])) })).sort((a, b) => a.y - b.y);
+  ends.forEach((end, i) => {
+    if (i) end.y = Math.max(end.y, ends[i - 1].y + 13);
+    root.append(svg('text', { class: 'end-label', x: L + pw + 10, y: end.y + 4 }, end.text));
+  });
+  chart.replaceChildren(root);
+  legend.replaceChildren(...series.map((s) => el('li', {}, el('span', { class: `key ${s.cls}`, 'aria-hidden': 'true' }), s.name)));
+  // One hover and focus target per edition, wider than the dots.
+  const attach = withTip(chart);
+  editions.forEach((e, i) => {
+    const text = `${monthName(e.edition)}: ${series.map((s) => `${s.name} ${format(s.get(e))}`).join(' · ')}`;
+    const left = i ? (x(i - 1) + x(i)) / 2 : L - 8;
+    const right = i < n - 1 ? (x(i) + x(i + 1)) / 2 : L + pw + 8;
+    const hit = svg('rect', { class: 'hit', x: left, y: T, width: right - left, height: ph, tabindex: '0', 'aria-label': text });
+    const top = dots[i].reduce((a, b) => (Number(b.getAttribute('cy')) < Number(a.getAttribute('cy')) ? b : a));
+    attach(hit, top, text);
+    const show = () => {
+      guide.setAttribute('x1', x(i));
+      guide.setAttribute('x2', x(i));
+      guide.setAttribute('visibility', 'visible');
+    };
+    const hide = () => guide.setAttribute('visibility', 'hidden');
+    hit.addEventListener('mouseenter', show);
+    hit.addEventListener('focus', show);
+    hit.addEventListener('mouseleave', hide);
+    hit.addEventListener('blur', hide);
+    root.append(hit);
+  });
+}
+
+/** Trend charts and a table of the editions; shown once there are at least two. */
+function renderTrend(editions, current) {
+  if (editions.length < 2) return;
+  const tokens = [
+    { cls: 's1', name: 'Median', short: 'Median', get: (e) => e.medianO200k },
+    { cls: 's2', name: '90th percentile', short: '90th pct.', get: (e) => e.p90O200k },
+  ];
+  trendChart($('trend-tokens'), $('trend-tokens-legend'), {
+    editions,
+    current,
+    series: tokens,
+    max: niceMax(Math.max(...editions.map((e) => e.p90O200k))),
+    format: fmt,
+    label: 'Median and 90th percentile of per-turn instruction tokens by edition',
+  });
+  const files = [
+    { cls: 's1', name: 'AGENTS.md', short: 'AGENTS.md', get: (e) => e.agentsMdShare },
+    { cls: 's2', name: 'CLAUDE.md', short: 'CLAUDE.md', get: (e) => e.claudeMdShare },
+  ];
+  trendChart($('trend-files'), $('trend-files-legend'), { editions, current, series: files, max: 1, format: fmtShare, label: 'Share of repositories with AGENTS.md and with CLAUDE.md by edition' });
+
+  const head = el(
+    'tr',
+    {},
+    ...['Edition', 'Repositories', 'Median tokens', '90th percentile', 'AGENTS.md', 'CLAUDE.md', 'turntax'].map((h, i) => el('th', { scope: 'col', class: i ? 'num' : '' }, h)),
+  );
+  const rows = [...editions].reverse().map((e) =>
+    el(
+      'tr',
+      e === current ? { class: 'now', 'aria-current': 'true' } : {},
+      el('td', { class: 'nowrap' }, el('a', { href: `?edition=${encodeURIComponent(e.edition)}` }, monthName(e.edition))),
+      el('td', { class: 'num' }, fmt(e.repos)),
+      el('td', { class: 'num' }, fmt(e.medianO200k)),
+      el('td', { class: 'num' }, fmt(e.p90O200k)),
+      el('td', { class: 'num' }, fmtShare(e.agentsMdShare)),
+      el('td', { class: 'num' }, fmtShare(e.claudeMdShare)),
+      el('td', { class: 'num' }, e.turntaxVersion),
+    ),
+  );
+  $('trend-table').replaceChildren(el('thead', {}, head), el('tbody', {}, ...rows));
+  $('trend').hidden = false;
+}
+
 async function main() {
+  const wanted = new URLSearchParams(location.search).get('edition');
+  let editions;
+  let entry;
   let data;
   try {
-    const res = await fetch('./2026-10.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    data = await res.json();
+    editions = await getJSON('./editions.json');
+    if (!editions.length) throw new Error('no editions are listed');
+    entry = editions.find((e) => e.edition === wanted) ?? editions.at(-1);
+    data = await getJSON(`./${entry.file}`);
   } catch (e) {
     $('lede').textContent = `Could not load the dataset (${e.message}).`;
     $('lede').classList.add('error');
     return;
   }
   renderHeader(data);
+  renderEdition(editions, entry, wanted);
+  renderTrend(editions, entry);
   renderStats(data);
   renderDistribution(data);
   renderNames(data);

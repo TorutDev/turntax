@@ -1,0 +1,78 @@
+name: State of report
+
+on:
+  schedule:
+    # 06:00 UTC on the first day of each month.
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Selection date as YYYY-MM-DD (empty: today). The edition is its month.'
+        required: false
+        type: string
+
+permissions:
+  # Commit the edition to main.
+  contents: write
+  # Start the Pages deployment: pushes made with GITHUB_TOKEN do not trigger other workflows.
+  actions: write
+
+concurrency:
+  group: state-of
+  cancel-in-progress: false
+
+jobs:
+  edition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          # Not stored in .git, so npm ci cannot read it from there; the push step adds it to its remote.
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Collect the edition
+        id: collect
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_DATE: ${{ inputs.date }}
+        run: |
+          day="${INPUT_DATE:-$(date -u +%F)}"
+          node scripts/state-of.mjs --date "$day"
+          # More than five unreadable repositories would shift the sample; publish nothing then.
+          errors=$(node -p "require('./web/state/${day:0:7}.json').selection.skippedErrors")
+          if [ "$errors" -gt 5 ]; then
+            echo "::error::$errors repositories could not be read; the edition is not published."
+            exit 1
+          fi
+          echo "edition=${day:0:7}" >> "$GITHUB_OUTPUT"
+      - name: Commit to main
+        id: commit
+        env:
+          EDITION: ${{ steps.collect.outputs.edition }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          git add web/state/*.json
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "State of agent instruction files, $EDITION"
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git pull --rebase "$remote" main
+          git push "$remote" HEAD:main
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+      - name: Deploy the page
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

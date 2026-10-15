@@ -11,7 +11,7 @@ import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
  * each agent must still read every line it read before, at least as often (see `check`).
  */
 
-export type FixKind = 'duplicate' | 'scopable-section' | 'misconfigured';
+export type FixKind = 'duplicate' | 'scopable-section' | 'oversized-section' | 'misconfigured';
 
 export interface Fix {
   kind: FixKind;
@@ -48,7 +48,11 @@ export interface FixOptions {
   exists?: (path: string) => boolean;
   /** Files that must not be changed, such as symlinks and their targets; a string gives the reason shown when a fix is skipped. */
   readOnly?: (path: string) => boolean | string;
+  /** Procedure sections of at least this many o200k tokens in always-loaded files become skills (default 600, as in the advice). */
+  sectionTokens?: number;
 }
+
+const DEFAULT_SECTION_TOKENS = 600;
 
 const RANK: Record<LoadMode, number> = { ignored: 0, manual: 1, 'on-demand': 2, always: 3 };
 
@@ -182,6 +186,7 @@ export function planFixes(input: RepoFile[], opts: FixOptions = {}): FixPlan {
   // Moves run before duplicate removal: a move may relax how often lines load, so a line must not be
   // removed elsewhere on the strength of a copy that is moved later.
   moveScopableSections(ws, opts, readOnly, fixes, skipped);
+  moveProcedureSections(ws, opts, readOnly, fixes, skipped);
   removeDuplicates(ws, readOnly, fixes, skipped);
 
   const renamedTo = new Map([...renames].map(([from, to]) => [to, from]));
@@ -318,10 +323,23 @@ function removeDuplicates(ws: Workspace, readOnly: (path: string) => string | nu
   }
 }
 
+/** A folder-safe name; accents are folded first, so "Sürüm yayınlama" becomes surum-yayinlama. */
+const slugOf = (heading: string) =>
+  heading
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'section';
+
+/** Personal files (CLAUDE.local.md) are usually not committed; their text must not move into shared files. */
+const isPersonal = (path: string) => /\.local\.md$/i.test(path);
+
 /** Where a section about `scope` can live so it loads only there: the same file name nested, AGENTS.md, or a Claude rule. */
 function targets(source: string, scope: string, heading: string): Array<{ path: string; header: string }> {
   const name = basename(source);
-  const slug = heading.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'section';
+  const slug = slugOf(heading);
   const out: Array<{ path: string; header: string }> = [];
   if (['CLAUDE.md', 'AGENTS.md', 'GEMINI.md'].includes(name)) out.push({ path: `${scope}/${name}`, header: '' });
   if (name !== 'AGENTS.md') out.push({ path: `${scope}/AGENTS.md`, header: '' });
@@ -346,7 +364,7 @@ function movableSections(text: string): Array<{ heading: string; body: string; s
 }
 
 function moveScopableSections(ws: Workspace, opts: FixOptions, readOnly: (path: string) => string | null, fixes: Fix[], skipped: SkippedFix[]): void {
-  const sources = [...new Set(ws.units.filter((u) => u.mode === 'always' && u.part === 'full').map((u) => u.path))].sort();
+  const sources = [...new Set(ws.units.filter((u) => u.mode === 'always' && u.part === 'full' && !isPersonal(u.path)).map((u) => u.path))].sort();
   const tried = new Set<string>();
   for (const path of sources) {
     // Sections are found in the raw file so that comments and formatting move as they are.
@@ -426,9 +444,142 @@ function leftOut(before: Map<string, RepoFile>, after: Map<string, RepoFile>, bo
 function moveBlocker(body: string, scope: string, opts: FixOptions): string | null {
   if (scope.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')) return `unusual folder ${scope}.`;
   if (opts.exists && !opts.exists(scope)) return `folder ${scope}/ does not exist.`;
+  return relativeRefs(body);
+}
+
+/** Why a section cannot move to another folder as it is: @imports and relative links resolve from the file they are in. */
+function relativeRefs(body: string): string | null {
   if (findImports(body).length) return 'it has @imports, which resolve relative to the file they are in.';
   if (/\]\((?!https?:|#|\/|mailto:)[^)]+\)/.test(body)) return 'it has relative links, which resolve relative to the file they are in.';
   return null;
+}
+
+/**
+ * Skill folders at the root, tried in order (see tools.ts): Claude Code lists `.claude/skills` and Codex
+ * `.agents/skills` every session and loads a skill's body only when it is used. No other agent reads either.
+ */
+const SKILL_DIRS = ['.claude/skills', '.agents/skills'];
+
+const PROCEDURE_HEADING = /release|deploy|publish|migrat|setup|install|upgrade|troubleshoot|runbook|workflow|procedure|checklist|how to|steps/i;
+
+/** A procedure: its heading names one, or numbered steps make up at least half of the non-blank lines under the heading. */
+function isProcedure(text: string): boolean {
+  const [heading, ...rest] = linesWithFences(text);
+  if (PROCEDURE_HEADING.test(heading?.line ?? '')) return true;
+  const lines = rest.filter(({ line }) => line.trim() !== '');
+  const steps = lines.filter(({ line, inFence }) => !inFence && /^\s*\d+[.)]\s/.test(line));
+  return lines.length > 0 && steps.length * 2 >= lines.length;
+}
+
+/** The section's own text and each subsection's must all be procedures, so general rules under a "Setup" heading stay. */
+function isProcedureSection(body: string): boolean {
+  const parts: string[][] = [];
+  for (const { line, inFence } of linesWithFences(body)) {
+    if (!inFence && headingLevel(line)) parts.push([line]);
+    else parts[parts.length - 1]?.push(line);
+  }
+  return parts.every((p) => isProcedure(p.join('\n')));
+}
+
+/** The section's slug, with -2, -3... when a skill folder of that name exists in `dir` (at most 64 characters). */
+function skillSlug(ws: Workspace, opts: FixOptions, dir: string, heading: string): string {
+  const base = slugOf(heading);
+  for (let n = 1; ; n++) {
+    const suffix = n === 1 ? '' : `-${n}`;
+    const slug = base.slice(0, 64 - suffix.length).replace(/-+$/, '') + suffix;
+    const folder = `${dir}/${slug}`;
+    if (!opts.exists?.(folder) && ![...ws.files.keys()].some((p) => p.startsWith(`${folder}/`))) return slug;
+  }
+}
+
+/** What the section is and when to use it, at most 200 characters, safe in a double-quoted YAML string. */
+function skillDescription(heading: string, source: string): string {
+  // Quotes, backslashes and control characters cannot be part of a double-quoted YAML value as written.
+  const clean = (s: string) => s.replace(/["\\\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  const text = (h: string) => `${h} (moved from ${clean(source)} by turntax). Use when the task involves ${h.toLowerCase()}.`;
+  let h = clean(heading);
+  if (text(h).length > 200) h = h.slice(0, Math.max(0, Math.floor((200 - text('').length) / 2))).trimEnd();
+  return text(h).slice(0, 200);
+}
+
+/**
+ * Moves large procedure sections (release, deploy, setup...) of always-loaded files into a new skill, leaving the
+ * heading and a one-line pointer. General guidelines stay. Sections that can load only in their folder are left to
+ * the scopable moves, as in the advice.
+ */
+function moveProcedureSections(ws: Workspace, opts: FixOptions, readOnly: (path: string) => string | null, fixes: Fix[], skipped: SkippedFix[]): void {
+  const threshold = opts.sectionTokens ?? DEFAULT_SECTION_TOKENS;
+  const candidate = (x: { body: string }) => {
+    if (!isProcedureSection(x.body) || countO200k(x.body) < threshold) return false;
+    const scope = sectionScope(x.body);
+    return !scope || (opts.exists !== undefined && !opts.exists(scope));
+  };
+  const sources = [...new Set(ws.units.filter((u) => u.mode === 'always' && u.part === 'full' && !isPersonal(u.path)).map((u) => u.path))].sort();
+  const tried = new Set<string>();
+  for (const path of sources) {
+    for (;;) {
+      const { text, eol } = lf(ws.files.get(path)!.text);
+      const next = movableSections(text).find((x) => !tried.has(`${path}\0${x.body}`) && candidate(x));
+      if (!next) break;
+      tried.add(`${path}\0${next.body}`);
+      const { heading, body, start, end } = next;
+      const reason = readOnly(path) ?? relativeRefs(body);
+      if (reason) {
+        skipped.push({ kind: 'oversized-section', paths: [path], reason: `Section "${heading}": ${reason}` });
+        continue;
+      }
+      const lines = text.split('\n');
+      const tail = lines.slice(end);
+      const description = skillDescription(heading, path);
+      let moved = false;
+      const refused: string[] = [];
+      for (const dir of SKILL_DIRS) {
+        const slug = skillSlug(ws, opts, dir, heading);
+        const target = `${dir}/${slug}/SKILL.md`;
+        const blocked = readOnly(target);
+        if (blocked) {
+          refused.push(`${target} (${blocked.replace(/\.$/, '')})`);
+          continue;
+        }
+        const pointer = `${lines[start]}\n\nSee the \`${slug}\` skill.`;
+        const rest = [...lines.slice(0, start), pointer, ...(tail.length ? ['', ...tail] : [])].join('\n').replace(/\n*$/, '\n');
+        // Quoted, so a slug like "2024" stays a string for strict YAML loaders.
+        const skill = `---\nname: "${slug}"\ndescription: "${description}"\n---\n\n${body}\n`;
+        const trial = ws.trial(
+          new Map([
+            [path, rest.replace(/\n/g, eol)],
+            [target, skill.replace(/\n/g, eol)],
+          ]),
+        );
+        // Agents that loaded the section every turn may now load it only when the skill is used.
+        const lost = ws.check(trial, keysOf(body), (r) => Math.min(r, RANK['on-demand']));
+        if (lost.length) {
+          refused.push(`${target} (${names(lost)} would lose context)`);
+          continue;
+        }
+        const readers = [...new Set(ws.units.filter((u) => u.path === path && u.mode === 'always' && u.part !== 'description').map((u) => u.tool))];
+        const dropped = opts.tools ? leftOut(ws.files, trial.files, body, opts.tools) : [];
+        ws.commit(trial);
+        fixes.push({
+          kind: 'oversized-section',
+          paths: [path, target],
+          message:
+            `Moved section "${heading}" from ${path} to ${target} (new skill); ${names(readers)} load it only when the skill is used.` +
+            (dropped.length ? ` Not kept for ${names(dropped)} (outside --tools).` : ''),
+          // The skill's name and description are listed every turn, and the heading stays with a pointer.
+          savingTokens: Math.max(0, countO200k(body) - countO200k(`${slug}: ${description}`) - countO200k(pointer)),
+        });
+        moved = true;
+        break;
+      }
+      if (!moved)
+        skipped.push({
+          kind: 'oversized-section',
+          paths: [path],
+          reason: `Section "${heading}": no target keeps every agent's context: ${refused.join('; ')}. Use --tools to choose the agents to keep it for.`,
+        });
+    }
+  }
 }
 
 /** Unified diff of the planned changes, in the format `git apply` accepts. */

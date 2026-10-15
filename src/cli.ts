@@ -6,7 +6,7 @@ import { hasNonEnglish } from './core/advice.js';
 import { audit, type AuditOptions, type McpMeasurement } from './core/audit.js';
 import { classify } from './core/classify.js';
 import { asDiffInput, diffReports, maxIncrease } from './core/diff.js';
-import { planFixes, unifiedDiff, type FixPlan } from './core/fix.js';
+import { unifiedDiff } from './core/fix.js';
 import { globMatcher } from './core/glob.js';
 import { parseMcpConfigs, serverKey, toolDefinitionsText, toolNamesText, type McpServer } from './core/mcp.js';
 import { DEFAULT_MODEL_IDS, MODELS, validateModels } from './core/prices.js';
@@ -15,8 +15,11 @@ import { countO200k } from './core/tokenize.js';
 import { TOOL_IDS } from './core/tools.js';
 import type { ModelInfo, RepoFile, ToolId } from './core/types.js';
 import { applyChanges } from './node/apply.js';
+import { runInit } from './node/init.js';
+import { runMcp } from './node/mcp-server.js';
 import { CONFIG_FILE, loadConfig, type Config } from './node/config.js';
-import { discover, discoverMcpConfigs, discoverUser, existsIn, linkedPaths, packageScripts } from './node/discover.js';
+import { discover, discoverMcpConfigs, discoverUser, existsIn, packageScripts } from './node/discover.js';
+import { fixLines, fixPlan } from './node/fix-plan.js';
 import { filesAtRef } from './node/git.js';
 import { measureServer } from './node/mcp.js';
 import { anthropicCounter, geminiCounter, translateToEnglish } from './node/remote.js';
@@ -27,6 +30,8 @@ const HELP = `turntax ${VERSION}
 Measure the token tax that agent instruction files add to every turn.
 
 Usage: turntax [path] [options]
+       turntax init [path]     Add the GitHub Action workflow and a turntax.config.json (see turntax init --help)
+       turntax mcp             Run turntax as an MCP server over stdio (see turntax mcp --help)
 
 Options:
   --tools <list>          Tools to report: ${TOOL_IDS.join(', ')} (default: tools with files)
@@ -61,8 +66,9 @@ Options:
   --prices <file.json>    Use your own price table (same shape as --list-models --json)
   --section-tokens <n>    Flag always-loaded sections at or above n o200k tokens (default: 600)
   --fix                   Print a diff of the safe fixes: duplicate lines, sections that can load only in
-                          their folder, misnamed Cursor rules. Every agent keeps reading the moved text;
-                          --tools limits the agents whose context is kept
+                          their folder, large procedure sections moved into a skill, misnamed Cursor rules.
+                          Every agent keeps reading the moved text; --tools limits the agents whose
+                          context is kept
   --write                 With --fix, apply the changes to the files
   --config <file>         Read defaults from this file (default: ${CONFIG_FILE} in the audited folder, if any)
   -h, --help              Show help
@@ -95,6 +101,9 @@ function positiveInt(name: string, value: string | undefined, fallback: number):
 }
 
 export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env, now: Date = new Date()): Promise<number> {
+  // Subcommands; a folder named like one is audited as ./init or ./mcp.
+  if (argv[0] === 'init') return runInit(argv.slice(1));
+  if (argv[0] === 'mcp') return runMcp(argv.slice(1), env);
   let parsed;
   try {
     parsed = parseArgs({
@@ -176,6 +185,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
     for (const t of tools ?? []) if (!TOOL_IDS.includes(t)) throw new UsageError(`Unknown tool "${t}". Use: ${TOOL_IDS.join(', ')}`);
     const ignored = globMatcher(config.ignore ?? []);
     const repoFiles = (files: RepoFile[]) => files.filter((f) => !ignored(f.path));
+    const sectionTokens = positiveInt('section-tokens', o['section-tokens'], config.sectionTokens ?? 600);
 
     if (o.write && !o.fix) throw new UsageError('--write needs --fix.');
     if (o['path-prefix'] !== undefined && !o.annotations) throw new UsageError('--path-prefix needs --annotations.');
@@ -189,7 +199,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
       ).filter((k) => o[k] !== undefined);
       if (o.write && o.out) other.push('out');
       if (other.length) throw new UsageError(`--fix${o.write ? ' --write' : ''} cannot be combined with --${other.join(', --')}.`);
-      return await fix(root, tools, ignored, Boolean(o.write), o.out);
+      return await fix(root, tools, ignored, sectionTokens, Boolean(o.write), o.out);
     }
     const discovered = await discover(root);
     const files = repoFiles(discovered);
@@ -272,7 +282,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
         exists: existsIn(root),
         packageScripts: packageScripts(root),
         english,
-        sectionTokens: positiveInt('section-tokens', o['section-tokens'], config.sectionTokens ?? 600),
+        sectionTokens,
       },
     });
 
@@ -301,7 +311,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
       : o['pr-comment']
         ? renderPrComment(
             report,
-            files.length ? fixPlan(root, discovered, tools, ignored) : undefined,
+            files.length ? fixPlan(root, discovered, tools, ignored, sectionTokens) : undefined,
             fixCommand(positionals[0], o.config, o.tools),
           )
         : o.annotations
@@ -341,14 +351,14 @@ async function fix(
   root: string,
   tools: ToolId[] | undefined,
   ignored: (path: string) => boolean,
+  sectionTokens: number,
   write: boolean,
   out: string | undefined,
 ): Promise<number> {
   const discovered = await discover(root);
-  const plan = fixPlan(root, discovered, tools, ignored);
+  const plan = fixPlan(root, discovered, tools, ignored, sectionTokens);
   const log = (line: string) => (write ? process.stdout : process.stderr).write(line + '\n');
-  for (const f of plan.fixes) log(`fix: ${f.message}${f.savingTokens ? ` [saves ~${f.savingTokens} tokens/turn]` : ''}`);
-  for (const s of plan.skipped) log(`skipped ${s.kind}: ${s.reason}`);
+  for (const line of fixLines(plan)) log(line);
   if (!plan.changes.length) {
     // An empty patch, so an earlier patch in the same file is not applied again.
     if (out && !write) writeFileSync(out, '');
@@ -365,20 +375,6 @@ async function fix(
   else process.stdout.write(diff);
   log('Preview only. Run again with --write to apply, or save the diff and use git apply.');
   return 0;
-}
-
-/**
- * Safe fixes. The plan sees every repository file, ignored ones included, because the agents still read
- * them and the safety check must see what they read; symlinks, their targets and ignored files are never
- * written.
- */
-function fixPlan(root: string, discovered: RepoFile[], tools: ToolId[] | undefined, ignored: (path: string) => boolean): FixPlan {
-  const linked = linkedPaths(root, discovered);
-  return planFixes(discovered, {
-    tools,
-    exists: existsIn(root),
-    readOnly: (p) => (ignored(p) ? `${p} is in the config's ignore list; it is left alone.` : linked(p)),
-  });
 }
 
 /** The --fix command matching the run that made a pull request comment. */

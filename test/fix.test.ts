@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { main } from '../src/cli.js';
 import { classify } from '../src/core/classify.js';
 import { planFixes, unifiedDiff } from '../src/core/fix.js';
+import { countO200k } from '../src/core/tokenize.js';
 import type { RepoFile } from '../src/core/types.js';
 import { applyChanges } from '../src/node/apply.js';
 import { discover, existsIn } from '../src/node/discover.js';
@@ -241,6 +242,163 @@ describe('scopable sections', () => {
   });
 });
 
+const steps = (n: number) =>
+  Array.from({ length: n }, (_, i) => `${i + 1}. Step ${i + 1}: bump the version, run the full test suite, build the package and check the output.`).join('\n');
+
+/** About 700 o200k tokens of numbered release steps. */
+const RELEASE = `## Release process\n\n${steps(28)}\n`;
+
+const SKILL = '.claude/skills/release-process/SKILL.md';
+
+describe('procedure sections', () => {
+  const text = `# Project\n\nUse npm.\n\n${RELEASE}\n## Code style\n\n- Keep functions small.\n`;
+
+  it('keeps a procedure in CLAUDE.md by default, since Cursor and others read no skill folder', () => {
+    const plan = planFixes([{ path: 'CLAUDE.md', text }]);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped).toEqual([
+      {
+        kind: 'oversized-section',
+        paths: ['CLAUDE.md'],
+        reason:
+          `Section "Release process": no target keeps every agent's context: ${SKILL} (Cursor, GitHub Copilot, Zed, Amp, OpenCode would lose context); ` +
+          '.agents/skills/release-process/SKILL.md (Claude Code, Cursor, GitHub Copilot, Zed, Amp, OpenCode would lose context). Use --tools to choose the agents to keep it for.',
+      },
+    ]);
+  });
+
+  it('moves a large release procedure from CLAUDE.md into a Claude Code skill, leaving a pointer', () => {
+    const plan = planFixes([{ path: 'CLAUDE.md', text }], { tools: ['claude-code'] });
+    const description = 'Release process (moved from CLAUDE.md by turntax). Use when the task involves release process.';
+    expect(countO200k(RELEASE)).toBeGreaterThan(600);
+    expect(plan.changes.map((c) => [c.path, c.before === null])).toEqual([
+      [SKILL, true],
+      ['CLAUDE.md', false],
+    ]);
+    expect(after(plan, SKILL)).toBe(`---\nname: "release-process"\ndescription: "${description}"\n---\n\n${RELEASE}`);
+    expect(after(plan, 'CLAUDE.md')).toBe('# Project\n\nUse npm.\n\n## Release process\n\nSee the `release-process` skill.\n\n## Code style\n\n- Keep functions small.\n');
+    expect(plan.fixes).toEqual([
+      {
+        kind: 'oversized-section',
+        paths: ['CLAUDE.md', SKILL],
+        message: `Moved section "Release process" from CLAUDE.md to ${SKILL} (new skill); Claude Code load it only when the skill is used. Not kept for Cursor, GitHub Copilot, Zed, Amp, OpenCode (outside --tools).`,
+        // The skill's listing and the pointer still load every turn.
+        savingTokens:
+          countO200k(RELEASE.trimEnd()) - countO200k(`release-process: ${description}`) - countO200k('## Release process\n\nSee the `release-process` skill.'),
+      },
+    ]);
+    const units = classify(
+      plan.changes.map((c) => ({ path: c.path, text: c.after })),
+      ['claude-code'],
+    );
+    expect(units.find((u) => u.path === SKILL && u.part === 'description')!.mode).toBe('always');
+    expect(units.find((u) => u.path === SKILL && u.part === 'body')!.text).toContain('28. Step 28');
+  });
+
+  it('moves an AGENTS.md procedure into a Codex skill with --tools codex', () => {
+    const plan = planFixes([{ path: 'AGENTS.md', text }], { tools: ['codex'] });
+    expect(plan.fixes.map((f) => f.paths)).toEqual([['AGENTS.md', '.agents/skills/release-process/SKILL.md']]);
+    expect(plan.fixes[0]!.message).toMatch(/; OpenAI Codex load it only when the skill is used\. Not kept for Claude Code, Cursor, /);
+    expect(after(plan, '.agents/skills/release-process/SKILL.md')).toMatch(/^---\nname: "release-process"\ndescription: "Release process \(moved from AGENTS\.md by turntax\)\./);
+    expect(plan.changes.some((c) => c.path.startsWith('.claude/'))).toBe(false);
+  });
+
+  it('leaves large general guidelines alone and moves mostly numbered steps under any heading', () => {
+    const style = `## Code style\n\n${Array.from({ length: 40 }, (_, i) => `- Rule ${i + 1}: keep functions small, name them after what they return and avoid side effects.`).join('\n')}\n`;
+    expect(countO200k(style)).toBeGreaterThan(600);
+    const plan = planFixes([{ path: 'CLAUDE.md', text: `# Project\n\n${style}\n## Shipping\n\n${steps(28)}\n` }], { tools: ['claude-code'] });
+    expect(plan.fixes.map((f) => f.paths)).toEqual([['CLAUDE.md', '.claude/skills/shipping/SKILL.md']]);
+    expect(after(plan, 'CLAUDE.md')).toBe(`# Project\n\n${style}\n## Shipping\n\nSee the \`shipping\` skill.\n`);
+    expect(plan.skipped).toEqual([]);
+  });
+
+  it('moves a section with subsections only when every subsection is a procedure too', () => {
+    const setup = (sub: string) => `# Project\n\n## Development setup\n\nSet up a local environment before you change any code.\n\n${sub}`;
+    const policy = `### Dependency updates\n\n${Array.from({ length: 30 }, (_, i) => `- Policy ${i + 1}: open an issue first, wait for a maintainer and never bump versions in unrelated pull requests.`).join('\n')}\n`;
+    expect(countO200k(setup(policy))).toBeGreaterThan(600);
+    const general = planFixes([{ path: 'CLAUDE.md', text: setup(policy) }], { tools: ['claude-code'] });
+    expect(general.changes).toEqual([]);
+    expect(general.skipped).toEqual([]);
+    const plan = planFixes([{ path: 'CLAUDE.md', text: setup(`### Install steps\n\n${steps(28)}\n`) }], { tools: ['claude-code'] });
+    expect(plan.fixes.map((f) => f.paths)).toEqual([['CLAUDE.md', '.claude/skills/development-setup/SKILL.md']]);
+    expect(after(plan, '.claude/skills/development-setup/SKILL.md')).toContain('### Install steps\n\n1. Step 1');
+    expect(after(plan, 'CLAUDE.md')).toBe('# Project\n\n## Development setup\n\nSee the `development-setup` skill.\n');
+  });
+
+  it('skips sections with @imports or relative links, which would resolve from the skill folder', () => {
+    for (const [line, reason] of [
+      ['See @docs/release.md for the details.', 'it has @imports'],
+      ['See [the changelog](CHANGELOG.md) for the details.', 'it has relative links'],
+    ]) {
+      const plan = planFixes([{ path: 'CLAUDE.md', text: `# Project\n\n${RELEASE}${line}\n` }], { tools: ['claude-code'] });
+      expect(plan.changes).toEqual([]);
+      expect(plan.skipped.map((s) => s.reason)).toEqual([`Section "Release process": ${reason}, which resolve relative to the file they are in.`]);
+    }
+  });
+
+  it('never writes a read-only file or into a read-only folder', () => {
+    const source = planFixes([{ path: 'CLAUDE.md', text }], { tools: ['claude-code'], readOnly: (p) => p === 'CLAUDE.md' });
+    expect(source.changes).toEqual([]);
+    expect(source.skipped[0]!.reason).toBe('Section "Release process": CLAUDE.md is a symlink, in a symlinked folder or the target of a symlink; it is left alone.');
+    const folder = planFixes([{ path: 'CLAUDE.md', text }], { tools: ['claude-code'], readOnly: (p) => (p.startsWith('.claude/') ? `${p} is ignored.` : false) });
+    expect(folder.changes).toEqual([]);
+    expect(folder.skipped[0]!.reason).toMatch(
+      new RegExp(`: ${SKILL} \\(${SKILL} is ignored\\); \\.agents/skills/release-process/SKILL\\.md \\(Claude Code would lose context\\)\\.`),
+    );
+  });
+
+  it('never moves text out of a personal CLAUDE.local.md', () => {
+    const plan = planFixes([{ path: 'CLAUDE.local.md', text: `# Mine\n\n${RELEASE}` }], { tools: ['claude-code'] });
+    expect(plan.changes).toEqual([]);
+  });
+
+  it('folds accents into the skill name', () => {
+    const text = `# Rehber\n\n${RELEASE.replace('## Release process', '## Sürüm yayınlama')}`;
+    const plan = planFixes([{ path: 'CLAUDE.md', text }], { tools: ['claude-code'] });
+    expect(plan.changes.map((c) => c.path)).toContain('.claude/skills/surum-yayinlama/SKILL.md');
+  });
+
+  it('adds -2 to the skill name when a skill folder of that name exists', () => {
+    const existing = { path: SKILL, text: '---\nname: "release-process"\ndescription: Tag a release.\n---\n\nTag and push.\n' };
+    const plan = planFixes([{ path: 'CLAUDE.md', text: `# Project\n\n${RELEASE}` }, existing], { tools: ['claude-code'] });
+    expect(plan.fixes.map((f) => f.paths)).toEqual([['CLAUDE.md', '.claude/skills/release-process-2/SKILL.md']]);
+    expect(after(plan, 'CLAUDE.md')).toBe('# Project\n\n## Release process\n\nSee the `release-process-2` skill.\n');
+    expect(after(plan, '.claude/skills/release-process-2/SKILL.md')).toMatch(/^---\nname: "release-process-2"\n/);
+    // A folder on disk counts too, even without a loaded SKILL.md.
+    const onDisk = planFixes([{ path: 'CLAUDE.md', text: `# Project\n\n${RELEASE}` }], {
+      tools: ['claude-code'],
+      exists: (p) => p === '.claude/skills/release-process',
+    });
+    expect(onDisk.fixes[0]!.paths[1]).toBe('.claude/skills/release-process-2/SKILL.md');
+  });
+
+  it('leaves sections that can load only in their folder to the scopable move, and honours sectionTokens', () => {
+    const deploy = `# Rules\n\n${API_SECTION.replace('## API package', '## Deploy the API')}`;
+    const exists = (p: string) => ['packages', 'packages/api'].includes(p);
+    const scoped = planFixes([{ path: 'CLAUDE.md', text: deploy }], { exists, tools: ['claude-code'], sectionTokens: 50 });
+    expect(scoped.fixes.map((f) => f.kind)).toEqual(['scopable-section']);
+    // Without that folder the section is a deploy procedure like any other, once it reaches sectionTokens.
+    const noFolder = { exists: () => false, tools: ['claude-code' as const] };
+    expect(planFixes([{ path: 'CLAUDE.md', text: deploy }], noFolder).fixes).toEqual([]);
+    const small = planFixes([{ path: 'CLAUDE.md', text: deploy }], { ...noFolder, sectionTokens: 50 });
+    expect(small.fixes.map((f) => [f.kind, f.paths[1]])).toEqual([['oversized-section', '.claude/skills/deploy-the-api/SKILL.md']]);
+  });
+
+  it('prints a diff that git apply accepts, keeping CRLF', () => {
+    const crlf = text.replace(/\n/g, '\r\n');
+    const plan = planFixes([{ path: 'CLAUDE.md', text: crlf }], { tools: ['claude-code'] });
+    expect(after(plan, SKILL)).toMatch(/^---\r\nname: "release-process"\r\n[\s\S]*\r\n28\. Step 28[^\n]*\r\n$/);
+    expect(after(plan, 'CLAUDE.md')).toBe('# Project\r\n\r\nUse npm.\r\n\r\n## Release process\r\n\r\nSee the `release-process` skill.\r\n\r\n## Code style\r\n\r\n- Keep functions small.\r\n');
+    const dir = mkdtempSync(join(tmpdir(), 'turntax-skill-'));
+    writeFileSync(join(dir, 'CLAUDE.md'), crlf);
+    execFileSync('git', ['init', '-q'], { cwd: dir });
+    writeFileSync(join(dir, 'fix.patch'), unifiedDiff(plan.changes));
+    // CRLF lines look like trailing whitespace to git; they are applied as they are.
+    execFileSync('git', ['-c', 'core.autocrlf=false', 'apply', '--whitespace=nowarn', 'fix.patch'], { cwd: dir });
+    for (const c of plan.changes) expect(readFileSync(join(dir, c.path), 'utf8')).toBe(c.after);
+  });
+});
+
 describe('unifiedDiff', () => {
   it('marks a missing newline at the end of a file', () => {
     expect(unifiedDiff([{ path: 'a.md', before: 'one\ntwo', after: 'one\nthree' }])).toBe(
@@ -334,6 +492,19 @@ describe('cli --fix', () => {
     writeFileSync(join(dir, 'CLAUDE.md'), 'edited\n');
     expect(() => applyChanges(dir, plan.changes)).toThrow(/CLAUDE\.md changed/);
     expect(existsSync(join(dir, '.cursor/rules/wrong.md'))).toBe(true);
+  });
+
+  it('moves procedures of --section-tokens size into skills, after which nothing is left to fix', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'turntax-skill-'));
+    writeFileSync(join(dir, 'CLAUDE.md'), `# Project\n\n## Release process\n\n${steps(10)}\n`);
+    const io = capture();
+    expect(await main([dir, '--fix', '--tools', 'claude-code'], {})).toBe(0);
+    expect(io.err()).toMatch(/Nothing to fix automatically/);
+    expect(await main([dir, '--fix', '--tools', 'claude-code', '--section-tokens', '200', '--write'], {})).toBe(0);
+    expect(io.out()).toMatch(/fix: Moved section "Release process" from CLAUDE\.md to \.claude\/skills\/release-process\/SKILL\.md \(new skill\)/);
+    expect(readFileSync(join(dir, SKILL), 'utf8')).toContain('10. Step 10');
+    expect(readFileSync(join(dir, 'CLAUDE.md'), 'utf8')).toBe('# Project\n\n## Release process\n\nSee the `release-process` skill.\n');
+    expect(planFixes(await discover(dir), { tools: ['claude-code'], sectionTokens: 200, exists: existsIn(dir) }).changes).toEqual([]);
   });
 
   it('empties the --out file when nothing is left to fix', async () => {

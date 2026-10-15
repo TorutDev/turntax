@@ -38,7 +38,9 @@ export function planWebFixes(src: FixSource, tools?: ToolId[]): WebFixPlan {
   const linked = linkedCheck(src.linked ?? []);
   const plan = planFixes(src.files, {
     tools,
-    // Without a path list (sample, pasted files) no folder is known to exist, so no section is moved.
+    // Without a path list (sample, pasted files) no folder is known to exist, so no section moves into a
+    // folder. A procedure can still move into a new skill; if that skill folder already exists in the
+    // repository, git apply refuses the patch rather than overwrite it.
     exists: src.paths ? folderExists(known) : () => false,
     // A repository file that is not loaded (removed from the list, or not downloaded) is never written over.
     readOnly: (path) => linked(path) || (known.has(path) && !loaded.has(path)),

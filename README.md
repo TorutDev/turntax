@@ -8,7 +8,13 @@ npx turntax
 
 Try it in the browser, with nothing uploaded: https://torutdev.github.io/turntax/ — drop a folder or enter a public GitHub repository. Links like `https://torutdev.github.io/turntax/?repo=owner/name` open straight to that repository's report.
 
-[State of agent instruction files, October 2026](https://torutdev.github.io/turntax/state/): what turntax finds in 100 popular repositories, with pinned commits and the script to reproduce it ([`scripts/state-of.mjs`](scripts/state-of.mjs)).
+[State of agent instruction files](https://torutdev.github.io/turntax/state/): what turntax finds in 100 popular repositories, a new edition every month with pinned commits and the script to reproduce it ([`scripts/state-of.mjs`](scripts/state-of.mjs)).
+
+Set up the GitHub Action and a config in one command:
+
+```bash
+npx turntax init
+```
 
 ## Supported agents
 
@@ -92,13 +98,14 @@ npx turntax --fix            # print a diff of the safe fixes; nothing is change
 npx turntax --fix --write    # apply them
 ```
 
-`--fix` handles three kinds of advice:
+`--fix` handles four kinds of advice:
 
 - **duplicate**: removes lines from a file when every agent that reads the file also reads the same lines every turn from another file. Skill, command and subagent files are left whole.
 - **scopable-section**: moves a section into the folder it is about: the same file name there (`packages/api/CLAUDE.md`), a nested `AGENTS.md`, or a Claude Code rule with `paths:`. The folder the section is about must already exist, and sections with `@imports` or relative links stay put. A section moves together with its subsections.
+- **oversized-section**: moves a large procedure (a section of at least `--section-tokens`, 600 by default, whose heading names a release, deploy, setup or similar procedure, or that is mostly numbered steps; each subsection must pass too) into a new skill, `.claude/skills/<name>/SKILL.md` for Claude Code or `.agents/skills/<name>/SKILL.md` for Codex, and leaves the heading with a one-line pointer. Only the skill's name and description load every turn. Other agents do not read skills, so by default this fix usually needs `--tools claude-code` or `--tools codex`.
 - **misconfigured**: renames `.md` files in `.cursor/rules` to `.mdc`.
 
-Before a fix is kept, the files are classified again with the change applied: every agent must still read every line it read before, including files reached through `@imports`, and as often as before. The only exception is a moved section, which may load only when the agent works in that folder. Otherwise the fix is skipped and the reason is printed. A moved section can reach agents that did not read it before (a nested `AGENTS.md` is read by more agents than a `CLAUDE.md`); the summary names them. By default that check covers every supported agent, so a section of `AGENTS.md` usually stays where it is, because some agents read only the root file. `--tools codex,claude-code` limits the check to the agents you use.
+Before a fix is kept, the files are classified again with the change applied: every agent must still read every line it read before, including files reached through `@imports`, and as often as before. The exceptions are moved text: a section moved into a folder may load only when the agent works there, and a procedure moved into a skill only when the skill is used. Otherwise the fix is skipped and the reason is printed. A moved section can reach agents that did not read it before (a nested `AGENTS.md` is read by more agents than a `CLAUDE.md`); the summary names them. By default that check covers every supported agent, so a section of `AGENTS.md` usually stays where it is, because some agents read only the root file. `--tools codex,claude-code` limits the check to the agents you use.
 
 In preview the diff is on stdout and works with `git apply`, and the summary is on stderr; with `--write` the summary is on stdout. `--write` checks that no file changed since it was read and writes nothing if one did. Symlinked files, their targets and files in symlinked folders are never changed. Contradictions and stale references need a person to decide, so `--fix` leaves them alone.
 
@@ -172,7 +179,7 @@ The comparison covers repository instruction files (o200k), per agent and per fi
 
 ## GitHub Action
 
-The repository is also an Action. On pull requests it compares with the base branch, posts one comment (updated on every push), writes the report to the job summary and marks findings on the lines they are about in the pull request's changed files (GitHub shows up to 10 warnings and 10 notices per step):
+The repository is also an Action; `npx turntax init` writes this workflow and a `turntax.config.json` for you. On pull requests it compares with the base branch, posts one comment (updated on every push), writes the report to the job summary and marks findings on the lines they are about in the pull request's changed files (GitHub shows up to 10 warnings and 10 notices per step):
 
 ```yaml
 name: turntax
@@ -185,7 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TorutDev/turntax@v0.5.0
+      - uses: TorutDev/turntax@v0.6.0
         with:
           max-increase: 500      # optional: fail when an agent grows by more than 500 tokens per turn
           # max-tokens: 8000     # optional: absolute budget
@@ -225,6 +232,29 @@ turntax [path]
 ```
 
 When a selected model's price was checked more than 90 days ago, turntax says so on stderr; check the source or pass `--prices`.
+
+```text
+turntax init [path]         add .github/workflows/turntax.yml and turntax.config.json (--tools, --max-increase,
+                            --force, --dry-run); existing files are kept unless --force
+turntax mcp                 run turntax as an MCP server over stdio (see below)
+```
+
+## Agents and MCP
+
+`turntax mcp` is a read-only MCP server with two tools: `audit` (the report for a folder) and `fix_preview` (the `--fix` diff, never written). It reads `turntax.config.json` like the CLI and does not start MCP servers or call vendor APIs.
+
+```bash
+claude mcp add turntax -- npx -y turntax mcp
+```
+
+For Cursor and clients with an `mcpServers` map, add `{ "mcpServers": { "turntax": { "command": "npx", "args": ["-y", "turntax", "mcp"] } } }` to their MCP config (VS Code's `.vscode/mcp.json` calls the map `servers`). On native Windows, run it through `cmd /c npx -y turntax mcp` if your client cannot start `npx` directly.
+
+This repository is also a Claude Code plugin marketplace. The plugin adds the server and a `/turntax:context-tax` command:
+
+```text
+/plugin marketplace add TorutDev/turntax
+/plugin install turntax@turntax
+```
 
 ## Privacy
 
