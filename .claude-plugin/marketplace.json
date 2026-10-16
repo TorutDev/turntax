@@ -10,7 +10,7 @@
       "name": "turntax",
       "source": "./plugins/turntax",
       "description": "Measure the per-turn token cost of AI coding-agent instruction files and MCP servers, and preview safe fixes.",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "category": "development"
     }
   ]

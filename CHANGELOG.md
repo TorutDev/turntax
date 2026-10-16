@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 (2026-10-16)
+
+- turntax is listed in the official MCP Registry as `io.github.TorutDev/turntax` (`server.json`, `mcpName` in package.json). No change to the CLI.
+
 ## 0.6.0 (2026-10-15)
 
 - `turntax init` writes the GitHub Action workflow and a starter `turntax.config.json` (no agent list unless `--tools`, so every agent that reads a file is reported and gated); existing files are kept unless `--force`, and `--dry-run` shows what it would write.
