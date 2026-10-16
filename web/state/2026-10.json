@@ -1,16 +1,18 @@
 {
- "generatedAt": "2026-10-14T07:59:51.912Z",
- "turntaxVersion": "0.5.0",
- "engineCommit": "898cc13ac754d0d954fdde40882b930c891ce204",
+ "edition": "2026-10",
+ "generatedAt": "2026-10-16T07:44:35.331Z",
+ "turntaxVersion": "0.6.1",
+ "engineCommit": "2715e42c645a482347dc1a5e0dbf85c6c142b633",
  "selection": {
-  "query": "stars:>=1000 archived:false fork:false is:public pushed:>=2026-07-14",
+  "query": "stars:>=1000 archived:false fork:false is:public pushed:>=2026-07-16",
   "sort": "stars desc",
-  "pushedSince": "2026-07-14",
+  "date": "2026-10-16",
+  "pushedSince": "2026-07-16",
   "minStars": 1000,
-  "searchTotal": 28273,
+  "searchTotal": 28313,
   "searchFetched": 1000,
   "searchIncomplete": false,
-  "scanned": 163,
+  "scanned": 161,
   "skippedTruncated": 3,
   "skippedErrors": 0,
   "errors": [],
@@ -33,12 +35,12 @@
  "agentNames": { "claude-code": "Claude Code", "codex": "OpenAI Codex", "gemini-cli": "Gemini CLI", "cursor": "Cursor", "copilot": "GitHub Copilot", "windsurf": "Windsurf (Devin Desktop)", "cline": "Cline", "roo-code": "Roo Code", "kiro": "Kiro", "junie": "JetBrains Junie", "zed": "Zed", "continue": "Continue", "aider": "Aider", "goose": "Goose", "amp": "Amp", "opencode": "OpenCode" },
  "repos": [
   {
-   "rank": 4,
+   "rank": 3,
    "full_name": "freeCodeCamp/freeCodeCamp",
-   "stars": 457026,
+   "stars": 457139,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "62ae8d6fad0c6a9730cf02879da1bed03e4c806f",
+   "sha": "b187f6b972a1875118711735f2d92b85eecd9ba7",
    "files": [
     { "path": ".github/copilot-instructions.md", "o200k": 1106 },
     { "path": ".github/instructions/testing.instructions.md", "o200k": 596 }
@@ -55,12 +57,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 6,
+   "rank": 5,
    "full_name": "openclaw/openclaw",
-   "stars": 391936,
+   "stars": 392137,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "dce5ffaacbcfa7a421d8e29f13b834c678ddbe51",
+   "sha": "029e2c8d69fd62671e215b08a08b5550413e7a4b",
    "files": [
     { "path": ".agents/skills/agent-transcript/SKILL.md", "o200k": 558 },
     { "path": ".agents/skills/auto-qa/SKILL.md", "o200k": 3299 },
@@ -69,9 +71,8 @@
     { "path": ".agents/skills/claw-score/SKILL.md", "o200k": 2222 },
     { "path": ".agents/skills/clawdtributor/SKILL.md", "o200k": 807 },
     { "path": ".agents/skills/clawsweeper/SKILL.md", "o200k": 3012 },
-    { "path": ".agents/skills/control-ui-e2e/SKILL.md", "o200k": 2122 },
-    { "path": ".agents/skills/crabbox/SKILL.md", "o200k": 1900 },
-    { "path": ".agents/skills/deslop/SKILL.md", "o200k": 362 },
+    { "path": ".agents/skills/control-ui-e2e/SKILL.md", "o200k": 765 },
+    { "path": ".agents/skills/crabbox/SKILL.md", "o200k": 2375 },
     { "path": ".agents/skills/discord-clawd/SKILL.md", "o200k": 254 },
     { "path": ".agents/skills/discord-e2e/SKILL.md", "o200k": 1355 },
     { "path": ".agents/skills/discord-user-post/SKILL.md", "o200k": 425 },
@@ -79,8 +80,8 @@
     { "path": ".agents/skills/gitcrawl/SKILL.md", "o200k": 676 },
     { "path": ".agents/skills/graincrawl/SKILL.md", "o200k": 301 },
     { "path": ".agents/skills/notcrawl/SKILL.md", "o200k": 262 },
-    { "path": ".agents/skills/openclaw-changelog-update/SKILL.md", "o200k": 5714 },
-    { "path": ".agents/skills/openclaw-ci-limits/SKILL.md", "o200k": 12576 },
+    { "path": ".agents/skills/openclaw-changelog-update/SKILL.md", "o200k": 5715 },
+    { "path": ".agents/skills/openclaw-ci-limits/SKILL.md", "o200k": 13036 },
     { "path": ".agents/skills/openclaw-debugging/SKILL.md", "o200k": 1721 },
     { "path": ".agents/skills/openclaw-docker-e2e-authoring/SKILL.md", "o200k": 547 },
     { "path": ".agents/skills/openclaw-ghsa-maintainer/SKILL.md", "o200k": 704 },
@@ -93,30 +94,32 @@
     { "path": ".agents/skills/openclaw-repair-sweep/SKILL.md", "o200k": 1399 },
     { "path": ".agents/skills/openclaw-secret-scanning-maintainer/SKILL.md", "o200k": 2246 },
     { "path": ".agents/skills/openclaw-test-heap-leaks/SKILL.md", "o200k": 1676 },
-    { "path": ".agents/skills/openclaw-test-performance/SKILL.md", "o200k": 2687 },
+    { "path": ".agents/skills/openclaw-test-performance/SKILL.md", "o200k": 2688 },
     { "path": ".agents/skills/openclaw-testing/SKILL.md", "o200k": 1509 },
     { "path": ".agents/skills/openclaw-update/SKILL.md", "o200k": 999 },
     { "path": ".agents/skills/parallels-discord-roundtrip/SKILL.md", "o200k": 761 },
+    { "path": ".agents/skills/plugin-sdk-impact/SKILL.md", "o200k": 1151 },
+    { "path": ".agents/skills/pr-simplify/SKILL.md", "o200k": 1176 },
     { "path": ".agents/skills/proof-video/SKILL.md", "o200k": 2419 },
     { "path": ".agents/skills/prototype-openclaw-tui/SKILL.md", "o200k": 1183 },
     { "path": ".agents/skills/release-openclaw-announcement/SKILL.md", "o200k": 937 },
-    { "path": ".agents/skills/release-openclaw-ci/SKILL.md", "o200k": 13056 },
+    { "path": ".agents/skills/release-openclaw-ci/SKILL.md", "o200k": 13061 },
     { "path": ".agents/skills/release-openclaw-mac/SKILL.md", "o200k": 1928 },
     { "path": ".agents/skills/release-openclaw-maintainer/SKILL.md", "o200k": 2341 },
     { "path": ".agents/skills/release-openclaw-plugin-testing/SKILL.md", "o200k": 2793 },
     { "path": ".agents/skills/security-triage/SKILL.md", "o200k": 1553 },
     { "path": ".agents/skills/slack-e2e/SKILL.md", "o200k": 1339 },
     { "path": ".agents/skills/slacrawl/SKILL.md", "o200k": 321 },
-    { "path": ".agents/skills/solid/SKILL.md", "o200k": 1458 },
+    { "path": ".agents/skills/solid/SKILL.md", "o200k": 1927 },
     { "path": ".agents/skills/tag-duplicate-prs-issues/SKILL.md", "o200k": 3632 },
     { "path": ".agents/skills/technical-documentation/SKILL.md", "o200k": 1239 },
     { "path": ".agents/skills/telegram-e2e-userbot/SKILL.md", "o200k": 1656 },
     { "path": ".agents/skills/test-audit/SKILL.md", "o200k": 558 },
     { "path": ".agents/skills/update-team-server/SKILL.md", "o200k": 3280 },
-    { "path": ".agents/skills/verify-release/SKILL.md", "o200k": 2186 },
+    { "path": ".agents/skills/verify-release/SKILL.md", "o200k": 1924 },
     { "path": ".github/instructions/copilot.instructions.md", "o200k": 630 },
-    { "path": "AGENTS.md", "o200k": 3984 },
-    { "path": "apps/android/AGENTS.md", "o200k": 946 },
+    { "path": "AGENTS.md", "o200k": 4068 },
+    { "path": "apps/android/AGENTS.md", "o200k": 961 },
     { "path": "apps/ios/AGENTS.md", "o200k": 1380 },
     { "path": "apps/macos/AGENTS.md", "o200k": 391 },
     { "path": "docs/AGENTS.md", "o200k": 1266 },
@@ -126,7 +129,7 @@
     { "path": "docs/reference/templates/roles/reviewer/workspace/AGENTS.md", "o200k": 474 },
     { "path": "docs/reference/templates/roles/writer/workspace/AGENTS.md", "o200k": 466 },
     { "path": "extensions/acpx/AGENTS.md", "o200k": 675 },
-    { "path": "extensions/AGENTS.md", "o200k": 827 },
+    { "path": "extensions/AGENTS.md", "o200k": 871 },
     { "path": "extensions/agentsapi/AGENTS.md", "o200k": 85 },
     { "path": "extensions/litellm/AGENTS.md", "o200k": 142 },
     { "path": "extensions/litellm/CLAUDE.md", "o200k": 142, "linkTo": "extensions/litellm/AGENTS.md" },
@@ -138,7 +141,7 @@
     { "path": "extensions/vllm/AGENTS.md", "o200k": 159 },
     { "path": "extensions/vllm/CLAUDE.md", "o200k": 159, "linkTo": "extensions/vllm/AGENTS.md" },
     { "path": "scripts/AGENTS.md", "o200k": 1691 },
-    { "path": "src/agents/AGENTS.md", "o200k": 606 },
+    { "path": "src/agents/AGENTS.md", "o200k": 797 },
     { "path": "src/agents/embedded-agent-runner/run/AGENTS.md", "o200k": 257 },
     { "path": "src/agents/tools/AGENTS.md", "o200k": 227 },
     { "path": "src/channels/AGENTS.md", "o200k": 513 },
@@ -146,22 +149,22 @@
     { "path": "src/gateway/AGENTS.md", "o200k": 1735 },
     { "path": "src/gateway/server-methods/AGENTS.md", "o200k": 68 },
     { "path": "src/infra/outbound/AGENTS.md", "o200k": 370 },
-    { "path": "src/plugin-sdk/AGENTS.md", "o200k": 1321 },
+    { "path": "src/plugin-sdk/AGENTS.md", "o200k": 1430 },
     { "path": "src/plugins/AGENTS.md", "o200k": 941 },
     { "path": "src/tui/AGENTS.md", "o200k": 220 },
-    { "path": "ui/AGENTS.md", "o200k": 2594 }
+    { "path": "ui/AGENTS.md", "o200k": 2995 }
    ],
-   "agents": { "claude-code": 3984, "codex": 5936, "cursor": 3984, "copilot": 3984, "windsurf": 3984, "roo-code": 3984, "kiro": 3984, "junie": 3984, "zed": 3984, "goose": 3984, "amp": 3984, "opencode": 3984 },
-   "maxPerTurn": { "o200k": 5936, "agent": "codex" },
-   "maxPerTurnLinksOnce": { "o200k": 5936, "agent": "codex" },
+   "agents": { "claude-code": 4068, "codex": 6029, "cursor": 4068, "copilot": 4068, "windsurf": 4068, "roo-code": 4068, "kiro": 4068, "junie": 4068, "zed": 4068, "goose": 4068, "amp": 4068, "opencode": 4068 },
+   "maxPerTurn": { "o200k": 6029, "agent": "codex" },
+   "maxPerTurnLinksOnce": { "o200k": 6029, "agent": "codex" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 22,
+    "total": 24,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 11 },
-     "oversized-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 9, "low": 0 }
+     "oversized-section": { "high": 0, "medium": 3, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 10, "low": 0 }
     },
     "duplicateLinkPairs": { "high": 0, "low": 4 }
    },
@@ -169,14 +172,14 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 9,
+   "rank": 8,
    "full_name": "vinta/awesome-python",
-   "stars": 327274,
+   "stars": 327768,
    "language": "Python",
    "default_branch": "master",
-   "sha": "ba49ec7245ec97ba4d4a7b794f985e81548f3bb4",
+   "sha": "2ef2de18f072bc78dbd08579a1da7f70bb7dc776",
    "files": [
-    { "path": ".claude/skills/audit-the-list/SKILL.md", "o200k": 1634 },
+    { "path": ".claude/skills/audit-the-list/SKILL.md", "o200k": 1836 },
     { "path": ".claude/skills/preview-verdicts/SKILL.md", "o200k": 786 },
     { "path": ".claude/skills/review-prs/SKILL.md", "o200k": 1051 },
     { "path": "AGENTS.md", "o200k": 706 },
@@ -196,9 +199,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 11,
+   "rank": 10,
    "full_name": "obra/superpowers",
-   "stars": 298826,
+   "stars": 300190,
    "language": "Shell",
    "default_branch": "main",
    "sha": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
@@ -220,9 +223,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 12,
+   "rank": 11,
    "full_name": "mattpocock/skills",
-   "stars": 290206,
+   "stars": 293252,
    "language": "Shell",
    "default_branch": "main",
    "sha": "49dd158d1076134a641b33efb035946536778336",
@@ -247,12 +250,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 14,
+   "rank": 13,
    "full_name": "affaan-m/ECC",
-   "stars": 278796,
+   "stars": 280679,
    "language": "JavaScript",
    "default_branch": "main",
-   "sha": "b92f181b3b748d1abbc2afd94af6aa7d8c8fca29",
+   "sha": "76aaa77df6adc5b889e689007bf99b9a4f74af34",
    "files": [
     { "path": ".agents/skills/agent-introspection-debugging/SKILL.md", "o200k": 1154 },
     { "path": ".agents/skills/agent-sort/SKILL.md", "o200k": 1310 },
@@ -397,26 +400,55 @@
    "fixes": { "count": 48, "savingO200k": 448 }
   },
   {
+   "rank": 14,
+   "full_name": "morluto/rea",
+   "stars": 278460,
+   "language": "TypeScript",
+   "default_branch": "main",
+   "sha": "d72d856f58d4747c5eb4307426e80d20934e017c",
+   "files": [
+    { "path": ".agents/skills/rea-changelog-update/SKILL.md", "o200k": 1559 },
+    { "path": ".agents/skills/rea-ci-tests-audit/SKILL.md", "o200k": 1267 },
+    { "path": ".agents/skills/rea-tool-design/SKILL.md", "o200k": 181 },
+    { "path": ".agents/skills/reverse-engineer-anything/SKILL.md", "o200k": 5044 },
+    { "path": "AGENTS.md", "o200k": 2227 },
+    { "path": "website/AGENTS.md", "o200k": 820 }
+   ],
+   "agents": { "claude-code": 2227, "codex": 2394, "cursor": 2227, "copilot": 2227, "windsurf": 2227, "roo-code": 2227, "kiro": 2227, "junie": 2227, "zed": 2227, "goose": 2227, "amp": 2227, "opencode": 2227 },
+   "maxPerTurn": { "o200k": 2394, "agent": "codex" },
+   "agentsReading": 12,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 4,
+    "byKind": {
+     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 2, "low": 0 }
+    }
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
    "rank": 15,
    "full_name": "NousResearch/hermes-agent",
-   "stars": 253598,
+   "stars": 254236,
    "language": "Python",
    "default_branch": "main",
-   "sha": "0e427d788d253630d38a3a51cd76849e73cd6925",
+   "sha": "8ae56a1da82b2b400613fd6d9c5aa9030e6eda1c",
    "files": [
     { "path": "agent/AGENTS.md", "o200k": 2563 },
     { "path": "AGENTS.md", "o200k": 3002 },
     { "path": "apps/desktop/AGENTS.md", "o200k": 2061 },
-    { "path": "apps/desktop/src/AGENTS.md", "o200k": 2056 },
-    { "path": "cron/AGENTS.md", "o200k": 3181 },
-    { "path": "gateway/AGENTS.md", "o200k": 4045 },
+    { "path": "apps/desktop/src/AGENTS.md", "o200k": 1911 },
+    { "path": "cron/AGENTS.md", "o200k": 3337 },
+    { "path": "gateway/AGENTS.md", "o200k": 4145 },
     { "path": "hermes_cli/AGENTS.md", "o200k": 4511 },
     { "path": "hermes_platform/AGENTS.md", "o200k": 241 },
     { "path": "plugins/AGENTS.md", "o200k": 3344 },
     { "path": "pm/AGENTS.md", "o200k": 536 },
     { "path": "skills/AGENTS.md", "o200k": 1479 },
     { "path": "tools/AGENTS.md", "o200k": 3558 },
-    { "path": "tui_gateway/AGENTS.md", "o200k": 2562 },
+    { "path": "tui_gateway/AGENTS.md", "o200k": 3352 },
     { "path": "web/AGENTS.md", "o200k": 748 }
    ],
    "agents": { "claude-code": 3002, "codex": 3002, "cursor": 3002, "copilot": 3002, "windsurf": 3002, "roo-code": 3002, "kiro": 3002, "junie": 3002, "zed": 3002, "goose": 3002, "amp": 3002, "opencode": 3002 },
@@ -435,10 +467,10 @@
   {
    "rank": 17,
    "full_name": "react/react",
-   "stars": 251141,
+   "stars": 251151,
    "language": "JavaScript",
    "default_branch": "main",
-   "sha": "07dde64da1abd1525120b9ae49672386486e33c3",
+   "sha": "098d2e87a1f7142947418d15f63f975b58c4685b",
    "files": [
     { "path": ".claude/skills/extract-errors/SKILL.md", "o200k": 66 },
     { "path": ".claude/skills/feature-flags/SKILL.md", "o200k": 670 },
@@ -482,40 +514,43 @@
   {
    "rank": 18,
    "full_name": "deepseek-ai/deepseek-harness",
-   "stars": 249272,
+   "stars": 250726,
    "language": "TypeScript",
    "default_branch": "master",
-   "sha": "d743267388641bc76f17c45ce8b4c231aed1d32c",
+   "sha": "86a402200d95fecef4529d969836f1fe13c6cb0d",
    "files": [
     { "path": ".agents/notes/AGENTS.md", "o200k": 165 },
     { "path": ".agents/notes/archived/AGENTS.md", "o200k": 259 },
     { "path": ".agents/notes/implemented/AGENTS.md", "o200k": 214 },
     { "path": ".agents/notes/implemented/CLAUDE.md", "o200k": 214, "linkTo": ".agents/notes/implemented/AGENTS.md" },
     { "path": ".agents/skills/agent-experience/SKILL.md", "o200k": 396, "linkTo": "packages/preset/agent-preset/skills/agent-experience/SKILL.md" },
+    { "path": ".agents/skills/cordis-styling-nitpicking/SKILL.md", "o200k": 1633 },
     { "path": ".agents/skills/dsh-archive-agent-notes/SKILL.md", "o200k": 1311 },
-    { "path": ".agents/skills/dsh-ci-test-reliability/SKILL.md", "o200k": 1854 },
-    { "path": ".agents/skills/dsh-client-ui-ux/SKILL.md", "o200k": 1627 },
-    { "path": ".agents/skills/dsh-code-review/SKILL.md", "o200k": 1820 },
+    { "path": ".agents/skills/dsh-ci-test-reliability/SKILL.md", "o200k": 1855 },
+    { "path": ".agents/skills/dsh-client-ui-ux/SKILL.md", "o200k": 1756 },
+    { "path": ".agents/skills/dsh-code-review/SKILL.md", "o200k": 2163 },
     { "path": ".agents/skills/dsh-create-upgrade-guide/SKILL.md", "o200k": 855 },
     { "path": ".agents/skills/dsh-doc/SKILL.md", "o200k": 3794 },
     { "path": ".agents/skills/dsh-error-handling/SKILL.md", "o200k": 440 },
-    { "path": ".agents/skills/dsh-find-simplifications/SKILL.md", "o200k": 1919 },
+    { "path": ".agents/skills/dsh-find-simplifications/SKILL.md", "o200k": 1921 },
     { "path": ".agents/skills/dsh-merging-stacked-prs/SKILL.md", "o200k": 1704 },
-    { "path": ".agents/skills/dsh-pre-push-checks/SKILL.md", "o200k": 2288 },
+    { "path": ".agents/skills/dsh-official-plugin-artwork/SKILL.md", "o200k": 1248 },
+    { "path": ".agents/skills/dsh-pre-push-checks/SKILL.md", "o200k": 2365 },
     { "path": ".agents/skills/dsh-prose-standard/SKILL.md", "o200k": 1867 },
-    { "path": ".agents/skills/dsh-speed-up-perf/SKILL.md", "o200k": 2195 },
+    { "path": ".agents/skills/dsh-responsive-ui/SKILL.md", "o200k": 671 },
+    { "path": ".agents/skills/dsh-speed-up-perf/SKILL.md", "o200k": 2197 },
     { "path": ".agents/skills/dsh-translate-docs/SKILL.md", "o200k": 2314 },
     { "path": ".agents/skills/dsh-trim-cot-leakage/SKILL.md", "o200k": 1743 },
     { "path": ".agents/skills/record-browser-gif/SKILL.md", "o200k": 3551 },
-    { "path": ".github/AGENTS.md", "o200k": 327 },
-    { "path": "AGENTS.md", "o200k": 3974 },
+    { "path": ".github/AGENTS.md", "o200k": 413 },
+    { "path": "AGENTS.md", "o200k": 4159 },
     { "path": "benchmarks/AGENTS.md", "o200k": 735 },
-    { "path": "CLAUDE.md", "o200k": 3974, "linkTo": "AGENTS.md" },
-    { "path": "docs/AGENTS.md", "o200k": 2363 },
+    { "path": "CLAUDE.md", "o200k": 4159, "linkTo": "AGENTS.md" },
+    { "path": "docs/AGENTS.md", "o200k": 2421 },
     { "path": "native/system/AGENTS.md", "o200k": 679 },
-    { "path": "packages/AGENTS.md", "o200k": 1212 },
-    { "path": "packages/CLAUDE.md", "o200k": 1212, "linkTo": "packages/AGENTS.md" },
-    { "path": "packages/client/AGENTS.md", "o200k": 5669 },
+    { "path": "packages/AGENTS.md", "o200k": 1358 },
+    { "path": "packages/CLAUDE.md", "o200k": 1358, "linkTo": "packages/AGENTS.md" },
+    { "path": "packages/client/AGENTS.md", "o200k": 6159 },
     { "path": "packages/experimental/AGENTS.md", "o200k": 342 },
     { "path": "packages/schedule/AGENTS.md", "o200k": 358 },
     { "path": "packages/web/AGENTS.md", "o200k": 101 },
@@ -533,9 +568,9 @@
     { "path": "snapshots/session/ptc-workspace-context/workspace/nested/AGENTS.md", "o200k": 21 },
     { "path": "website/AGENTS.md", "o200k": 633 }
    ],
-   "agents": { "claude-code": 3974, "codex": 5136, "cursor": 7948, "copilot": 3974, "windsurf": 3974, "roo-code": 3974, "kiro": 3974, "junie": 3974, "zed": 3974, "goose": 3974, "amp": 3974, "opencode": 3974 },
-   "maxPerTurn": { "o200k": 7948, "agent": "cursor" },
-   "maxPerTurnLinksOnce": { "o200k": 5136, "agent": "codex" },
+   "agents": { "claude-code": 4159, "codex": 5499, "cursor": 8318, "copilot": 4159, "windsurf": 4159, "roo-code": 4159, "kiro": 4159, "junie": 4159, "zed": 4159, "goose": 4159, "amp": 4159, "opencode": 4159 },
+   "maxPerTurn": { "o200k": 8318, "agent": "cursor" },
+   "maxPerTurnLinksOnce": { "o200k": 5499, "agent": "codex" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -552,10 +587,10 @@
   {
    "rank": 19,
    "full_name": "TheAlgorithms/Python",
-   "stars": 225238,
+   "stars": 225300,
    "language": "Python",
    "default_branch": "master",
-   "sha": "e1a2a8b016001309a73d5fec4818c35cca139795",
+   "sha": "adccf0cf0ca1cdc5f28fa8d244bac89efa18d0f6",
    "files": [
     { "path": "AGENTS.md", "o200k": 684 }
    ],
@@ -572,42 +607,13 @@
   },
   {
    "rank": 20,
-   "full_name": "morluto/rea",
-   "stars": 220242,
-   "language": "TypeScript",
-   "default_branch": "main",
-   "sha": "cf6ea097116bdf3578b1e02e35c772d8aa92db00",
-   "files": [
-    { "path": ".agents/skills/rea-changelog-update/SKILL.md", "o200k": 1552 },
-    { "path": ".agents/skills/rea-ci-tests-audit/SKILL.md", "o200k": 1267 },
-    { "path": ".agents/skills/rea-tool-design/SKILL.md", "o200k": 181 },
-    { "path": ".agents/skills/reverse-engineer-anything/SKILL.md", "o200k": 4817 },
-    { "path": "AGENTS.md", "o200k": 2023 },
-    { "path": "website/AGENTS.md", "o200k": 820 }
-   ],
-   "agents": { "claude-code": 2023, "codex": 2190, "cursor": 2023, "copilot": 2023, "windsurf": 2023, "roo-code": 2023, "kiro": 2023, "junie": 2023, "zed": 2023, "goose": 2023, "amp": 2023, "opencode": 2023 },
-   "maxPerTurn": { "o200k": 2190, "agent": "codex" },
-   "agentsReading": 12,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 4,
-    "byKind": {
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 2, "low": 0 }
-    }
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 21,
    "full_name": "anomalyco/opencode",
-   "stars": 213341,
+   "stars": 214056,
    "language": "TypeScript",
    "default_branch": "dev",
-   "sha": "3a69bae8459b1aa9b122456a55d9535b23125f33",
+   "sha": "37e3912d8ea5814593b8591bdc85f91cb69949e2",
    "files": [
-    { "path": "AGENTS.md", "o200k": 2762 },
+    { "path": "AGENTS.md", "o200k": 2841 },
     { "path": "packages/ai/AGENTS.md", "o200k": 329 },
     { "path": "packages/app/AGENTS.md", "o200k": 1555 },
     { "path": "packages/app/e2e/AGENTS.md", "o200k": 583 },
@@ -626,27 +632,28 @@
     { "path": "services/www/AGENTS.md", "o200k": 226 },
     { "path": "services/www/src/docs/AGENTS.md", "o200k": 384 }
    ],
-   "agents": { "claude-code": 2762, "codex": 2762, "cursor": 2762, "copilot": 2762, "windsurf": 2762, "roo-code": 2762, "kiro": 2762, "junie": 2762, "zed": 2762, "goose": 2762, "amp": 2762, "opencode": 2762 },
-   "maxPerTurn": { "o200k": 2762, "agent": "claude-code" },
+   "agents": { "claude-code": 2841, "codex": 2841, "cursor": 2841, "copilot": 2841, "windsurf": 2841, "roo-code": 2841, "kiro": 2841, "junie": 2841, "zed": 2841, "goose": 2841, "amp": 2841, "opencode": 2841 },
+   "maxPerTurn": { "o200k": 2841, "agent": "claude-code" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 7,
+    "total": 8,
     "byKind": {
      "duplicate": { "high": 0, "medium": 0, "low": 6 },
-     "oversized-section": { "high": 0, "medium": 1, "low": 0 }
+     "oversized-section": { "high": 0, "medium": 1, "low": 0 },
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 23,
+   "rank": 21,
    "full_name": "n8n-io/n8n",
-   "stars": 207316,
+   "stars": 207598,
    "language": "TypeScript",
    "default_branch": "master",
-   "sha": "da3491fc8786525670e24d35a2c136a0482b32cc",
+   "sha": "447fc866bb0a841decfa5e8a29fba06057bfc5bc",
    "files": [
     { "path": ".agents/skills/agent-design-language/SKILL.md", "o200k": 206 },
     { "path": ".agents/skills/AGENTS.md", "o200k": 443 },
@@ -660,6 +667,7 @@
     { "path": ".agents/skills/create-pr/SKILL.md", "o200k": 2324 },
     { "path": ".agents/skills/create-skill/SKILL.md", "o200k": 1658 },
     { "path": ".agents/skills/db-migrations/SKILL.md", "o200k": 11141 },
+    { "path": ".agents/skills/env-var-docs/SKILL.md", "o200k": 1518 },
     { "path": ".agents/skills/experiments/SKILL.md", "o200k": 236 },
     { "path": ".agents/skills/gh-stack/SKILL.md", "o200k": 10585 },
     { "path": ".agents/skills/human-like-code-review/SKILL.md", "o200k": 3235 },
@@ -668,13 +676,13 @@
     { "path": ".agents/skills/nathan/SKILL.md", "o200k": 1452 },
     { "path": ".agents/skills/node-add-oauth/SKILL.md", "o200k": 2817 },
     { "path": ".agents/skills/protect-endpoints/SKILL.md", "o200k": 1780 },
-    { "path": ".agents/skills/public-api/SKILL.md", "o200k": 3125 },
+    { "path": ".agents/skills/public-api/SKILL.md", "o200k": 3057 },
     { "path": ".agents/skills/reproduce-bug/SKILL.md", "o200k": 1347 },
     { "path": ".agents/skills/spec-driven-development/SKILL.md", "o200k": 732 },
     { "path": ".agents/skills/telemetry/SKILL.md", "o200k": 1183 },
     { "path": ".agents/skills/ui-design/SKILL.md", "o200k": 634 },
     { "path": ".github/CLAUDE.md", "o200k": 389 },
-    { "path": "AGENTS.md", "o200k": 5447 },
+    { "path": "AGENTS.md", "o200k": 5536 },
     { "path": "CLAUDE.md", "o200k": 5 },
     { "path": "packages/@n8n/agents/AGENTS.md", "o200k": 1528 },
     { "path": "packages/@n8n/ai-utilities/AGENTS.md", "o200k": 435 },
@@ -687,8 +695,8 @@
     { "path": "packages/@n8n/node-cli/src/template/templates/shared/default/CLAUDE.md", "o200k": 5 },
     { "path": "packages/@n8n/nodes-langchain/AGENTS.md", "o200k": 163 },
     { "path": "packages/cli/AGENTS.md", "o200k": 704 },
-    { "path": "packages/cli/src/modules/agents/AGENTS.md", "o200k": 750 },
-    { "path": "packages/cli/src/modules/n8n-packages/CLAUDE.md", "o200k": 1269 },
+    { "path": "packages/cli/src/modules/agents/AGENTS.md", "o200k": 862 },
+    { "path": "packages/cli/src/modules/n8n-packages/CLAUDE.md", "o200k": 1238 },
     { "path": "packages/frontend/@n8n/design-system/AGENTS.md", "o200k": 306 },
     { "path": "packages/frontend/@n8n/design-system/README.md", "o200k": 1930, "imported": true },
     { "path": "packages/frontend/AGENTS.md", "o200k": 327 },
@@ -697,7 +705,7 @@
     { "path": "packages/frontend/editor-ui/src/features/agents/AGENTS.md", "o200k": 111 },
     { "path": "packages/nodes-base/AGENTS.md", "o200k": 1340 },
     { "path": "packages/nodes-base/CLAUDE.md", "o200k": 5 },
-    { "path": "packages/quality/AGENTS.md", "o200k": 392 },
+    { "path": "packages/quality/AGENTS.md", "o200k": 404 },
     { "path": "packages/quality/efficiency/AGENTS.md", "o200k": 116 },
     { "path": "packages/quality/environments/AGENTS.md", "o200k": 66 },
     { "path": "packages/quality/policy/AGENTS.md", "o200k": 80 },
@@ -708,8 +716,8 @@
     { "path": "packages/quality/testing/playwright/CLAUDE.md", "o200k": 5 },
     { "path": "scripts/instance-seeding/AGENTS.md", "o200k": 3743 }
    ],
-   "agents": { "claude-code": 5452, "codex": 6241, "cursor": 5452, "copilot": 5447, "windsurf": 5447, "roo-code": 5447, "kiro": 5447, "junie": 5447, "zed": 5447, "goose": 5447, "amp": 5447, "opencode": 5447 },
-   "maxPerTurn": { "o200k": 6241, "agent": "codex" },
+   "agents": { "claude-code": 5541, "codex": 6341, "cursor": 5541, "copilot": 5536, "windsurf": 5536, "roo-code": 5536, "kiro": 5536, "junie": 5536, "zed": 5536, "goose": 5536, "amp": 5536, "opencode": 5536 },
+   "maxPerTurn": { "o200k": 6341, "agent": "codex" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -724,12 +732,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 25,
+   "rank": 23,
    "full_name": "tensorflow/tensorflow",
-   "stars": 200954,
+   "stars": 201059,
    "language": "C++",
    "default_branch": "master",
-   "sha": "93c25e08ab544051c88f6c09a9783272049a0503",
+   "sha": "20c7528f8bca3f37f3eb406237f3087324e70afc",
    "files": [
     { "path": "third_party/xla/AGENTS.md", "o200k": 136 },
     { "path": "third_party/xla/xla/AGENTS.md", "o200k": 1761 },
@@ -747,9 +755,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 28,
+   "rank": 26,
    "full_name": "ultraworkers/claw-code",
-   "stars": 194898,
+   "stars": 194925,
    "language": "Rust",
    "default_branch": "main",
    "sha": "6d7412d958ebc338722e112d08c5e46d7cd458e1",
@@ -782,14 +790,14 @@
    "fixes": { "count": 1, "savingO200k": 0 }
   },
   {
-   "rank": 30,
+   "rank": 28,
    "full_name": "microsoft/vscode",
-   "stars": 193763,
+   "stars": 193740,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "76e9dff43b237f3fcbb8a289ed2f8bdf28105baf",
+   "sha": "19fd99357ad201b4bb9cc331c9d3fdffa48e8ad0",
    "files": [
-    { "path": ".agents/skills/launch/SKILL.md", "o200k": 8517 },
+    { "path": ".agents/skills/launch/SKILL.md", "o200k": 8661 },
     { "path": ".github/copilot-instructions.md", "o200k": 2731 },
     { "path": ".github/instructions/accessibility.instructions.md", "o200k": 611 },
     { "path": ".github/instructions/agent-host-interoperability.instructions.md", "o200k": 485 },
@@ -816,13 +824,13 @@
     { "path": ".github/instructions/source-code-organization.instructions.md", "o200k": 662 },
     { "path": ".github/instructions/telemetry.instructions.md", "o200k": 4455 },
     { "path": ".github/instructions/tree-widgets.instructions.md", "o200k": 1455 },
-    { "path": ".github/instructions/writing-tests.instructions.md", "o200k": 558 },
+    { "path": ".github/instructions/writing-tests.instructions.md", "o200k": 602 },
     { "path": "AGENTS.md", "o200k": 51 },
     { "path": "extensions/copilot/.agents/skills/github-copilot-upgrader/SKILL.md", "o200k": 758 },
     { "path": "extensions/copilot/.agents/skills/launch/SKILL.md", "o200k": 3609 },
     { "path": "extensions/copilot/src/extension/chatSessions/copilotcli/AGENTS.md", "o200k": 4359 },
     { "path": "extensions/copilot/src/platform/authentication/common/AGENTS.md", "o200k": 1628 },
-    { "path": "src/vs/platform/agentHost/AGENTS.md", "o200k": 22481 },
+    { "path": "src/vs/platform/agentHost/AGENTS.md", "o200k": 30178 },
     { "path": "src/vs/platform/agentHost/common/state/AGENTS.md", "o200k": 879 },
     { "path": "src/vs/platform/agentHost/node/copilot/prompts/AGENTS.md", "o200k": 3601 },
     { "path": "src/vs/workbench/contrib/imageCarousel/AGENTS.md", "o200k": 1084 }
@@ -844,12 +852,12 @@
    "fixes": { "count": 1, "savingO200k": 0 }
   },
   {
-   "rank": 31,
+   "rank": 29,
    "full_name": "firecrawl/firecrawl",
-   "stars": 191326,
+   "stars": 191995,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "f4fdf7f300415180f45272e893918dbfa3649073",
+   "sha": "386330419c6924cc5d733e59abca9b857241acc4",
    "files": [
     { "path": "AGENTS.md", "o200k": 368 },
     { "path": "CLAUDE.md", "o200k": 418 }
@@ -868,12 +876,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 34,
+   "rank": 32,
    "full_name": "avelino/awesome-go",
-   "stars": 188309,
+   "stars": 188653,
    "language": "Go",
    "default_branch": "main",
-   "sha": "97f67008f6cee4bd641150cfb26a2be06a7dfa93",
+   "sha": "9084f305adfe8a9677a706cbac851a7b1af5fe77",
    "files": [
     { "path": ".cursorrules", "o200k": 737, "linkTo": "AGENTS.md" },
     { "path": "AGENTS.md", "o200k": 737 }
@@ -898,15 +906,16 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 35,
+   "rank": 33,
    "full_name": "Significant-Gravitas/AutoGPT",
-   "stars": 187565,
+   "stars": 187605,
    "language": "Python",
    "default_branch": "master",
-   "sha": "0edeafc5902fb07c89bb6ebd8c5374621b5c6bf6",
+   "sha": "06d623e5e04cc96621130bb4bd118465c9e635d8",
    "files": [
     { "path": ".claude/skills/open-pr/SKILL.md", "o200k": 1314 },
     { "path": ".claude/skills/orchestrate/SKILL.md", "o200k": 9347 },
+    { "path": ".claude/skills/perf-compare/SKILL.md", "o200k": 5125 },
     { "path": ".claude/skills/pr-address/SKILL.md", "o200k": 7790 },
     { "path": ".claude/skills/pr-polish/SKILL.md", "o200k": 5007 },
     { "path": ".claude/skills/pr-review/SKILL.md", "o200k": 795 },
@@ -918,19 +927,19 @@
     { "path": ".claude/skills/write-frontend-tests/SKILL.md", "o200k": 1873 },
     { "path": ".github/copilot-instructions.md", "o200k": 2805 },
     { "path": "AGENTS.md", "o200k": 1608 },
-    { "path": "autogpt_platform/AGENTS.md", "o200k": 1627 },
+    { "path": "autogpt_platform/AGENTS.md", "o200k": 1629 },
     { "path": "autogpt_platform/backend/AGENTS.md", "o200k": 3046 },
     { "path": "autogpt_platform/backend/backend/copilot/bot/AGENTS.md", "o200k": 4 },
     { "path": "autogpt_platform/backend/backend/copilot/bot/CLAUDE.md", "o200k": 4 },
-    { "path": "autogpt_platform/backend/backend/copilot/bot/README.md", "o200k": 2892, "imported": true },
+    { "path": "autogpt_platform/backend/backend/copilot/bot/README.md", "o200k": 2903, "imported": true },
     { "path": "autogpt_platform/backend/backend/copilot/graphiti/AGENTS.md", "o200k": 1433 },
     { "path": "autogpt_platform/backend/backend/copilot/graphiti/CLAUDE.md", "o200k": 5 },
     { "path": "autogpt_platform/backend/CLAUDE.md", "o200k": 5 },
-    { "path": "autogpt_platform/backend/TESTING.md", "o200k": 2353, "imported": true },
+    { "path": "autogpt_platform/backend/TESTING.md", "o200k": 2496, "imported": true },
     { "path": "autogpt_platform/CLAUDE.md", "o200k": 5 },
     { "path": "autogpt_platform/frontend/AGENTS.md", "o200k": 1264 },
     { "path": "autogpt_platform/frontend/CLAUDE.md", "o200k": 5 },
-    { "path": "autogpt_platform/frontend/CONTRIBUTING.md", "o200k": 6674, "imported": true },
+    { "path": "autogpt_platform/frontend/CONTRIBUTING.md", "o200k": 6797, "imported": true },
     { "path": "classic/CLAUDE.md", "o200k": 2103 },
     { "path": "classic/direct_benchmark/CLAUDE.md", "o200k": 2440 },
     { "path": "classic/forge/CLAUDE.md", "o200k": 3250 },
@@ -939,7 +948,7 @@
     { "path": "docs/AGENTS.md", "o200k": 802 },
     { "path": "docs/CLAUDE.md", "o200k": 5 }
    ],
-   "agents": { "claude-code": 2279, "codex": 1608, "cursor": 1613, "copilot": 4413, "windsurf": 1608, "roo-code": 1608, "kiro": 1608, "junie": 1608, "zed": 2805, "goose": 1608, "amp": 1608, "opencode": 1608 },
+   "agents": { "claude-code": 2432, "codex": 1608, "cursor": 1613, "copilot": 4413, "windsurf": 1608, "roo-code": 1608, "kiro": 1608, "junie": 1608, "zed": 2805, "goose": 1608, "amp": 1608, "opencode": 1608 },
    "maxPerTurn": { "o200k": 4413, "agent": "copilot" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
@@ -957,12 +966,12 @@
    "fixes": { "count": 1, "savingO200k": 0 }
   },
   {
-   "rank": 37,
+   "rank": 35,
    "full_name": "ollama/ollama",
-   "stars": 183094,
+   "stars": 183389,
    "language": "Go",
    "default_branch": "main",
-   "sha": "8718c2bd2363c3f9f422d82bbad322bc2b791d60",
+   "sha": "d9b86018cba1d222fd28e28f42e5cdc15a060f39",
    "files": [
     { "path": "AGENTS.md", "o200k": 91 },
     { "path": "CLAUDE.md", "o200k": 21 }
@@ -979,12 +988,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 40,
+   "rank": 38,
    "full_name": "flutter/flutter",
-   "stars": 180145,
+   "stars": 180232,
    "language": "Dart",
    "default_branch": "master",
-   "sha": "84d209df3544763fd3f2b28263687a7ddacfa843",
+   "sha": "2e53c3af41adee44d27fabf67178209c80ee73c0",
    "files": [
     { "path": ".agents/skills/analyze-github-flake/SKILL.md", "o200k": 1089 },
     { "path": ".agents/skills/bump-dart/SKILL.md", "o200k": 1050 },
@@ -1016,12 +1025,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 42,
+   "rank": 40,
    "full_name": "twbs/bootstrap",
-   "stars": 174835,
+   "stars": 174921,
    "language": "MDX",
    "default_branch": "main",
-   "sha": "ebd627c654c49dbe929b11ebfe9b67e459e5d127",
+   "sha": "cc127d888efbca82ec829cbb0733d8908f00f8c8",
    "files": [
     { "path": "AGENTS.md", "o200k": 1947 }
    ],
@@ -1039,12 +1048,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 43,
+   "rank": 41,
    "full_name": "f/prompts.chat",
-   "stars": 172906,
+   "stars": 173119,
    "language": "HTML",
    "default_branch": "main",
-   "sha": "bbd0529530d99fa76ab2f51809b6184ea4b625b8",
+   "sha": "9dbc6c6fa8c3e4c7f35694fbb1eeda73b95a83e6",
    "files": [
     { "path": "AGENTS.md", "o200k": 2226 },
     { "path": "CLAUDE.md", "o200k": 571 }
@@ -1063,12 +1072,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 44,
+   "rank": 42,
    "full_name": "huggingface/transformers",
-   "stars": 167702,
+   "stars": 167751,
    "language": "Python",
    "default_branch": "main",
-   "sha": "08917bd9e73d7e0472550783b05255c202faa0c2",
+   "sha": "9fb4b5a9458a83a0bb9d8ddb6d4443a7bd146a62",
    "files": [
     { "path": ".ai/AGENTS.md", "o200k": 792 },
     { "path": ".github/copilot-instructions.md", "o200k": 773 },
@@ -1091,12 +1100,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 45,
+   "rank": 43,
    "full_name": "DietrichGebert/ponytail",
-   "stars": 163013,
+   "stars": 164673,
    "language": "JavaScript",
    "default_branch": "main",
-   "sha": "2961b52fc1fe6a5a87c7a959a79512e5c2f3ffe5",
+   "sha": "df9e89941d50419fd5bcf1de41e28097f1db49b2",
    "files": [
     { "path": ".clinerules/ponytail.md", "o200k": 576 },
     { "path": ".cursor/rules/ponytail.mdc", "o200k": 604 },
@@ -1120,12 +1129,12 @@
    "fixes": { "count": 3, "savingO200k": 1112 }
   },
   {
-   "rank": 48,
+   "rank": 46,
    "full_name": "langgenius/dify",
-   "stars": 158417,
-   "language": "TypeScript",
+   "stars": 158619,
+   "language": "Python",
    "default_branch": "main",
-   "sha": "e421dcc1f53291e79dd62ae63f10e1d92d283ba3",
+   "sha": "f3d7a49927da129f75c52a55392aad79a613e993",
    "files": [
     { "path": ".agents/skills/backend-code-review/SKILL.md", "o200k": 534 },
     { "path": ".agents/skills/e2e-cucumber-playwright/SKILL.md", "o200k": 556 },
@@ -1133,7 +1142,7 @@
     { "path": ".agents/skills/frontend-testing/SKILL.md", "o200k": 193 },
     { "path": ".agents/skills/how-to-write-component/SKILL.md", "o200k": 548 },
     { "path": "AGENTS.md", "o200k": 201 },
-    { "path": "api/AGENTS.md", "o200k": 518 },
+    { "path": "api/AGENTS.md", "o200k": 580 },
     { "path": "cli/AGENTS.md", "o200k": 604 },
     { "path": "cli/src/commands/AGENTS.md", "o200k": 858 },
     { "path": "dify-agent/AGENTS.md", "o200k": 236 },
@@ -1155,12 +1164,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 49,
+   "rank": 48,
    "full_name": "langflow-ai/langflow",
-   "stars": 155645,
+   "stars": 155730,
    "language": "Python",
    "default_branch": "main",
-   "sha": "a21cd0b51bcc0bc9dfe1865465aad6f41c242a9a",
+   "sha": "972d56c47d3830d17060ee85cfaad152df823041",
    "files": [
     { "path": ".agents/skills/backend-code-review/SKILL.md", "o200k": 3091 },
     { "path": ".agents/skills/component-refactoring/SKILL.md", "o200k": 3381 },
@@ -1192,12 +1201,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 52,
+   "rank": 50,
    "full_name": "clash-verge-rev/clash-verge-rev",
-   "stars": 151230,
+   "stars": 151730,
    "language": "Rust",
    "default_branch": "dev",
-   "sha": "d4287970bc7dbe3430c9a33bf2922e355c92c0be",
+   "sha": "dc5a8a5ff443c020a3dec79c2b46bc1f55411d95",
    "files": [
     { "path": "AGENTS.md", "o200k": 836 },
     { "path": "CLAUDE.md", "o200k": 5 },
@@ -1219,12 +1228,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 53,
+   "rank": 51,
    "full_name": "anthropics/claude-code",
-   "stars": 150712,
+   "stars": 151131,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "9b4f0d6ef8ceaf62f6b46babb9a4d84bec541a2e",
+   "sha": "03b5892ee77de289bcd5dfa39f541525ade74aff",
    "files": [
     { "path": ".claude/commands/commit-push-pr.md", "o200k": 200 },
     { "path": ".claude/commands/dedupe.md", "o200k": 429 },
@@ -1243,12 +1252,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 54,
+   "rank": 52,
    "full_name": "langchain-ai/langchain",
-   "stars": 147816,
+   "stars": 147911,
    "language": "Python",
    "default_branch": "master",
-   "sha": "8ace87e7a6493d41d4c61bb41a637052367b27f3",
+   "sha": "c088db971097f0f12c7b8c30d473e8dbde09c823",
    "files": [
     { "path": "AGENTS.md", "o200k": 4680 }
    ],
@@ -1266,12 +1275,33 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 57,
+   "rank": 55,
+   "full_name": "yangshun/tech-interview-handbook",
+   "stars": 143035,
+   "language": "TypeScript",
+   "default_branch": "main",
+   "sha": "e1d28e8886c0b6ff3e50da991ce0e895134ddc59",
+   "files": [
+    { "path": "AGENTS.md", "o200k": 1020 }
+   ],
+   "agents": { "claude-code": 1020, "codex": 1020, "cursor": 1020, "copilot": 1020, "windsurf": 1020, "roo-code": 1020, "kiro": 1020, "junie": 1020, "zed": 1020, "goose": 1020, "amp": 1020, "opencode": 1020 },
+   "maxPerTurn": { "o200k": 1020, "agent": "claude-code" },
+   "agentsReading": 12,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 0,
+    "byKind": {}
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 56,
    "full_name": "vercel/next.js",
-   "stars": 143237,
+   "stars": 143029,
    "language": "JavaScript",
    "default_branch": "canary",
-   "sha": "8521c6ae04998fc8ff87ae0d3de24e1fa4e88803",
+   "sha": "a6d4c15991fd2f69c14eea4e8b655b596bc162bf",
    "files": [
     { "path": ".agents/skills/authoring-skills/SKILL.md", "o200k": 913 },
     { "path": ".agents/skills/backport-pr/SKILL.md", "o200k": 987 },
@@ -1295,7 +1325,7 @@
     { "path": ".agents/skills/write-api-reference/SKILL.md", "o200k": 1880 },
     { "path": ".agents/skills/write-guide/SKILL.md", "o200k": 1288 },
     { "path": ".github/AGENTS.md", "o200k": 765 },
-    { "path": "AGENTS.md", "o200k": 6957 },
+    { "path": "AGENTS.md", "o200k": 7257 },
     { "path": "apps/bundle-analyzer/AGENTS.md", "o200k": 238 },
     { "path": "evals/AGENTS.md", "o200k": 35 },
     { "path": "evals/next-upgrade/apps/member-dashboard/next-13/AGENTS.md", "o200k": 29 },
@@ -1305,15 +1335,15 @@
     { "path": "packages/next/AGENTS.md", "o200k": 70 },
     { "path": "turbopack/AGENTS.md", "o200k": 169 }
    ],
-   "agents": { "claude-code": 6957, "codex": 7254, "cursor": 6957, "copilot": 6957, "windsurf": 6957, "roo-code": 6957, "kiro": 6957, "junie": 6957, "zed": 6957, "goose": 6957, "amp": 6957, "opencode": 6957 },
-   "maxPerTurn": { "o200k": 7254, "agent": "codex" },
+   "agents": { "claude-code": 7257, "codex": 7554, "cursor": 7257, "copilot": 7257, "windsurf": 7257, "roo-code": 7257, "kiro": 7257, "junie": 7257, "zed": 7257, "goose": 7257, "amp": 7257, "opencode": 7257 },
+   "maxPerTurn": { "o200k": 7554, "agent": "codex" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 6,
+    "total": 7,
     "byKind": {
      "oversized-section": { "high": 0, "medium": 2, "low": 0 },
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
+     "scopable-section": { "high": 0, "medium": 3, "low": 0 },
      "stale-reference": { "high": 0, "medium": 2, "low": 0 }
     }
    },
@@ -1321,33 +1351,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 58,
-   "full_name": "yangshun/tech-interview-handbook",
-   "stars": 143006,
-   "language": "TypeScript",
-   "default_branch": "main",
-   "sha": "e1d28e8886c0b6ff3e50da991ce0e895134ddc59",
-   "files": [
-    { "path": "AGENTS.md", "o200k": 1020 }
-   ],
-   "agents": { "claude-code": 1020, "codex": 1020, "cursor": 1020, "copilot": 1020, "windsurf": 1020, "roo-code": 1020, "kiro": 1020, "junie": 1020, "zed": 1020, "goose": 1020, "amp": 1020, "opencode": 1020 },
-   "maxPerTurn": { "o200k": 1020, "agent": "claude-code" },
-   "agentsReading": 12,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 0,
-    "byKind": {}
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 59,
+   "rank": 57,
    "full_name": "Shubhamsaboo/awesome-llm-apps",
-   "stars": 141651,
+   "stars": 141930,
    "language": "Python",
    "default_branch": "main",
-   "sha": "4bf51ab704fb2c5b3803cd5191b30d7dcdb51dc2",
+   "sha": "40b16b66e5257c528059bb93ca9410b55d39278a",
    "files": [
     { "path": "generative_ui_agents/ai-dashboard-canvas-agent/AGENTS.md", "o200k": 786 },
     { "path": "generative_ui_agents/generative-ui-starter-project/CLAUDE.md", "o200k": 2224 }
@@ -1366,17 +1375,17 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 60,
+   "rank": 58,
    "full_name": "github/spec-kit",
-   "stars": 141192,
+   "stars": 141478,
    "language": "Python",
    "default_branch": "main",
-   "sha": "96774bc52fd7dccc7185791e1cac7572b9e09dea",
+   "sha": "f6e72bc8523de8ec8368129cbdea78d45f27cef8",
    "files": [
-    { "path": "AGENTS.md", "o200k": 635 }
+    { "path": "AGENTS.md", "o200k": 740 }
    ],
-   "agents": { "claude-code": 635, "codex": 635, "cursor": 635, "copilot": 635, "windsurf": 635, "roo-code": 635, "kiro": 635, "junie": 635, "zed": 635, "goose": 635, "amp": 635, "opencode": 635 },
-   "maxPerTurn": { "o200k": 635, "agent": "claude-code" },
+   "agents": { "claude-code": 740, "codex": 740, "cursor": 740, "copilot": 740, "windsurf": 740, "roo-code": 740, "kiro": 740, "junie": 740, "zed": 740, "goose": 740, "amp": 740, "opencode": 740 },
+   "maxPerTurn": { "o200k": 740, "agent": "claude-code" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -1387,12 +1396,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 62,
+   "rank": 60,
    "full_name": "ripienaar/free-for-dev",
-   "stars": 139508,
+   "stars": 139626,
    "language": "HTML",
    "default_branch": "master",
-   "sha": "11383aa2d027c59a08f317dde660dd543f12f45a",
+   "sha": "aa64edb149db968c8d9cdb43ff73dea86b86d666",
    "files": [
     { "path": "AGENTS.md", "o200k": 78 },
     { "path": "CLAUDE.md", "o200k": 78 }
@@ -1411,34 +1420,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 63,
-   "full_name": "golang/go",
-   "stars": 139352,
-   "language": "Go",
-   "default_branch": "master",
-   "sha": "e60b4c37fa344513cdecfffe6efc3ca48c4a6cb2",
-   "files": [
-    { "path": "src/simd/AGENTS.md", "o200k": 844 },
-    { "path": "src/simd/internal/spec/AGENTS.md", "o200k": 400 }
-   ],
-   "agents": { "claude-code": 0, "codex": 0, "cursor": 0, "copilot": 0, "windsurf": 0, "goose": 0, "amp": 0 },
-   "maxPerTurn": { "o200k": 0, "agent": null },
-   "agentsReading": 7,
-   "agentsEveryTurn": 0,
-   "advice": {
-    "total": 0,
-    "byKind": {}
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 64,
+   "rank": 61,
    "full_name": "microsoft/PowerToys",
-   "stars": 139289,
+   "stars": 139369,
    "language": "C",
    "default_branch": "main",
-   "sha": "da5def38f7ebaa259ef482101ea47776297e1e9c",
+   "sha": "85d7ed7bd3166a1132864a9d5d99db1c790575ca",
    "files": [
     { "path": ".claude/CLAUDE.md", "o200k": 313, "linkTo": ".github/copilot-instructions.md" },
     { "path": ".github/copilot-instructions.md", "o200k": 313 },
@@ -1470,12 +1457,34 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 65,
+   "rank": 62,
+   "full_name": "golang/go",
+   "stars": 139275,
+   "language": "Go",
+   "default_branch": "master",
+   "sha": "1eb2e040ee361fc9a59e88be13866df89a3b14b9",
+   "files": [
+    { "path": "src/simd/AGENTS.md", "o200k": 844 },
+    { "path": "src/simd/internal/spec/AGENTS.md", "o200k": 400 }
+   ],
+   "agents": { "claude-code": 0, "codex": 0, "cursor": 0, "copilot": 0, "windsurf": 0, "goose": 0, "amp": 0 },
+   "maxPerTurn": { "o200k": 0, "agent": null },
+   "agentsReading": 7,
+   "agentsEveryTurn": 0,
+   "advice": {
+    "total": 0,
+    "byKind": {}
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 63,
    "full_name": "Comfy-Org/ComfyUI",
-   "stars": 137406,
+   "stars": 137784,
    "language": "Python",
    "default_branch": "master",
-   "sha": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+   "sha": "bdc63e72f5ab29fde448c161db3057827148c0ef",
    "files": [
     { "path": "AGENTS.md", "o200k": 5125 }
    ],
@@ -1493,12 +1502,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 66,
+   "rank": 64,
    "full_name": "garrytan/gstack",
-   "stars": 136344,
+   "stars": 136610,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "15ebd85cdde6c9a1b2fb707e8573aec18e8f7438",
+   "sha": "47d639abffa882b8cbb641d7d1dedf08ecada9ec",
    "files": [
     { "path": "AGENTS.md", "o200k": 5060 },
     { "path": "CLAUDE.md", "o200k": 8635 }
@@ -1519,17 +1528,17 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 67,
+   "rank": 65,
    "full_name": "nextlevelbuilder/ui-ux-pro-max-skill",
-   "stars": 135625,
+   "stars": 136350,
    "language": "Python",
    "default_branch": "main",
-   "sha": "7246805992a42b7bba37d4cac83b01416f0c6c44",
+   "sha": "56ea9cf174ed86786187daa9de0e6247cb0747e4",
    "files": [
     { "path": ".claude/skills/banner-design/SKILL.md", "o200k": 1685 },
     { "path": ".claude/skills/brand/SKILL.md", "o200k": 920 },
     { "path": ".claude/skills/design-system/SKILL.md", "o200k": 1827 },
-    { "path": ".claude/skills/design/SKILL.md", "o200k": 3551 },
+    { "path": ".claude/skills/design/SKILL.md", "o200k": 3570 },
     { "path": ".claude/skills/slides/SKILL.md", "o200k": 385 },
     { "path": ".claude/skills/ui-styling/SKILL.md", "o200k": 2526 },
     { "path": ".claude/skills/ui-ux-pro-max/SKILL.md", "o200k": 3804 },
@@ -1554,12 +1563,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 68,
+   "rank": 66,
    "full_name": "excalidraw/excalidraw",
-   "stars": 133839,
+   "stars": 133960,
    "language": "TypeScript",
    "default_branch": "master",
-   "sha": "541653c7c9d587d463a47daacff9fb30e45a52e7",
+   "sha": "4c37956ba5f04ec342a9d9d5891a38f22c5b7b4e",
    "files": [
     { "path": ".github/copilot-instructions.md", "o200k": 335 },
     { "path": "AGENTS.md", "o200k": 88 },
@@ -1577,12 +1586,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 69,
+   "rank": 68,
    "full_name": "ggml-org/llama.cpp",
-   "stars": 131115,
+   "stars": 131344,
    "language": "C++",
    "default_branch": "master",
-   "sha": "df18bee11e96557b07aa7b12db0976f3c7ac9165",
+   "sha": "a30fb4924dcfec81c1b2c20634bd47fa4403061a",
    "files": [
     { "path": "AGENTS.md", "o200k": 2503 },
     { "path": "CLAUDE.md", "o200k": 23 }
@@ -1601,9 +1610,31 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 72,
+   "rank": 70,
+   "full_name": "openai/codex",
+   "stars": 129461,
+   "language": "Rust",
+   "default_branch": "main",
+   "sha": "6ae8b8aa7c608730d4315d59c5c081897ae02780",
+   "files": [
+    { "path": "codex-rs/exec-server/src/sandbox_integrity/AGENTS.md", "o200k": 515 },
+    { "path": "codex-rs/tui/src/bottom_pane/AGENTS.md", "o200k": 121 }
+   ],
+   "agents": { "claude-code": 0, "codex": 0, "cursor": 0, "copilot": 0, "windsurf": 0, "goose": 0, "amp": 0 },
+   "maxPerTurn": { "o200k": 0, "agent": null },
+   "agentsReading": 7,
+   "agentsEveryTurn": 0,
+   "advice": {
+    "total": 0,
+    "byKind": {}
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 71,
    "full_name": "Chalarangelo/30-seconds-of-code",
-   "stars": 129193,
+   "stars": 129219,
    "language": "JavaScript",
    "default_branch": "master",
    "sha": "bd756f8b2283a38560efe83cb30af38324d4e9e9",
@@ -1624,39 +1655,17 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 73,
-   "full_name": "openai/codex",
-   "stars": 129117,
-   "language": "Rust",
-   "default_branch": "main",
-   "sha": "97771b1d78cf6366bc3946fe9e4bbca4ebee31d1",
-   "files": [
-    { "path": "codex-rs/exec-server/src/sandbox_integrity/AGENTS.md", "o200k": 515 },
-    { "path": "codex-rs/tui/src/bottom_pane/AGENTS.md", "o200k": 121 }
-   ],
-   "agents": { "claude-code": 0, "codex": 0, "cursor": 0, "copilot": 0, "windsurf": 0, "goose": 0, "amp": 0 },
-   "maxPerTurn": { "o200k": 0, "agent": null },
-   "agentsReading": 7,
-   "agentsEveryTurn": 0,
-   "advice": {
-    "total": 0,
-    "byKind": {}
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 74,
+   "rank": 72,
    "full_name": "kubernetes/kubernetes",
-   "stars": 128341,
+   "stars": 128312,
    "language": "Go",
    "default_branch": "master",
-   "sha": "19c504053ed551f6e5ab5b5fd7c3345a6dcd8593",
+   "sha": "5195aff44dec1fa075110cae002767a05df29b8e",
    "files": [
-    { "path": "AGENTS.md", "o200k": 377 }
+    { "path": "AGENTS.md", "o200k": 437 }
    ],
-   "agents": { "claude-code": 377, "codex": 377, "cursor": 377, "copilot": 377, "windsurf": 377, "roo-code": 377, "kiro": 377, "junie": 377, "zed": 377, "goose": 377, "amp": 377, "opencode": 377 },
-   "maxPerTurn": { "o200k": 377, "agent": "claude-code" },
+   "agents": { "claude-code": 437, "codex": 437, "cursor": 437, "copilot": 437, "windsurf": 437, "roo-code": 437, "kiro": 437, "junie": 437, "zed": 437, "goose": 437, "amp": 437, "opencode": 437 },
+   "maxPerTurn": { "o200k": 437, "agent": "claude-code" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -1669,12 +1678,33 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 75,
+   "rank": 73,
+   "full_name": "Graphify-Labs/graphify",
+   "stars": 127021,
+   "language": "Python",
+   "default_branch": "v8",
+   "sha": "10130e79ed9caf8f60d998073e097531eaa1a395",
+   "files": [
+    { "path": "AGENTS.md", "o200k": 119 }
+   ],
+   "agents": { "claude-code": 119, "codex": 119, "cursor": 119, "copilot": 119, "windsurf": 119, "roo-code": 119, "kiro": 119, "junie": 119, "zed": 119, "goose": 119, "amp": 119, "opencode": 119 },
+   "maxPerTurn": { "o200k": 119, "agent": "claude-code" },
+   "agentsReading": 12,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 0,
+    "byKind": {}
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 74,
    "full_name": "react/react-native",
-   "stars": 126668,
+   "stars": 126690,
    "language": "C++",
    "default_branch": "main",
-   "sha": "b8ec87e457c72377dab85599e1ae8c176eb242e7",
+   "sha": "e04aaf62f70491c803f0e0653075ec088c7c88f4",
    "files": [
     { "path": "AGENTS.md", "o200k": 1415 },
     { "path": "packages/react-native-compatibility-check/AGENTS.md", "o200k": 1723 }
@@ -1693,40 +1723,19 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 76,
-   "full_name": "Graphify-Labs/graphify",
-   "stars": 126265,
-   "language": "Python",
-   "default_branch": "v8",
-   "sha": "041771be72229bb2c8d8205b9cc6871c6be52b91",
-   "files": [
-    { "path": "AGENTS.md", "o200k": 119 }
-   ],
-   "agents": { "claude-code": 119, "codex": 119, "cursor": 119, "copilot": 119, "windsurf": 119, "roo-code": 119, "kiro": 119, "junie": 119, "zed": 119, "goose": 119, "amp": 119, "opencode": 119 },
-   "maxPerTurn": { "o200k": 119, "agent": "claude-code" },
-   "agentsReading": 12,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 0,
-    "byKind": {}
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 77,
+   "rank": 75,
    "full_name": "rustdesk/rustdesk",
-   "stars": 125767,
+   "stars": 125971,
    "language": "Rust",
    "default_branch": "master",
-   "sha": "9997b7a3b871fe10c6b8d36652fb2e35afba76f8",
+   "sha": "53996e3c404ea5083df0775057e4149e49102084",
    "files": [
-    { "path": "AGENTS.md", "o200k": 3721 },
+    { "path": "AGENTS.md", "o200k": 4025 },
     { "path": "CLAUDE.md", "o200k": 5 },
     { "path": "GEMINI.md", "o200k": 4 }
    ],
-   "agents": { "claude-code": 3726, "codex": 3721, "gemini-cli": 4, "cursor": 3726, "copilot": 3721, "windsurf": 3721, "roo-code": 3721, "kiro": 3721, "junie": 3721, "zed": 3721, "goose": 3721, "amp": 3721, "opencode": 3721 },
-   "maxPerTurn": { "o200k": 3726, "agent": "claude-code" },
+   "agents": { "claude-code": 4030, "codex": 4025, "gemini-cli": 4, "cursor": 4030, "copilot": 4025, "windsurf": 4025, "roo-code": 4025, "kiro": 4025, "junie": 4025, "zed": 4025, "goose": 4025, "amp": 4025, "opencode": 4025 },
+   "maxPerTurn": { "o200k": 4030, "agent": "claude-code" },
    "agentsReading": 13,
    "agentsEveryTurn": 13,
    "advice": {
@@ -1740,12 +1749,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 78,
+   "rank": 76,
    "full_name": "shadcn-ui/ui",
-   "stars": 125549,
+   "stars": 125731,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "30a58d4498f270af1c1e981a7d78a15cf5740841",
+   "sha": "c2477f311c19982ef6e246085438e6cfec3e35ea",
    "files": [
     { "path": "templates/next-app/AGENTS.md", "o200k": 154 },
     { "path": "templates/next-app/CLAUDE.md", "o200k": 5 },
@@ -1766,12 +1775,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 79,
+   "rank": 77,
    "full_name": "electron/electron",
-   "stars": 123316,
+   "stars": 123351,
    "language": "C++",
    "default_branch": "main",
-   "sha": "bec2821ba7b83e43aefe40f6a36456be57871dfd",
+   "sha": "d54a5cbdeb63509bbe612798dcacc33a255e1e0c",
    "files": [
     { "path": ".claude/skills/chrome-release-cls/SKILL.md", "o200k": 2258 },
     { "path": ".claude/skills/chrome-release-verify/SKILL.md", "o200k": 2746 },
@@ -1779,12 +1788,12 @@
     { "path": ".claude/skills/electron-node-upgrade/SKILL.md", "o200k": 5007 },
     { "path": ".claude/skills/triage-prs/SKILL.md", "o200k": 1844 },
     { "path": ".github/copilot-instructions.md", "o200k": 1176 },
-    { "path": "CLAUDE.md", "o200k": 3376 },
+    { "path": "CLAUDE.md", "o200k": 3382 },
     { "path": "docs/CLAUDE.md", "o200k": 647 },
     { "path": "spec/CLAUDE.md", "o200k": 557 }
    ],
-   "agents": { "claude-code": 3861, "cursor": 3376, "copilot": 4552, "zed": 1176, "amp": 3376, "opencode": 3376 },
-   "maxPerTurn": { "o200k": 4552, "agent": "copilot" },
+   "agents": { "claude-code": 3867, "cursor": 3382, "copilot": 4558, "zed": 1176, "amp": 3382, "opencode": 3382 },
+   "maxPerTurn": { "o200k": 4558, "agent": "copilot" },
    "agentsReading": 6,
    "agentsEveryTurn": 6,
    "advice": {
@@ -1801,12 +1810,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 81,
+   "rank": 79,
    "full_name": "nodejs/node",
-   "stars": 122481,
+   "stars": 122381,
    "language": "JavaScript",
    "default_branch": "main",
-   "sha": "87db28b6bac0bb3e2919a7843c02ff798a31cd1f",
+   "sha": "2745698537422b9ee48aab731afae410cfec3c43",
    "files": [
     { "path": "AGENTS.md", "o200k": 608 }
    ],
@@ -1822,9 +1831,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 82,
+   "rank": 81,
    "full_name": "microsoft/generative-ai-for-beginners",
-   "stars": 121331,
+   "stars": 121446,
    "language": "Jupyter Notebook",
    "default_branch": "main",
    "sha": "d45da91247ecb91e5346caacdd5a5fb9c5b9d85e",
@@ -1901,12 +1910,12 @@
    "fixes": { "count": 43, "savingO200k": 0 }
   },
   {
-   "rank": 88,
+   "rank": 86,
    "full_name": "browser-use/browser-use",
-   "stars": 117917,
+   "stars": 118146,
    "language": "Python",
    "default_branch": "main",
-   "sha": "c75e8476e26d18b7617643bc2ae082fae8eae431",
+   "sha": "e0a70fbe31c8e9cebcf42648f43e306a1c484421",
    "files": [
     { "path": "AGENTS.md", "o200k": 9117 },
     { "path": "CLAUDE.md", "o200k": 2495 }
@@ -1927,12 +1936,12 @@
    "fixes": { "count": 2, "savingO200k": 709 }
   },
   {
-   "rank": 92,
+   "rank": 90,
    "full_name": "earendil-works/pi",
-   "stars": 114997,
+   "stars": 115580,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "00d8d049552281f051418e52b5ffff34269a732a",
+   "sha": "4954d760504c11df9b2cbdc040346107b6a8153d",
    "files": [
     { "path": "AGENTS.md", "o200k": 1969 }
    ],
@@ -1950,9 +1959,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 94,
+   "rank": 91,
    "full_name": "JuliusBrussee/caveman",
-   "stars": 111591,
+   "stars": 112824,
    "language": "Go",
    "default_branch": "main",
    "sha": "d262ab3882952a59312ff3537cd86d894523c5ab",
@@ -2013,12 +2022,12 @@
    "fixes": { "count": 7, "savingO200k": 5525 }
   },
   {
-   "rank": 95,
+   "rank": 93,
    "full_name": "supabase/supabase",
-   "stars": 111515,
+   "stars": 111628,
    "language": "TypeScript",
    "default_branch": "master",
-   "sha": "f1082e28c741c3fbaf792bd702ef3371d37d8914",
+   "sha": "17f21bf6a89adb515fc0494b43aea186753c7b12",
    "files": [
     { "path": ".agents/skills/api-types/SKILL.md", "o200k": 464 },
     { "path": ".agents/skills/ask-the-docs/SKILL.md", "o200k": 1997 },
@@ -2046,10 +2055,10 @@
     { "path": "AGENTS.md", "o200k": 1449 },
     { "path": "apps/docs/AGENTS.md", "o200k": 499 },
     { "path": "apps/docs/CLAUDE.md", "o200k": 5 },
-    { "path": "apps/kb/AGENTS.md", "o200k": 1225 },
+    { "path": "apps/kb/AGENTS.md", "o200k": 1342 },
     { "path": "apps/kb/CLAUDE.md", "o200k": 5 },
     { "path": "apps/studio/.claude/skills/explorer/SKILL.md", "o200k": 728 },
-    { "path": "apps/studio/AGENTS.md", "o200k": 2409 },
+    { "path": "apps/studio/AGENTS.md", "o200k": 2515 },
     { "path": "apps/studio/CLAUDE.md", "o200k": 5 },
     { "path": "CLAUDE.md", "o200k": 5 }
    ],
@@ -2069,9 +2078,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 98,
+   "rank": 97,
    "full_name": "papers-we-love/papers-we-love",
-   "stars": 110528,
+   "stars": 110590,
    "language": "Shell",
    "default_branch": "main",
    "sha": "9b92363eac4d4fbea0f5fdc7766ef68d22037ca8",
@@ -2090,12 +2099,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 100,
+   "rank": 98,
    "full_name": "fatedier/frp",
-   "stars": 109893,
+   "stars": 109942,
    "language": "Go",
    "default_branch": "dev",
-   "sha": "41ed2aecf884930b33a77ddbe014c46a42811197",
+   "sha": "954f918d0cabdf09cc5c15030ef6d7dc2914198f",
    "files": [
     { "path": "AGENTS.md", "o200k": 313 },
     { "path": "CLAUDE.md", "o200k": 313, "linkTo": "AGENTS.md" }
@@ -2116,12 +2125,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 101,
+   "rank": 99,
    "full_name": "axios/axios",
-   "stars": 109396,
+   "stars": 109302,
    "language": "JavaScript",
    "default_branch": "v1.x",
-   "sha": "43968f294eaf79dabf0fcc2c05fd9add6a4faf12",
+   "sha": "326843a3902d73c9f6af9bad7b55e2412566a251",
    "files": [
     { "path": ".github/copilot-instructions.md", "o200k": 1369 },
     { "path": "AGENTS.md", "o200k": 3204 }
@@ -2142,9 +2151,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 102,
+   "rank": 100,
    "full_name": "denoland/deno",
-   "stars": 108788,
+   "stars": 108697,
    "language": "Rust",
    "default_branch": "main",
    "sha": "a18ce33715e30cd2b0d99c7e322ef11a65490e4d",
@@ -2174,12 +2183,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 103,
+   "rank": 101,
    "full_name": "google-gemini/gemini-cli",
-   "stars": 107336,
+   "stars": 107397,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "42c51822084ac25cd5d97ac0023822c5235f88c8",
+   "sha": "b25669d84e1a404e30c176d779e732e25dafcec0",
    "files": [
     { "path": "GEMINI.md", "o200k": 1140 },
     { "path": "packages/a2a-server/GEMINI.md", "o200k": 173 },
@@ -2204,9 +2213,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 105,
+   "rank": 102,
    "full_name": "addyosmani/agent-skills",
-   "stars": 106373,
+   "stars": 107149,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "aeac41d4d005999432bb7312f7ff06383a91d59d",
@@ -2239,9 +2248,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 107,
+   "rank": 105,
    "full_name": "microsoft/terminal",
-   "stars": 105163,
+   "stars": 105178,
    "language": "C++",
    "default_branch": "main",
    "sha": "44b440bf043522ec06014b2cff30d0f52ca30b68",
@@ -2260,12 +2269,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 108,
+   "rank": 106,
    "full_name": "pytorch/pytorch",
-   "stars": 104879,
+   "stars": 104794,
    "language": "Python",
    "default_branch": "main",
-   "sha": "7402bdbec6494134760b295102686e327f92fc78",
+   "sha": "eb429a042a8f30a486e86eedaf140d1de53aa05b",
    "files": [
     { "path": ".agents/skills/add-uint-support/SKILL.md", "o200k": 2516 },
     { "path": ".agents/skills/aoti-debug/SKILL.md", "o200k": 1661 },
@@ -2312,33 +2321,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 109,
-   "full_name": "neovim/neovim",
-   "stars": 103136,
-   "language": "Vim Script",
-   "default_branch": "master",
-   "sha": "6edb38ca982c96645185c82c1f5b5cb474487f71",
-   "files": [
-    { "path": "AGENTS.md", "o200k": 56 }
-   ],
-   "agents": { "claude-code": 56, "codex": 56, "cursor": 56, "copilot": 56, "windsurf": 56, "roo-code": 56, "kiro": 56, "junie": 56, "zed": 56, "goose": 56, "amp": 56, "opencode": 56 },
-   "maxPerTurn": { "o200k": 56, "agent": "claude-code" },
-   "agentsReading": 12,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 0,
-    "byKind": {}
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 110,
+   "rank": 107,
    "full_name": "fastapi/fastapi",
-   "stars": 103108,
+   "stars": 103127,
    "language": "Python",
    "default_branch": "master",
-   "sha": "f5c6e9b4f9cadc1bf0f9a1fd672e621206b63007",
+   "sha": "0b919816378eaa773df7ce4204414c712c9fdbea",
    "files": [
     { "path": "fastapi/.agents/skills/fastapi/SKILL.md", "o200k": 2483 }
    ],
@@ -2354,12 +2342,33 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 112,
+   "rank": 108,
+   "full_name": "neovim/neovim",
+   "stars": 103001,
+   "language": "Vim Script",
+   "default_branch": "master",
+   "sha": "be5167e21cfbb5d566c09a67c1852d0e18c62c38",
+   "files": [
+    { "path": "AGENTS.md", "o200k": 56 }
+   ],
+   "agents": { "claude-code": 56, "codex": 56, "cursor": 56, "copilot": 56, "windsurf": 56, "roo-code": 56, "kiro": 56, "junie": 56, "zed": 56, "goose": 56, "amp": 56, "opencode": 56 },
+   "maxPerTurn": { "o200k": 56, "agent": "claude-code" },
+   "agentsReading": 12,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 0,
+    "byKind": {}
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 109,
    "full_name": "paperclipai/paperclip",
-   "stars": 101757,
+   "stars": 102893,
    "language": "TypeScript",
    "default_branch": "master",
-   "sha": "2c17d3ca52a7840f280f1dd87975a2ad77de3b35",
+   "sha": "78b833c4958465b5e345b0e337018011b00dab72",
    "files": [
     { "path": ".agents/skills/add-product-e2e-eval/SKILL.md", "o200k": 997 },
     { "path": ".agents/skills/add-runner-eval/SKILL.md", "o200k": 895 },
@@ -2373,7 +2382,9 @@
     { "path": ".agents/skills/deal-with-security-advisory/SKILL.md", "o200k": 1843 },
     { "path": ".agents/skills/diagnose-why-work-stopped/SKILL.md", "o200k": 2635 },
     { "path": ".agents/skills/doc-maintenance/SKILL.md", "o200k": 1615 },
+    { "path": ".agents/skills/fix-slow-queries/SKILL.md", "o200k": 2300 },
     { "path": ".agents/skills/garden-inbox/SKILL.md", "o200k": 1015 },
+    { "path": ".agents/skills/honeycomb-tracing/SKILL.md", "o200k": 2148 },
     { "path": ".agents/skills/maintain-storybook/SKILL.md", "o200k": 1270 },
     { "path": ".agents/skills/maintain-verification-skill/SKILL.md", "o200k": 1587 },
     { "path": ".agents/skills/paperclip-create-plugin/SKILL.md", "o200k": 1530 },
@@ -2388,9 +2399,10 @@
     { "path": ".agents/skills/release-changelog/SKILL.md", "o200k": 3084 },
     { "path": ".agents/skills/release/SKILL.md", "o200k": 2337 },
     { "path": ".agents/skills/review-storybook/SKILL.md", "o200k": 655 },
+    { "path": ".agents/skills/setup-code-maintenance-bot/SKILL.md", "o200k": 1358 },
     { "path": ".agents/skills/terminal-bench-loop/SKILL.md", "o200k": 5451 },
     { "path": ".agents/skills/test-audit/SKILL.md", "o200k": 795 },
-    { "path": ".agents/skills/verify-paperclip/SKILL.md", "o200k": 2808 },
+    { "path": ".agents/skills/verify-paperclip/SKILL.md", "o200k": 3011 },
     { "path": ".claude/agents/codemod-runner.md", "o200k": 346 },
     { "path": ".claude/agents/token-auditor.md", "o200k": 441 },
     { "path": ".claude/skills/design-guide/SKILL.md", "o200k": 3017 },
@@ -2414,8 +2426,8 @@
     { "path": "server/src/onboarding-assets/default/AGENTS.md", "o200k": 10 },
     { "path": "server/src/onboarding-assets/first-task/chief-of-staff/AGENTS.md", "o200k": 33 }
    ],
-   "agents": { "claude-code": 3061, "codex": 3495, "cursor": 2944, "copilot": 2944, "windsurf": 2944, "roo-code": 2944, "kiro": 2944, "junie": 2944, "zed": 2944, "goose": 2944, "amp": 2944, "opencode": 2944 },
-   "maxPerTurn": { "o200k": 3495, "agent": "codex" },
+   "agents": { "claude-code": 3061, "codex": 3519, "cursor": 2944, "copilot": 2944, "windsurf": 2944, "roo-code": 2944, "kiro": 2944, "junie": 2944, "zed": 2944, "goose": 2944, "amp": 2944, "opencode": 2944 },
+   "maxPerTurn": { "o200k": 3519, "agent": "codex" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -2431,39 +2443,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 113,
-   "full_name": "angular/angular",
-   "stars": 101058,
-   "language": "TypeScript",
-   "default_branch": "main",
-   "sha": "4044cef0467d633fbe319ec9da8912d0171fce2a",
-   "files": [
-    { "path": "adev/src/context/AGENTS.md", "o200k": 1235 },
-    { "path": "adev/src/context/GEMINI.md", "o200k": 1235 },
-    { "path": "AGENTS.md", "o200k": 441 },
-    { "path": "packages/compiler-cli/preprocessor/AGENTS.md", "o200k": 1599 }
-   ],
-   "agents": { "claude-code": 441, "codex": 441, "gemini-cli": 0, "cursor": 441, "copilot": 441, "windsurf": 441, "roo-code": 441, "kiro": 441, "junie": 441, "zed": 441, "goose": 441, "amp": 441, "opencode": 441 },
-   "maxPerTurn": { "o200k": 441, "agent": "claude-code" },
-   "agentsReading": 13,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 2,
-    "byKind": {
-     "duplicate": { "high": 0, "medium": 0, "low": 1 },
-     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
-    }
-   },
-   "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 114,
+   "rank": 111,
    "full_name": "nexu-io/open-design",
-   "stars": 101029,
+   "stars": 101423,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "1343f374c63d7866f4f3ff5d48ef038eba647f1b",
+   "sha": "78d5637cb49da07e81314d1544b5fc6d37c95084",
    "files": [
     { "path": ".claude/commands/od-contribute.md", "o200k": 300 },
     { "path": ".claude/skills/od-contribute/SKILL.md", "o200k": 3782 },
@@ -2482,7 +2467,7 @@
     { "path": "e2e/AGENTS.md", "o200k": 3922 },
     { "path": "packages/AGENTS.md", "o200k": 1357 },
     { "path": "packages/standalone/AGENTS.md", "o200k": 256 },
-    { "path": "plugins/_official/scenarios/od-next-strategy/AGENTS.md", "o200k": 203 },
+    { "path": "plugins/_official/scenarios/od-next-strategy/AGENTS.md", "o200k": 255 },
     { "path": "plugins/AGENTS.md", "o200k": 735 },
     { "path": "shells/AGENTS.md", "o200k": 149 },
     { "path": "shells/terminal/AGENTS.md", "o200k": 360 },
@@ -2510,12 +2495,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 115,
+   "rank": 112,
    "full_name": "thedotmack/claude-mem",
-   "stars": 100546,
+   "stars": 101129,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "fef3402e674bebbf72a23aeb735e91c92cd34afd",
+   "sha": "b8fc2ef9bab0dd1438d6cc8699c6884445ad409b",
    "files": [
     { "path": ".claude/commands/anti-pattern-czar.md", "o200k": 929 },
     { "path": ".github/copilot-instructions.md", "o200k": 54 },
@@ -2536,16 +2521,43 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 116,
+   "rank": 113,
+   "full_name": "angular/angular",
+   "stars": 101061,
+   "language": "TypeScript",
+   "default_branch": "main",
+   "sha": "92e5aa8f154096a756757d0e295cde4299788650",
+   "files": [
+    { "path": "adev/src/context/AGENTS.md", "o200k": 1235 },
+    { "path": "adev/src/context/GEMINI.md", "o200k": 1235 },
+    { "path": "AGENTS.md", "o200k": 458 },
+    { "path": "packages/compiler-cli/preprocessor/AGENTS.md", "o200k": 1600 }
+   ],
+   "agents": { "claude-code": 458, "codex": 458, "gemini-cli": 0, "cursor": 458, "copilot": 458, "windsurf": 458, "roo-code": 458, "kiro": 458, "junie": 458, "zed": 458, "goose": 458, "amp": 458, "opencode": 458 },
+   "maxPerTurn": { "o200k": 458, "agent": "claude-code" },
+   "agentsReading": 13,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 2,
+    "byKind": {
+     "duplicate": { "high": 0, "medium": 0, "low": 1 },
+     "scopable-section": { "high": 0, "medium": 1, "low": 0 }
+    }
+   },
+   "flags": { "duplicate": true, "duplicateEveryTurn": false, "duplicateAcrossAgents": true, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 114,
    "full_name": "ant-design/ant-design",
-   "stars": 99760,
+   "stars": 99787,
    "language": "TypeScript",
    "default_branch": "master",
-   "sha": "463a6ad9358b0de3a82fbd2e497dff93a917a427",
+   "sha": "d9d01594fa64ff0dec183244702207b82925b3d6",
    "files": [
     { "path": ".agents/skills/changelog-collect/SKILL.md", "o200k": 5399 },
     { "path": ".agents/skills/commit-msg/SKILL.md", "o200k": 1608 },
-    { "path": ".agents/skills/create-pr/SKILL.md", "o200k": 2921 },
+    { "path": ".agents/skills/create-pr/SKILL.md", "o200k": 2961 },
     { "path": ".agents/skills/issue-reply/SKILL.md", "o200k": 2587 },
     { "path": ".agents/skills/test-review/SKILL.md", "o200k": 1479 },
     { "path": ".agents/skills/version-release/SKILL.md", "o200k": 1746 },
@@ -2573,12 +2585,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 117,
+   "rank": 115,
    "full_name": "mui/material-ui",
-   "stars": 99210,
+   "stars": 99226,
    "language": "JavaScript",
    "default_branch": "master",
-   "sha": "f47ba230c600da6d3d7380b06e38026f86a65216",
+   "sha": "5c8382298543fed3cab4b398bac93d7e2add47eb",
    "files": [
     { "path": ".agents/skills/material-ui-review/SKILL.md", "o200k": 4826 },
     { "path": ".agents/skills/mui-release/SKILL.md", "o200k": 724 },
@@ -2605,9 +2617,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 119,
+   "rank": 116,
    "full_name": "ruvnet/RuView",
-   "stars": 97880,
+   "stars": 98251,
    "language": "Rust",
    "default_branch": "main",
    "sha": "a1ca023ee872683d160250d47ae3d4d228af55a0",
@@ -2775,12 +2787,12 @@
    "fixes": { "count": 2, "savingO200k": 1261 }
   },
   {
-   "rank": 120,
+   "rank": 119,
    "full_name": "microsoft/playwright",
-   "stars": 97680,
+   "stars": 97827,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "647e485f2ba563ef055e2368fcc67bde67789cf0",
+   "sha": "034f230cc68b286055186f4d9783188536f2f3cf",
    "files": [
     { "path": ".claude/skills/playwright-cherry-pick/SKILL.md", "o200k": 222 },
     { "path": ".claude/skills/playwright-dev/SKILL.md", "o200k": 310 },
@@ -2804,9 +2816,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 123,
+   "rank": 122,
    "full_name": "microsoft/Web-Dev-For-Beginners",
-   "stars": 96948,
+   "stars": 96962,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "78085398be0dea7abaaf5eda914817f46f6ddbbc",
@@ -2882,12 +2894,12 @@
    "fixes": { "count": 26, "savingO200k": 0 }
   },
   {
-   "rank": 125,
+   "rank": 124,
    "full_name": "oven-sh/bun",
-   "stars": 96230,
+   "stars": 96259,
    "language": "Rust",
    "default_branch": "main",
-   "sha": "408c9374b266b45fe6b8260e09be73aa82a957cd",
+   "sha": "288aca3b0fb7e9de99e59797e98a571188825b84",
    "files": [
     { "path": ".claude/commands/dedupe.md", "o200k": 533 },
     { "path": ".claude/commands/find-duplicate-prs.md", "o200k": 822 },
@@ -2896,7 +2908,7 @@
     { "path": ".claude/commands/upgrade-nodejs.md", "o200k": 913 },
     { "path": ".claude/commands/upgrade-webkit.md", "o200k": 819 },
     { "path": ".claude/skills/implementing-jsc-classes-cpp/SKILL.md", "o200k": 1708 },
-    { "path": ".claude/skills/implementing-jsc-classes-rust/SKILL.md", "o200k": 1410 },
+    { "path": ".claude/skills/implementing-jsc-classes-rust/SKILL.md", "o200k": 1484 },
     { "path": ".claude/skills/javascriptcore-garbage-collector/SKILL.md", "o200k": 5913 },
     { "path": ".claude/skills/rust-system-calls/SKILL.md", "o200k": 1111 },
     { "path": ".claude/skills/slowest-tests/SKILL.md", "o200k": 948 },
@@ -2904,21 +2916,21 @@
     { "path": ".claude/skills/writing-bundler-tests/SKILL.md", "o200k": 1238 },
     { "path": ".claude/skills/writing-dev-server-tests/SKILL.md", "o200k": 796 },
     { "path": ".github/workflows/CLAUDE.md", "o200k": 3385 },
-    { "path": "AGENTS.md", "o200k": 4515, "linkTo": "CLAUDE.md" },
-    { "path": "CLAUDE.md", "o200k": 4515 },
+    { "path": "AGENTS.md", "o200k": 4551, "linkTo": "CLAUDE.md" },
+    { "path": "CLAUDE.md", "o200k": 4551 },
     { "path": "scripts/verify-baseline-static/CLAUDE.md", "o200k": 3771 },
     { "path": "src/AGENTS.md", "o200k": 6031, "linkTo": "src/CLAUDE.md" },
     { "path": "src/CLAUDE.md", "o200k": 6031 },
-    { "path": "src/format/CLAUDE.md", "o200k": 15160 },
+    { "path": "src/format/CLAUDE.md", "o200k": 16509 },
     { "path": "src/js/AGENTS.md", "o200k": 667, "linkTo": "src/js/CLAUDE.md" },
     { "path": "src/js/CLAUDE.md", "o200k": 667 },
     { "path": "src/jsc/bindings/v8/AGENTS.md", "o200k": 2604 },
     { "path": "src/jsc/bindings/v8/CLAUDE.md", "o200k": 2604 },
     { "path": "src/lint/CLAUDE.md", "o200k": 10922 }
    ],
-   "agents": { "claude-code": 4964, "codex": 4515, "cursor": 9030, "copilot": 4515, "windsurf": 4515, "roo-code": 4515, "kiro": 4515, "junie": 4515, "zed": 4515, "goose": 4515, "amp": 4515, "opencode": 4515 },
-   "maxPerTurn": { "o200k": 9030, "agent": "cursor" },
-   "maxPerTurnLinksOnce": { "o200k": 4964, "agent": "claude-code" },
+   "agents": { "claude-code": 5000, "codex": 4551, "cursor": 9102, "copilot": 4551, "windsurf": 4551, "roo-code": 4551, "kiro": 4551, "junie": 4551, "zed": 4551, "goose": 4551, "amp": 4551, "opencode": 4551 },
+   "maxPerTurn": { "o200k": 9102, "agent": "cursor" },
+   "maxPerTurnLinksOnce": { "o200k": 5000, "agent": "claude-code" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -2936,12 +2948,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 127,
+   "rank": 125,
    "full_name": "puppeteer/puppeteer",
-   "stars": 95691,
+   "stars": 95703,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "d8e4e363c364872db6a06c67b3d841f3b320dc70",
+   "sha": "07d2e71b1de1a402f6e4d4696600d1ae63761831",
    "files": [
     { "path": ".agents/skills/puppeteer-verification/SKILL.md", "o200k": 222 }
    ],
@@ -2957,9 +2969,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 128,
+   "rank": 126,
    "full_name": "nvm-sh/nvm",
-   "stars": 95353,
+   "stars": 95552,
    "language": "Shell",
    "default_branch": "master",
    "sha": "b1b3a0038c0666c7436cb5d383608b4b72c8300b",
@@ -2980,55 +2992,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 130,
-   "full_name": "iluwatar/java-design-patterns",
-   "stars": 94790,
-   "language": "Java",
-   "default_branch": "master",
-   "sha": "4cabb204f240240bea319605a5ffa46ded728001",
-   "files": [
-    { "path": "AGENTS.md", "o200k": 766 }
-   ],
-   "agents": { "claude-code": 766, "codex": 766, "cursor": 766, "copilot": 766, "windsurf": 766, "roo-code": 766, "kiro": 766, "junie": 766, "zed": 766, "goose": 766, "amp": 766, "opencode": 766 },
-   "maxPerTurn": { "o200k": 766, "agent": "claude-code" },
-   "agentsReading": 12,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 0,
-    "byKind": {}
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 131,
-   "full_name": "localsend/localsend",
-   "stars": 94329,
-   "language": "Dart",
-   "default_branch": "main",
-   "sha": "14f3a87426eedffaa9d87d011132eca5501abeb8",
-   "files": [
-    { "path": "AGENTS.md", "o200k": 2787 },
-    { "path": "CLAUDE.md", "o200k": 75 }
-   ],
-   "agents": { "claude-code": 2862, "codex": 2787, "cursor": 2862, "copilot": 2787, "windsurf": 2787, "roo-code": 2787, "kiro": 2787, "junie": 2787, "zed": 2787, "goose": 2787, "amp": 2787, "opencode": 2787 },
-   "maxPerTurn": { "o200k": 2862, "agent": "claude-code" },
-   "agentsReading": 12,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 3,
-    "byKind": {
-     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
-    }
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 132,
+   "rank": 128,
    "full_name": "OpenCut-app/OpenCut",
-   "stars": 94204,
+   "stars": 94822,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "e668010778568641babef2cc40be4703ae6916d6",
@@ -3049,12 +3015,58 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 133,
+   "rank": 129,
+   "full_name": "iluwatar/java-design-patterns",
+   "stars": 94785,
+   "language": "Java",
+   "default_branch": "master",
+   "sha": "4cabb204f240240bea319605a5ffa46ded728001",
+   "files": [
+    { "path": "AGENTS.md", "o200k": 766 }
+   ],
+   "agents": { "claude-code": 766, "codex": 766, "cursor": 766, "copilot": 766, "windsurf": 766, "roo-code": 766, "kiro": 766, "junie": 766, "zed": 766, "goose": 766, "amp": 766, "opencode": 766 },
+   "maxPerTurn": { "o200k": 766, "agent": "claude-code" },
+   "agentsReading": 12,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 0,
+    "byKind": {}
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 130,
+   "full_name": "localsend/localsend",
+   "stars": 94520,
+   "language": "Dart",
+   "default_branch": "main",
+   "sha": "d01fdb14c978fa8b2b13e29a50cc0feaefe5c1b9",
+   "files": [
+    { "path": "AGENTS.md", "o200k": 2787 },
+    { "path": "CLAUDE.md", "o200k": 75 }
+   ],
+   "agents": { "claude-code": 2862, "codex": 2787, "cursor": 2862, "copilot": 2787, "windsurf": 2787, "roo-code": 2787, "kiro": 2787, "junie": 2787, "zed": 2787, "goose": 2787, "amp": 2787, "opencode": 2787 },
+   "maxPerTurn": { "o200k": 2862, "agent": "claude-code" },
+   "agentsReading": 12,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 3,
+    "byKind": {
+     "scopable-section": { "high": 0, "medium": 2, "low": 0 },
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
+    }
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 131,
    "full_name": "Stirling-Tools/Stirling-PDF",
-   "stars": 94166,
+   "stars": 94306,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "797b2e98feb0a395054a8b223f87c8a08bb486ec",
+   "sha": "a7e593728dd9aa81e75318a949789d3c2e9ee754",
    "files": [
     { "path": ".claude/skills/comment-review/SKILL.md", "o200k": 2392 },
     { "path": ".claude/skills/feature-walkthrough/SKILL.md", "o200k": 1317 },
@@ -3091,20 +3103,21 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 135,
+   "rank": 133,
    "full_name": "vllm-project/vllm",
-   "stars": 93749,
+   "stars": 93905,
    "language": "Python",
    "default_branch": "main",
-   "sha": "aa0c433a3e5ee65641b7996e56c018ce91f9273d",
+   "sha": "fa75d3456d60a5ffe923818c4b495295675b38e1",
    "files": [
     { "path": ".agents/skills/check-api-compat/SKILL.md", "o200k": 1401 },
     { "path": ".agents/skills/ci-fails-buildkite/SKILL.md", "o200k": 372 },
     { "path": ".agents/skills/debug-ima/SKILL.md", "o200k": 79 },
     { "path": ".agents/skills/kernel-microbenchmark/SKILL.md", "o200k": 1658 },
+    { "path": ".agents/skills/model-microbenchmark/SKILL.md", "o200k": 1047 },
     { "path": ".agents/skills/model-recipes/SKILL.md", "o200k": 1631 },
     { "path": ".agents/skills/pr-checklist/SKILL.md", "o200k": 3610 },
-    { "path": ".agents/skills/transformers-upgrade/SKILL.md", "o200k": 2160 },
+    { "path": ".agents/skills/transformers-upgrade/SKILL.md", "o200k": 2493 },
     { "path": ".agents/skills/triton-kernel-writing/SKILL.md", "o200k": 863 },
     { "path": "AGENTS.md", "o200k": 1375 },
     { "path": "rust/AGENTS.md", "o200k": 872 },
@@ -3113,8 +3126,8 @@
     { "path": "vllm/reasoning/AGENTS.md", "o200k": 768 },
     { "path": "vllm/tool_parsers/AGENTS.md", "o200k": 648 }
    ],
-   "agents": { "claude-code": 1375, "codex": 1864, "cursor": 1375, "copilot": 1375, "windsurf": 1375, "roo-code": 1375, "kiro": 1375, "junie": 1375, "zed": 1375, "goose": 1375, "amp": 1375, "opencode": 1375 },
-   "maxPerTurn": { "o200k": 1864, "agent": "codex" },
+   "agents": { "claude-code": 1375, "codex": 1969, "cursor": 1375, "copilot": 1375, "windsurf": 1375, "roo-code": 1375, "kiro": 1375, "junie": 1375, "zed": 1375, "goose": 1375, "amp": 1375, "opencode": 1375 },
+   "maxPerTurn": { "o200k": 1969, "agent": "codex" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -3128,9 +3141,34 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 137,
+   "rank": 134,
+   "full_name": "stablyai/orca",
+   "stars": 93825,
+   "language": "TypeScript",
+   "default_branch": "main",
+   "sha": "516799403272398230887544458ee9db8406ecc4",
+   "files": [
+    { "path": "AGENTS.md", "o200k": 3089 },
+    { "path": "CLAUDE.md", "o200k": 5 },
+    { "path": "src/main/daemon/AGENTS.md", "o200k": 784 }
+   ],
+   "agents": { "claude-code": 3094, "codex": 3089, "cursor": 3094, "copilot": 3089, "windsurf": 3089, "roo-code": 3089, "kiro": 3089, "junie": 3089, "zed": 3089, "goose": 3089, "amp": 3089, "opencode": 3089 },
+   "maxPerTurn": { "o200k": 3094, "agent": "claude-code" },
+   "agentsReading": 12,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 1,
+    "byKind": {
+     "oversized-section": { "high": 0, "medium": 1, "low": 0 }
+    }
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 136,
    "full_name": "louislam/uptime-kuma",
-   "stars": 92434,
+   "stars": 92525,
    "language": "JavaScript",
    "default_branch": "master",
    "sha": "b092505f894d66669b67f46e1da72b51016eceab",
@@ -3154,17 +3192,17 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 138,
+   "rank": 137,
    "full_name": "infiniflow/ragflow",
-   "stars": 92180,
+   "stars": 92311,
    "language": "Go",
    "default_branch": "main",
-   "sha": "c2457770a90332487c67f57f73bc3d9a6808e119",
+   "sha": "47b1a71d7df5334a839a76dce9029e4661864720",
    "files": [
     { "path": ".agents/skills/go-naming/SKILL.md", "o200k": 74 },
     { "path": ".github/copilot-instructions.md", "o200k": 156 },
     { "path": "AGENTS.md", "o200k": 3615 },
-    { "path": "web/AGENTS.md", "o200k": 2614 }
+    { "path": "web/AGENTS.md", "o200k": 2789 }
    ],
    "agents": { "claude-code": 3615, "codex": 3664, "cursor": 3615, "copilot": 3771, "windsurf": 3615, "roo-code": 3615, "kiro": 3615, "junie": 3615, "zed": 156, "goose": 3615, "amp": 3615, "opencode": 3615 },
    "maxPerTurn": { "o200k": 3771, "agent": "copilot" },
@@ -3181,37 +3219,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 139,
-   "full_name": "stablyai/orca",
-   "stars": 91905,
-   "language": "TypeScript",
-   "default_branch": "main",
-   "sha": "b84d371a9fa1c93bcd8fce16cdc30db0d8b6f000",
-   "files": [
-    { "path": "AGENTS.md", "o200k": 2863 },
-    { "path": "CLAUDE.md", "o200k": 5 },
-    { "path": "src/main/daemon/AGENTS.md", "o200k": 784 }
-   ],
-   "agents": { "claude-code": 2868, "codex": 2863, "cursor": 2868, "copilot": 2863, "windsurf": 2863, "roo-code": 2863, "kiro": 2863, "junie": 2863, "zed": 2863, "goose": 2863, "amp": 2863, "opencode": 2863 },
-   "maxPerTurn": { "o200k": 2868, "agent": "claude-code" },
-   "agentsReading": 12,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 1,
-    "byKind": {
-     "oversized-section": { "high": 0, "medium": 1, "low": 0 }
-    }
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 140,
+   "rank": 138,
    "full_name": "zed-industries/zed",
-   "stars": 91699,
+   "stars": 91794,
    "language": "Rust",
    "default_branch": "main",
-   "sha": "e18de65b75901f8720ff9c9320bb013395de54e5",
+   "sha": "8a21d136a7848f4170f49497ad7d0a4ff12473e9",
    "files": [
     { "path": ".agents/skills/gpui-bench/SKILL.md", "o200k": 6204 },
     { "path": ".agents/skills/gpui-test/SKILL.md", "o200k": 1859 },
@@ -3242,12 +3255,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 141,
+   "rank": 139,
    "full_name": "home-assistant/core",
-   "stars": 91563,
+   "stars": 91550,
    "language": "Python",
    "default_branch": "dev",
-   "sha": "bc8dea32f1567ccd6b8c6224e58b35c086f0f136",
+   "sha": "65e37958cfb4c9c8f6b4ae75abc10d8cba9d8d6f",
    "files": [
     { "path": ".claude/agents/raise-pull-request.md", "o200k": 2477 },
     { "path": ".claude/skills/bump-dependency/SKILL.md", "o200k": 1492 },
@@ -3279,9 +3292,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 142,
+   "rank": 140,
    "full_name": "microsoft/ML-For-Beginners",
-   "stars": 91465,
+   "stars": 91520,
    "language": "Jupyter Notebook",
    "default_branch": "main",
    "sha": "de2d4e12236445198213a0711855e348e7253cd4",
@@ -3358,12 +3371,12 @@
    "fixes": { "count": 16, "savingO200k": 0 }
   },
   {
-   "rank": 143,
+   "rank": 141,
    "full_name": "django/django",
-   "stars": 91430,
+   "stars": 91402,
    "language": "Python",
    "default_branch": "main",
-   "sha": "adeef108afa7c6c50959cf2c94a4d4efbf1fae91",
+   "sha": "d430084791a61b31cecec132bce3dca19194f7f2",
    "files": [
     { "path": ".github/copilot-instructions.md", "o200k": 83 }
    ],
@@ -3379,12 +3392,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 144,
+   "rank": 142,
    "full_name": "storybookjs/storybook",
-   "stars": 91288,
+   "stars": 91316,
    "language": "TypeScript",
    "default_branch": "next",
-   "sha": "8af3851827d5a18d570eba7d8b0a520b5d62727c",
+   "sha": "323f10d623978e97e5596d3ba80f353d1266a850",
    "files": [
     { "path": ".agents/skills/canary/SKILL.md", "o200k": 1266 },
     { "path": ".agents/skills/docs-review/SKILL.md", "o200k": 1558 },
@@ -3435,9 +3448,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 145,
+   "rank": 143,
    "full_name": "modelcontextprotocol/servers",
-   "stars": 91237,
+   "stars": 91302,
    "language": "JavaScript",
    "default_branch": "main",
    "sha": "bbb701e7ac1e57f3edd1c2836b94c5457eaf7b9c",
@@ -3472,21 +3485,21 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 148,
+   "rank": 146,
    "full_name": "OpenHands/OpenHands",
-   "stars": 90847,
+   "stars": 91023,
    "language": "TypeScript",
    "default_branch": "main",
-   "sha": "bf483c12efbfae5c0ab586293d8bbc92f712bbed",
+   "sha": "d3a58cd1cc045bbb1b24f2c8c0d79a8404ef239b",
    "files": [
     { "path": ".agents/skills/desktop-electron/SKILL.md", "o200k": 230 },
     { "path": ".agents/skills/e2e-testing/SKILL.md", "o200k": 268 },
     { "path": ".agents/skills/frontend-api-contracts/SKILL.md", "o200k": 299 },
     { "path": ".agents/skills/frontend-development/SKILL.md", "o200k": 267 },
     { "path": ".agents/skills/local-stack-runtime/SKILL.md", "o200k": 291 },
-    { "path": ".agents/skills/pr-design-doc/SKILL.md", "o200k": 2379 },
+    { "path": ".agents/skills/pr-design-doc/SKILL.md", "o200k": 2401 },
     { "path": ".agents/skills/telemetry-analytics/SKILL.md", "o200k": 235 },
-    { "path": ".agents/skills/verify-openhands/SKILL.md", "o200k": 3701 },
+    { "path": ".agents/skills/verify-openhands/SKILL.md", "o200k": 3959 },
     { "path": "AGENTS.md", "o200k": 1679 },
     { "path": "src/api/mars/AGENTS.md", "o200k": 2756 }
    ],
@@ -3495,22 +3508,22 @@
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
-    "total": 3,
+    "total": 2,
     "byKind": {
      "scopable-section": { "high": 0, "medium": 1, "low": 0 },
-     "stale-reference": { "high": 0, "medium": 2, "low": 0 }
+     "stale-reference": { "high": 0, "medium": 1, "low": 0 }
     }
    },
    "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 149,
+   "rank": 147,
    "full_name": "astral-sh/uv",
-   "stars": 90738,
+   "stars": 90802,
    "language": "Rust",
    "default_branch": "main",
-   "sha": "62faed3351cfee2121b3c28b937b1f4b93233a93",
+   "sha": "b8d3eb9afd7846749511c94e2c54e22fe68f025f",
    "files": [
     { "path": "AGENTS.md", "o200k": 759 }
    ],
@@ -3528,21 +3541,43 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 153,
+   "rank": 151,
    "full_name": "gohugoio/hugo",
-   "stars": 90118,
+   "stars": 90130,
    "language": "Go",
    "default_branch": "master",
-   "sha": "00fe8db2ccfeb7a334917014bcc4409f033a9545",
+   "sha": "85fb23f1c23a0acc9c9094dc033c19ec2c0d2a2b",
    "files": [
     { "path": "AGENTS.md", "o200k": 417 },
-    { "path": "CLAUDE.md", "o200k": 5 },
     { "path": "docs/AGENTS.md", "o200k": 242 },
     { "path": "docs/CLAUDE.md", "o200k": 4 },
     { "path": "SECURITY.md", "o200k": 200, "imported": true }
    ],
-   "agents": { "claude-code": 622, "codex": 417, "cursor": 422, "copilot": 417, "windsurf": 417, "roo-code": 417, "kiro": 417, "junie": 417, "zed": 417, "goose": 417, "amp": 617, "opencode": 417 },
-   "maxPerTurn": { "o200k": 622, "agent": "claude-code" },
+   "agents": { "claude-code": 617, "codex": 417, "cursor": 417, "copilot": 417, "windsurf": 417, "roo-code": 417, "kiro": 417, "junie": 417, "zed": 417, "goose": 417, "amp": 617, "opencode": 417 },
+   "maxPerTurn": { "o200k": 617, "agent": "claude-code" },
+   "agentsReading": 12,
+   "agentsEveryTurn": 12,
+   "advice": {
+    "total": 0,
+    "byKind": {}
+   },
+   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
+   "fixes": { "count": 0, "savingO200k": 0 }
+  },
+  {
+   "rank": 156,
+   "full_name": "koala73/worldmonitor",
+   "stars": 88535,
+   "language": "TypeScript",
+   "default_branch": "main",
+   "sha": "d373ac3a428a317e151825702f7d9018e3a1306e",
+   "files": [
+    { "path": ".agents/skills/sentry-triage/SKILL.md", "o200k": 3792 },
+    { "path": ".agents/skills/verify-worldmonitor/SKILL.md", "o200k": 2164 },
+    { "path": "AGENTS.md", "o200k": 2256 }
+   ],
+   "agents": { "claude-code": 2256, "codex": 2364, "cursor": 2256, "copilot": 2256, "windsurf": 2256, "roo-code": 2256, "kiro": 2256, "junie": 2256, "zed": 2256, "goose": 2256, "amp": 2256, "opencode": 2256 },
+   "maxPerTurn": { "o200k": 2364, "agent": "codex" },
    "agentsReading": 12,
    "agentsEveryTurn": 12,
    "advice": {
@@ -3555,10 +3590,10 @@
   {
    "rank": 157,
    "full_name": "sveltejs/svelte",
-   "stars": 88480,
+   "stars": 88384,
    "language": "JavaScript",
    "default_branch": "main",
-   "sha": "86eb09b76ef9c81e8b34adf7eaaf63974a66aaa9",
+   "sha": "40bb08482f4857d91221638dec544a532bc35389",
    "files": [
     { "path": ".agents/skills/performance-investigation/SKILL.md", "o200k": 550 },
     { "path": "AGENTS.md", "o200k": 131 }
@@ -3577,32 +3612,9 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 158,
-   "full_name": "koala73/worldmonitor",
-   "stars": 88411,
-   "language": "TypeScript",
-   "default_branch": "main",
-   "sha": "aab2280837071f2e8436da30f894e8d71481793c",
-   "files": [
-    { "path": ".agents/skills/sentry-triage/SKILL.md", "o200k": 3792 },
-    { "path": ".agents/skills/verify-worldmonitor/SKILL.md", "o200k": 2164 },
-    { "path": "AGENTS.md", "o200k": 2256 }
-   ],
-   "agents": { "claude-code": 2256, "codex": 2364, "cursor": 2256, "copilot": 2256, "windsurf": 2256, "roo-code": 2256, "kiro": 2256, "junie": 2256, "zed": 2256, "goose": 2256, "amp": 2256, "opencode": 2256 },
-   "maxPerTurn": { "o200k": 2364, "agent": "codex" },
-   "agentsReading": 12,
-   "agentsEveryTurn": 12,
-   "advice": {
-    "total": 0,
-    "byKind": {}
-   },
-   "flags": { "duplicate": false, "duplicateEveryTurn": false, "duplicateAcrossAgents": false, "linkedFileReadTwice": false, "contradiction": false, "misconfigured": false, "sizeLimit": false },
-   "fixes": { "count": 0, "savingO200k": 0 }
-  },
-  {
-   "rank": 161,
+   "rank": 159,
    "full_name": "Egonex-AI/Understand-Anything",
-   "stars": 86214,
+   "stars": 86536,
    "language": "TypeScript",
    "default_branch": "main",
    "sha": "f2d0164f72fe678805c34245a6df36acededfebd",
@@ -3623,12 +3635,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 162,
+   "rank": 160,
    "full_name": "unclecode/crawl4ai",
-   "stars": 85492,
+   "stars": 85641,
    "language": "Python",
    "default_branch": "main",
-   "sha": "aadd82bebf989f1c36e1b557b8bb2b7c9dae393f",
+   "sha": "94b67888ca8b335ff2121423a50e06dd27661922",
    "files": [
     { "path": ".claude/commands/c4ai-check.md", "o200k": 768 }
    ],
@@ -3646,12 +3658,12 @@
    "fixes": { "count": 0, "savingO200k": 0 }
   },
   {
-   "rank": 163,
+   "rank": 161,
    "full_name": "laravel/laravel",
-   "stars": 85100,
+   "stars": 85186,
    "language": "Blade",
    "default_branch": "13.x",
-   "sha": "f4000aeb018fcbf71d4a13e3ee4b80c7e2d45be5",
+   "sha": "9ffef3bc4241e3cc333ef267258a404d0d95f194",
    "files": [
     { "path": "AGENTS.md", "o200k": 318 },
     { "path": "CLAUDE.md", "o200k": 318 }
@@ -3672,8 +3684,8 @@
  ],
  "summary": {
   "repos": 100,
-  "maxPerTurnO200k": { "median": 1959, "p75": 3787, "p90": 7297, "max": 14957 },
-  "maxPerTurnO200kLinksOnce": { "median": 1948, "p75": 3737, "p90": 5949, "max": 14957 },
+  "maxPerTurnO200k": { "median": 1969, "p75": 3866, "p90": 7567, "max": 14957 },
+  "maxPerTurnO200kLinksOnce": { "median": 1959, "p75": 3787, "p90": 6033, "max": 14957 },
   "reposWithLinkedFiles": 13,
   "findings": {
    "duplicate": { "repos": 40, "share": 0.4, "high": 22, "low": 28 },
@@ -3681,7 +3693,7 @@
    "misconfigured": { "repos": 3, "share": 0.03, "high": 3 },
    "size-limit": { "repos": 17, "share": 0.17, "high": 7, "medium": 12 },
    "oversized-section": { "repos": 25, "share": 0.25, "medium": 25 },
-   "scopable-section": { "repos": 43, "share": 0.43, "medium": 43 },
+   "scopable-section": { "repos": 44, "share": 0.44, "medium": 44 },
    "stale-reference": { "repos": 35, "share": 0.35, "medium": 35 },
    "non-english": { "repos": 3, "share": 0.03, "low": 3 }
   },
@@ -3711,7 +3723,7 @@
    { "name": ".rules", "repos": 1, "share": 0.01 },
    { "name": "CONVENTIONS.md", "repos": 1, "share": 0.01 }
   ],
-  "agentsAndClaudeAtRoot": { "repos": 39, "share": 0.39, "linked": 22 },
+  "agentsAndClaudeAtRoot": { "repos": 38, "share": 0.38, "linked": 21 },
   "agentsReading": { "median": 12 },
   "fixes": { "repos": 11, "share": 0.11, "reposWithSaving": 5, "count": 150, "totalSavingO200k": 9055, "medianSavingO200k": 0, "medianSavingAmongReposWithSavingO200k": 1112 },
   "heaviest": [
@@ -3721,9 +3733,9 @@
    { "full_name": "JuliusBrussee/caveman", "o200k": 12187 },
    { "full_name": "browser-use/browser-use", "o200k": 11612 },
    { "full_name": "modelcontextprotocol/servers", "o200k": 11166 },
-   { "full_name": "vercel/next.js", "o200k": 7254 },
+   { "full_name": "vercel/next.js", "o200k": 7554 },
+   { "full_name": "n8n-io/n8n", "o200k": 6341 },
    { "full_name": "ant-design/ant-design", "o200k": 6339, "o200kBothNames": 7978 },
-   { "full_name": "n8n-io/n8n", "o200k": 6241 },
    { "full_name": "denoland/deno", "o200k": 6070 }
   ]
  }
