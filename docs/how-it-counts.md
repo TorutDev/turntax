@@ -69,7 +69,7 @@ Sources: [rules](https://cursor.com/docs/rules), [rules help](https://cursor.com
 | `AGENTS.md`, `CLAUDE.md` at the root | always |
 | `AGENTS.md`, `CLAUDE.md` in a subdirectory | on-demand |
 | `SKILL.md` anywhere below `.agents/skills/`, `.cursor/skills/`, `.claude/skills/` or `.codex/skills/` (category folders included) | description always; on-demand with `paths` (or the legacy `globs`) frontmatter; `disable-model-invocation: true` manual; body on-demand |
-| The same skill folders in a subdirectory | on-demand, when the agent works with files there |
+| `.agents/skills` and `.cursor/skills` in a subdirectory | on-demand, when the agent works with files there (the docs name only these two for subdirectories) |
 
 Which skill folder wins on a name clash is not documented; `.agents`, `.cursor`, `.claude`, `.codex` is assumed.
 
@@ -93,7 +93,7 @@ Treating a description-only instructions file's description as always in context
 
 - Copilot CLI reads `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` and `GEMINI.md` from the repository root, the working directory, the folders between and the folders of files it works on, combines them all, and expands `@path` references in `copilot-instructions.md`, `AGENTS.md` and `CLAUDE.md`.
 - Copilot cloud agent uses the nearest `AGENTS.md`, or a single root `CLAUDE.md` or `GEMINI.md` instead.
-- VS Code's Copilot harness shares the Copilot CLI runtime ([agent harnesses](https://code.visualstudio.com/docs/agent-customization/agent-harnesses)), so it is assumed to read what the CLI reads, `GEMINI.md` included. `GEMINI.md` is not counted for Copilot, because the Local harness modelled here does not document it.
+- VS Code's Copilot harness shares the Copilot CLI runtime ([agent harnesses](https://code.visualstudio.com/docs/agents/concepts/agent-harnesses)), so it is assumed to read what the CLI reads, `GEMINI.md` included. `GEMINI.md` is not counted for Copilot, because the Local harness modelled here does not document it.
 - Copilot code review also reads `REVIEW.md` and uses only skills in `.github/skills`.
 
 ## Windsurf Cascade
@@ -319,7 +319,7 @@ New Devin Desktop (Windsurf) conversations start on Devin Local, which follows t
 | --- | --- |
 | `AGENTS.md`, `AGENTS.local.md`, `AGENT.md`, `.windsurfrules`, `CLAUDE.md` at the root | always (all are read) |
 | The same files in a subdirectory | on-demand, when Devin accesses files there |
-| `.devin/rules/*.md`, `.windsurf/rules/*.md` | `trigger: always_on` always; `model_decision` or `agent` (assumed alike): description always, body on-demand; `glob` on-demand; `manual` or no trigger: manual (not counted); in a subdirectory only when working there |
+| `.devin/rules/*.md`, `.windsurf/rules/*.md` | `trigger: always_on` always; `model_decision` or `agent` (assumed alike): description always, body on-demand; `glob` on-demand; `manual` or no trigger: manual (not counted); nested `.devin/rules` are not read when Devin starts at the root, nested `.windsurf/rules` only when working there |
 | `.devin/global_rules.md`, else `.windsurf/global_rules.md` | always |
 | `.cursor/rules/*.mdc` and `.cursor/rules/*.md` | the same as Cursor: `alwaysApply: true` always; `globs` on-demand; `description` only: description always, body on-demand; neither: manual |
 | `.devin/skills/*/SKILL.md`, `.windsurf/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `.claude/skills/**/SKILL.md`, `.github/skills/**/SKILL.md`, `.claude/commands/**/*.md` | name and description always; body when the skill is invoked |
@@ -388,7 +388,7 @@ Sources are listed in [`src/core/mcp.ts`](../src/core/mcp.ts); checked on 2026-1
 - Server instructions (the `instructions` a server returns from `initialize`) are counted per turn where the agent's docs say they reach the model: Claude Code (loaded at session start, cut at 4,096 characters), Gemini CLI (appended to the system instructions), Codex (used alongside the tools; no cut documented, so counted in full, although Codex advises keeping the first 512 characters self-contained) and Kilo Code (added to the model context). Copilot CLI includes only allowlisted servers' instructions upfront, and the other agents do not document theirs, so they are not counted there. Resources and prompts are not counted.
 - Augment loads every MCP tool upfront unless `enableToolSearch` is on; that setting is not read.
 - Not counted: Warp project configs (`.warp/.mcp.json` and other agents' project files; Warp never starts project servers by itself) and Warp's import of other agents' user configs (a setting with an undocumented default); TRAE's `.trae/mcp.json` (needs the Project MCP switch, whose default is undocumented); servers added through an app's settings UI, plugins or remote/cloud configurations; OpenCode's top-level `tools` map.
-- When an agent finds the same server name in several of its configs it uses one definition, so only that one is started and counted; the other copies are listed as `overridden by <config>`. The documented precedence decides: Claude Code local (`projects[<repo path>]` in `~/.claude.json`) over project (`.mcp.json`) over user; Copilot CLI `.mcp.json` over `.github/mcp.json` over `~/.copilot/mcp-config.json`; Augment `.augment/settings.local.json` over `.augment/settings.json` over `~/.augment/settings.json`; project over user for Gemini CLI and Kiro; for Kilo Code, `.kilo/kilo.json(c)` over the root `kilo.json(c)` over the user config, with the legacy `opencode.json(c)` assumed lowest. Devin: `.devin/mcp_config.local.json` over `.devin/mcp_config.json` over the user config over imported configs (assumed). Anything else (other agents, Copilot's `.vscode/mcp.json`, two project files of one agent) follows the order of `MCP_CONFIGS` in `src/core/mcp.ts` (project files first) and is marked `(precedence assumed)`; for Factory the user config is assumed to win, because turning a project server on or off writes a copy to the user config.
+- When an agent finds the same server name in several of its configs it uses one definition, so only that one is started and counted; the other copies are listed as `overridden by <config>`. The documented precedence decides: Claude Code local (`projects[<repo path>]` in `~/.claude.json`) over project (`.mcp.json`) over user; Copilot CLI `.mcp.json` over `.github/mcp.json` over `~/.copilot/mcp-config.json`; Augment `.augment/settings.local.json` over `.augment/settings.json` over `~/.augment/settings.json`; project over user for Gemini CLI and Kiro; for Kilo Code, `.kilo/kilo.json(c)` over the root `kilo.json(c)` over the user config, with the legacy `opencode.json(c)` assumed to rank with the root `kilo.json(c)`. Devin: `.devin/mcp_config.local.json` over `.devin/mcp_config.json` over the user config over imported configs (assumed). Anything else (other agents, Copilot's `.vscode/mcp.json`, two project files of one agent) follows the order of `MCP_CONFIGS` in `src/core/mcp.ts` (project files first) and is marked `(precedence assumed)`; for Factory the user config is assumed to win, because turning a project server on or off writes a copy to the user config.
 
 ## Token counts
 

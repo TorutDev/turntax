@@ -32,7 +32,7 @@ Each agent's documented loading rules decide what is sent on every turn, what lo
 | Devin Local / Devin CLI | `AGENTS.md`, `AGENTS.local.md`, `AGENT.md`, `.windsurfrules`, `CLAUDE.md` at every level, `.devin/rules/`, `.windsurf/rules/`, `.cursor/rules/`, skills |
 | Factory Droid | `AGENTS.md` / `CLAUDE.md` (also in `.factory`, `.agents`, `.agent`), `DESIGN.md`, `.factory/skills`, `.agents/skills`, `.factory/droids` |
 | Gemini CLI | `GEMINI.md`, skills in `.agents` and `.gemini` |
-| GitHub Copilot | `.github/copilot-instructions.md`, `.github/instructions/`, `AGENTS.md`, `CLAUDE.md`, `.claude/rules`, skills in `.github`, `.claude`, `.agents` (VS Code defaults) |
+| GitHub Copilot | `.github/copilot-instructions.md`, `.github/instructions/`, `AGENTS.md`, `CLAUDE.md`, `.claude/rules`, skills in `.github`, `.claude`, `.agents` (VS Code Local harness defaults) |
 | Goose | `.goosehints`, `AGENTS.md`, `@`-included files, skills in `.agents`, `.goose`, `.claude` |
 | Google Jules | root `AGENTS.md` |
 | JetBrains Junie | `.junie/AGENTS.md`, or `AGENTS.md` with `.junie/rules/`, or `.junie/guidelines`; skills in `.junie`, `.agents` |
@@ -102,7 +102,7 @@ All checks are deterministic. Each one shows an estimated saving in o200k tokens
 - **contradiction**: conflicting rules reaching the same agent (package manager, indentation, quotes, semicolons).
 - **scopable-section**: a section mostly about one directory that could load only there (nested file, path-scoped rule, `applyTo`).
 - **oversized-section**: a large always-loaded section that could become an on-demand skill.
-- **size-limit**: documented limits (CLAUDE.md under 200 lines, Codex's 32 KiB cut-off, Windsurf's 12,000 characters, Cursor's 500 lines).
+- **size-limit**: documented limits (CLAUDE.md under 200 lines, Codex's 32 KiB cut-off, Windsurf's 12,000 characters per rule and 6,000 for global rules, Cursor's 500 lines, Factory's 80,000 characters, Augment's 49,512 characters).
 - **misconfigured**: files a tool ignores, such as `.md` files in `.cursor/rules` or Windsurf rules without a `trigger`.
 - **stale-reference**: referenced files or `npm run` scripts that no longer exist.
 - **non-english**: non-English sections. The token multiplier is measured only against an English version you supply (`--english CLAUDE.md=CLAUDE.en.md`) or, if you opt in, a Claude translation (`--translate`).
@@ -173,7 +173,7 @@ Counting the tool definitions needs the servers running, so it is opt-in:
 npx turntax --mcp
 ```
 
-`--mcp` starts each stdio server with the command from its config (in the repository folder; environment variables are expanded into commands, URLs and headers the repository config defines, as the agents themselves do) and connects to streamable HTTP servers, asks for `tools/list`, and counts the definitions as JSON with o200k. A server several agents share is started once. Environment variables in the config (`${VAR}`, `${VAR:-default}`, `${env:VAR}`) are expanded; servers that need a VS Code `${input:...}` prompt, legacy SSE and WebSocket servers and servers that fail or time out (`--mcp-timeout`, default 30 s) are listed with the reason and not counted.
+`--mcp` starts each stdio server with the command from its config (in the repository folder; environment variables are expanded into commands, URLs and headers the repository config defines, as the agents themselves do) and connects to streamable HTTP servers, asks for `tools/list`, and counts the definitions as JSON with o200k. A server several agents share is started once. Environment variables in the config (`${VAR}`, `${VAR:-default}`, `${env:VAR}`, `{env:VAR}`, `${workspaceFolder}`) are expanded; servers that need a VS Code `${input:...}` prompt, legacy SSE and WebSocket servers and servers that fail or time out (`--mcp-timeout`, default 30 s) are listed with the reason and not counted.
 
 Claude Code defers MCP tool definitions by default (tool search): only the tool names are in context until a tool is used, so its row counts the names and shows the full size separately. A server with `alwaysLoad: true`, or a tool marked `_meta["anthropic/alwaysLoad"]`, is counted in full. Server instructions load at the start of every session and are counted for Claude Code (cut at 4,096 characters, as Claude Code does), Gemini CLI, Codex and Kilo Code, whose docs say they reach the context.
 
