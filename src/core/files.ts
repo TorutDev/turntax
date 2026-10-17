@@ -43,7 +43,6 @@ const NAMES = new Set([
   '.aider.conf.yml',
   'WARP.md',
   'AGENTS.local.md',
-  'agents.md',
   'Agents.md',
   'Claude.md',
 ]);
@@ -53,7 +52,7 @@ const PATTERNS = [
   /^\.github\/instructions\/.+\.instructions\.md$/,
   /(^|\/)\.claude\/(rules|commands|agents)\/.+\.md$/,
   // Skill folders of every agent; some agents also read skills in category subfolders.
-  /(^|\/)\.(agents|claude|cursor|codex|github|gemini|devin|windsurf|cline|clinerules|roo|kiro|junie|goose|opencode)\/skills\/(?:[^/]+\/)+SKILL\.md$/,
+  /(^|\/)\.(agents?|claude|cursor|codex|github|gemini|devin|windsurf|cline|clinerules|roo|kiro|junie|goose|opencode|warp|copilot|factory|trae|augment|kilo|kilocode)\/skills\/(?:[^/]+\/)+SKILL\.md$/,
   /(^|\/)\.(roo|agents)\/skills-[\w-]+\/[^/]+\/SKILL\.md$/,
   /(^|\/)\.cursor\/rules\/.+\.mdc?$/,
   /(^|\/)\.(devin|windsurf)\/rules\/.+\.md$/,
@@ -67,7 +66,6 @@ const PATTERNS = [
   /^(CONTEXT|DESIGN|Design|design)\.md$/,
   /^\.augment-guidelines$/,
   /^\.kilocoderules(-[\w-]+)?$/,
-  /(^|\/)\.(agents?|claude|warp|codex|cursor|gemini|copilot|factory|github|opencode|devin|windsurf|trae|augment|kilo|kilocode)\/skills\/(?:[^/]+\/)+SKILL\.md$/,
   /^\.(devin|windsurf)\/global_rules\.md$/,
   /^\.factory\/(droids\/[^/]+|commands\/.+)\.md$/,
   /(^|\/)\.factory\/output-styles\/[^/]+\.md$/,

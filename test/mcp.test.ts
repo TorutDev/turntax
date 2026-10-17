@@ -168,6 +168,38 @@ describe('MCP config parsing', () => {
     ]);
   });
 
+  it('prefers .kilo/ over the root Kilo config, kilo.json over legacy opencode.json, and project over user', () => {
+    const same = (command: string) => JSON.stringify({ mcp: { same: { type: 'local', command: [command] } } });
+    const kilo = (paths: string[]) =>
+      parseMcpConfigs(paths.map((path) => ({ path, text: same(path) })))
+        .servers.filter((s) => s.tool === 'kilo-code')
+        .map((s) => [s.configPath, s.overriddenBy ?? null, s.overrideAssumed ?? false]);
+    expect(kilo(['opencode.json', 'kilo.json', '.kilo/kilo.jsonc', '~/.config/kilo/kilo.json'])).toEqual([
+      ['opencode.json', '.kilo/kilo.jsonc', false],
+      ['kilo.json', '.kilo/kilo.jsonc', false],
+      ['.kilo/kilo.jsonc', null, false],
+      ['~/.config/kilo/kilo.json', '.kilo/kilo.jsonc', false],
+    ]);
+    // The order of the root files among themselves is not documented.
+    expect(kilo(['opencode.jsonc', 'kilo.jsonc'])).toEqual([
+      ['opencode.jsonc', 'kilo.jsonc', true],
+      ['kilo.jsonc', null, false],
+    ]);
+  });
+
+  it("prefers Devin's own configs, local first, over imported ones (assumed)", () => {
+    const same = (command: string) => JSON.stringify({ mcpServers: { same: { command } } });
+    const devin = parseMcpConfigs(
+      ['.mcp.json', '.devin/mcp_config.json', '.devin/mcp_config.local.json', '~/.config/devin/mcp_config.json'].map((path) => ({ path, text: same(path) })),
+    ).servers.filter((s) => s.tool === 'devin');
+    expect(devin.map((s) => [s.configPath, s.overriddenBy ?? null, s.overrideAssumed ?? false])).toEqual([
+      ['.mcp.json', '.devin/mcp_config.local.json', true],
+      ['.devin/mcp_config.json', '.devin/mcp_config.local.json', true],
+      ['.devin/mcp_config.local.json', null, false],
+      ['~/.config/devin/mcp_config.json', '.devin/mcp_config.local.json', true],
+    ]);
+  });
+
   it("reads each agent's tool filters and keeps only the tools they allow", () => {
     const { servers } = parseMcpConfigs([
       { path: '.codex/config.toml', text: '[mcp_servers.c]\ncommand = "c"\nenabled_tools = ["one", "two"]\ndisabled_tools = ["two"]\n' },
@@ -191,6 +223,17 @@ describe('MCP config parsing', () => {
     expect(kept('w', 'devin')).toEqual(['one', 'two', 'three']);
     expect(kept('cl', 'claude-code')).toEqual(['one', 'two', 'three']);
     expect(kept('cl', 'copilot')).toEqual(['one']);
+  });
+
+  it('gives Copilot no tools for an empty tools list and every tool for ["*"]', () => {
+    const { servers } = parseMcpConfigs([
+      { path: '.github/mcp.json', text: '{"mcpServers":{"none":{"command":"n","tools":[]},"all":{"command":"a","tools":["*"]},"unset":{"command":"u"}}}' },
+    ]);
+    const tools = ['one', 'two'].map((name) => ({ name }));
+    const kept = (name: string) => filterTools(servers.find((s) => s.name === name)!, tools).map((t) => t.name);
+    expect(kept('none')).toEqual([]);
+    expect(kept('all')).toEqual(['one', 'two']);
+    expect(kept('unset')).toEqual(['one', 'two']);
   });
 
   it('finds the MCP configs of Augment, Factory, Kilo Code, Devin and Warp', () => {

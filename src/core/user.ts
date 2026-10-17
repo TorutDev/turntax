@@ -111,9 +111,15 @@ export const USER_FILES: UserFileRule[] = [
   { tool: 'devin', pattern: /^\.copilot\/skills\/(?:[^/]+\/)+SKILL\.md$/, as: (p) => '.github/skills/' + p.replace(/^\.copilot\/skills\//, ''), source: 'https://docs.devin.ai/cli/reference/configuration/read-config-from' },
 ];
 
-/** Home-relative folders to search, and how deep. Kept narrow so nothing else in the home directory is read. */
+/**
+ * Home-relative folders to search, and how deep. Kept narrow so nothing else in the home directory is read, and no
+ * folder lies within the depth of another one, so nothing is walked twice.
+ */
 export const USER_ROOTS: Array<{ dir: string; depth: number }> = [
-  { dir: '.claude', depth: 4 },
+  { dir: '.claude', depth: 0 },
+  { dir: '.claude/rules', depth: 3 },
+  { dir: '.claude/commands', depth: 3 },
+  { dir: '.claude/agents', depth: 3 },
   { dir: '.claude/skills', depth: 5 },
   { dir: '.codex', depth: 0 },
   { dir: '.codex/skills', depth: 5 },

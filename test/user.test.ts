@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { audit } from '../src/core/audit.js';
 import { MODELS } from '../src/core/prices.js';
 import { renderText } from '../src/core/render.js';
-import { classifyUser } from '../src/core/user.js';
+import { USER_ROOTS, classifyUser } from '../src/core/user.js';
 import { discoverUser } from '../src/node/discover.js';
 import { HOME_FIXTURE_FILES, homeFixture, materialize } from './helpers.js';
 
@@ -77,11 +77,20 @@ describe('user-level files', () => {
       '.config/agents/skills/a/b/SKILL.md': '---\nname: b\ndescription: Amp skill.\n---\nSteps.\n',
       '.roo/skills-code/refactor/SKILL.md': '---\nname: refactor\ndescription: Refactor.\n---\nSteps.\n',
       '.claude/agents/review/security.md': '---\nname: security\ndescription: Security review.\n---\nPrompt.\n',
+      '.claude/commands/team/ship.md': '---\ndescription: Ship it.\n---\nSteps.\n',
+      '.claude/skills/a/b/c/d/e/SKILL.md': '---\nname: e\ndescription: Five folders deep (Amp).\n---\nSteps.\n',
       '.codeium/windsurf/memories/global_rules.md': 'Global Windsurf rules.\n',
       '.config/devin/skills/ship/SKILL.md': '---\nname: ship\ndescription: Ship it.\n---\nSteps.\n',
     };
     const found = discoverUser(materialize('home', { ...HOME_FIXTURE_FILES, ...extra })).files.map((f) => f.path);
     for (const path of Object.keys(extra)) expect(found, path).toContain(`~/${path}`);
+  });
+
+  it('walks each home folder once', () => {
+    expect(new Set(USER_ROOTS.map((r) => r.dir)).size).toBe(USER_ROOTS.length);
+    for (const outer of USER_ROOTS)
+      for (const inner of USER_ROOTS.filter((r) => r.dir.startsWith(`${outer.dir}/`)))
+        expect(outer.depth, `${outer.dir} also walks ${inner.dir}`).toBeLessThan(inner.dir.split('/').length - outer.dir.split('/').length);
   });
 
   it('reads each new user file for its own agent, in the mode of its project counterpart', () => {

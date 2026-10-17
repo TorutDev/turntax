@@ -56,6 +56,13 @@ const DEFAULT_SECTION_TOKENS = 600;
 
 const RANK: Record<LoadMode, number> = { ignored: 0, manual: 1, 'on-demand': 2, always: 3 };
 
+/**
+ * Agent files that are also documents for people: design docs (Factory's DESIGN.md), project context (Kilo's
+ * CONTEXT.md) and the mixed-case names Factory and Windsurf read (agents.md in any folder). Fixes never edit, move
+ * text out of, rename or create them; their lines still count as copies for other files.
+ */
+const FOR_PEOPLE = new Set(['DESIGN.md', 'Design.md', 'design.md', 'CONTEXT.md', 'agents.md', 'Agents.md', 'Claude.md']);
+
 const toolName = (id: ToolId) => TOOLS.find((t) => t.id === id)?.name ?? id;
 const names = (ids: Iterable<ToolId>) => [...ids].map(toolName).join(', ');
 
@@ -174,6 +181,9 @@ export function planFixes(input: RepoFile[], opts: FixOptions = {}): FixPlan {
   // Files reached only through @imports (a README, docs) are for people too; they are never changed.
   const readOnly = (path: string): string | null => {
     if (!isInstructionFile(path)) return `${path} is not an agent instruction file (it is @imported); it is left alone.`;
+    // Case-insensitively too: on Windows and macOS a new pkg/AGENTS.md would be the existing pkg/agents.md.
+    const forPeople = [path, ...ws.files.keys()].find((p) => p.toLowerCase() === path.toLowerCase() && FOR_PEOPLE.has(basename(p)));
+    if (forPeople) return `${forPeople} is also a document for people; it is left alone.`;
     const reason = opts.readOnly?.(path);
     return typeof reason === 'string' ? reason : reason ? `${path} is a symlink, in a symlinked folder or the target of a symlink; it is left alone.` : null;
   };
@@ -492,16 +502,24 @@ function isProcedureSection(body: string): boolean {
 }
 
 /**
- * The section's slug, with -2, -3... when a skill folder of that name exists in any of SKILL_DIRS (at most 64
- * characters): agents that read both folders use only one skill of a name.
+ * The section's slug, with -2, -3... (at most 64 characters) when a skill folder of that name exists in any of
+ * SKILL_DIRS, a root skill already has that frontmatter name, or a Claude Code command has that file name: agents
+ * that de-duplicate by name use only one skill of a name, and a Claude Code skill hides a command of its name.
  */
 function skillSlug(ws: Workspace, opts: FixOptions, heading: string): string {
   const base = slugOf(heading);
+  const names = new Set(
+    [...ws.files.values()].flatMap((f) => {
+      const name = /^\.[^/]+\/skills\/.+\/SKILL\.md$/.test(f.path) ? parseFrontmatter(f.text).frontmatter.name : undefined;
+      const command = /^\.claude\/commands\/([^/]+)\.md$/.exec(f.path)?.[1];
+      return [name, command].filter((n) => n !== undefined).map(String);
+    }),
+  );
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? '' : `-${n}`;
     const slug = base.slice(0, 64 - suffix.length).replace(/-+$/, '') + suffix;
     const taken = (folder: string) => opts.exists?.(folder) || [...ws.files.keys()].some((p) => p.startsWith(`${folder}/`));
-    if (!SKILL_DIRS.some((dir) => taken(`${dir}/${slug}`))) return slug;
+    if (!names.has(slug) && !opts.exists?.(`.claude/commands/${slug}.md`) && !SKILL_DIRS.some((dir) => taken(`${dir}/${slug}`))) return slug;
   }
 }
 

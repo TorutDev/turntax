@@ -60,8 +60,9 @@ always  o200k/turn  on-demand  model                tokens/turn  counted by     
 2       75          0          GPT-6.1 Sol          75           estimate (o200k_base proxy)  $0.01      $0.0008  Windsurf Cascade
 2       21          32         GPT-6.1 Sol          21           estimate (o200k_base proxy)  $0.0042    $0.0002  Cline
 1       11          0          GPT-6.1 Sol          11           estimate (o200k_base proxy)  $0.0022    $0.0001  Zed
-3       84          32         GPT-6.1 Sol          84           estimate (o200k_base proxy)  $0.02      $0.0008  Goose, OpenCode, Warp, Kilo Code
+3       84          32         GPT-6.1 Sol          84           estimate (o200k_base proxy)  $0.02      $0.0008  Goose, OpenCode, Kilo Code
 3       84          51         GPT-6.1 Sol          84           estimate (o200k_base proxy)  $0.02      $0.0008  Amp
+3       108         32         GPT-6.1 Sol          108          estimate (o200k_base proxy)  $0.02      $0.0011  Warp
 2       282         19         GPT-6.1 Sol          282          estimate (o200k_base proxy)  $0.06      $0.0028  Factory Droid
 4       303         51         GPT-6.1 Sol          303          estimate (o200k_base proxy)  $0.06      $0.0030  Augment Code
 1       63          0          (no selected model)                                                                Google Jules
@@ -122,7 +123,7 @@ npx turntax --fix --write    # apply them
 
 Before a fix is kept, the files are classified again with the change applied: every agent must still read every line it read before, including files reached through `@imports`, and as often as before. The exceptions are moved text: a section moved into a folder may load only when the agent works there, and a procedure moved into a skill only when the skill is used. Otherwise the fix is skipped and the reason is printed. A moved section can reach agents that did not read it before (a nested `AGENTS.md` is read by more agents than a `CLAUDE.md`); the summary names them. By default that check covers every supported agent, so a section of `AGENTS.md` usually stays where it is, because some agents read only the root file. `--tools codex,claude-code` limits the check to the agents you use.
 
-In preview the diff is on stdout and works with `git apply`, and the summary is on stderr; with `--write` the summary is on stdout. `--write` checks that no file changed since it was read and writes nothing if one did. Symlinked files, their targets and files in symlinked folders are never changed. Contradictions and stale references need a person to decide, so `--fix` leaves them alone.
+In preview the diff is on stdout and works with `git apply`, and the summary is on stderr; with `--write` the summary is on stdout. `--write` checks that no file changed since it was read and writes nothing if one did. Symlinked files, their targets and files in symlinked folders are never changed. Contradictions and stale references need a person to decide, so `--fix` leaves them alone. Files that are also documents for people (`DESIGN.md`, `CONTEXT.md`, `agents.md`, `Agents.md`, `Claude.md`) are never changed, and no file is created whose name differs from one of them only by case.
 
 The web page shows the same fixes for any repository you load, with a downloadable `fix.patch`.
 

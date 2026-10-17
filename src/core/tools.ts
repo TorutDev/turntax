@@ -381,15 +381,18 @@ export const TOOLS: ToolSpec[] = [
         nested: 'on-demand',
         nestedTrigger: 'when working in',
       },
-      // Skills in category subfolders count too; nested project folders apply only to files under them.
-      ...skillFolders(['.agents', '.cursor', '.claude', '.codex'], {
-        anyLevel: true,
-        folders: RECURSIVE,
-        hideFlag: 'disable-model-invocation',
-        pathsKeys: ['paths', 'globs'],
-        bodyTrigger: 'when the agent applies the skill',
-        dedupeByName: true,
-      }),
+      // Skills in category subfolders count too; nested project folders (documented for .agents and .cursor only)
+      // apply only to files under them.
+      ...(['.agents', '.cursor', '.claude', '.codex'] as const).flatMap((dir) =>
+        skillFolders([dir], {
+          anyLevel: dir === '.agents' || dir === '.cursor',
+          folders: RECURSIVE,
+          hideFlag: 'disable-model-invocation',
+          pathsKeys: ['paths', 'globs'],
+          bodyTrigger: 'when the agent applies the skill',
+          dedupeByName: true,
+        }),
+      ),
     ],
     limits: [
       {
@@ -404,6 +407,7 @@ export const TOOLS: ToolSpec[] = [
     notes: [
       'User and Team rules are configured in Cursor settings, not in the repository, and are not counted.',
       'Which skill folder wins when two hold a skill with the same name is not documented; .agents, .cursor, .claude, .codex is assumed.',
+      'Skill folders in project subdirectories are documented for .cursor/skills and .agents/skills only; nested .claude/skills and .codex/skills are not counted.',
     ],
   },
   {
@@ -413,6 +417,7 @@ export const TOOLS: ToolSpec[] = [
     sources: [
       'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
       'https://code.visualstudio.com/docs/agents/reference/ai-settings',
+      'https://code.visualstudio.com/docs/agents/concepts/agent-harnesses',
       'https://code.visualstudio.com/docs/agent-customization/agent-skills',
       'https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions',
       'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
@@ -420,7 +425,7 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.github.com/en/copilot/concepts/agents/about-agent-skills',
     ],
     checkedAt: '2026-10-17',
-    // Modelled on VS Code with default settings; Copilot CLI and cloud agent differ (see notes).
+    // Modelled on the VS Code Local harness with default settings; the Copilot harness, Copilot CLI and cloud agent differ (see notes).
     rules: [
       { kind: 'root-file', path: '.github/copilot-instructions.md' },
       {
@@ -450,7 +455,7 @@ export const TOOLS: ToolSpec[] = [
         kind: 'hierarchical',
         names: ['AGENTS.md'],
         nested: 'ignored',
-        nestedTrigger: 'VS Code reads nested AGENTS.md only with chat.useNestedAgentsMdFiles, which is off by default.',
+        nestedTrigger: 'The VS Code Local harness reads nested AGENTS.md only with chat.useNestedAgentsMdFiles, which is off by default.',
       },
       {
         // chat.useClaudeMdFile (on by default): CLAUDE.md as always-on instructions, together with AGENTS.md.
@@ -458,15 +463,14 @@ export const TOOLS: ToolSpec[] = [
         names: ['CLAUDE.md', 'CLAUDE.local.md'],
         sameLevelDirs: ['.claude'],
         nested: 'ignored',
-        nestedTrigger: 'VS Code reads CLAUDE.md only at the workspace root.',
+        nestedTrigger: 'The VS Code Local harness reads CLAUDE.md only at the workspace root.',
       },
-      { kind: 'pattern', pattern: /^GEMINI\.md$/, mode: 'ignored', trigger: 'VS Code does not read GEMINI.md (Copilot CLI and cloud agent do).' },
       ...skillFolders(['.github', '.claude', '.agents'], { hideFlag: 'disable-model-invocation', bodyTrigger: 'when Copilot loads the skill' }),
     ],
     limits: [],
     notes: [
-      'Modelled on VS Code with default settings (chat.useAgentsMdFile and chat.useClaudeMdFile on, chat.useNestedAgentsMdFiles off); VS Code does not expand @imports.',
-      'Copilot CLI instead reads AGENTS.md, CLAUDE.md, .claude/CLAUDE.md and GEMINI.md from the repository root, the working directory, the folders between and the folders of files it works on, combines them all, and expands @path references in copilot-instructions.md, AGENTS.md and CLAUDE.md.',
+      'Modelled on the VS Code Local harness with its default settings (chat.useAgentsMdFile and chat.useClaudeMdFile on, chat.useNestedAgentsMdFiles off; VS Code documents these settings for the Local harness only); VS Code does not expand @imports.',
+      "The Copilot harness in VS Code shares a runtime with Copilot CLI and is assumed to read the same files. Copilot CLI reads AGENTS.md, CLAUDE.md, .claude/CLAUDE.md and GEMINI.md together from the repository root, the working directory and the folders between, plus nested copies in the folders of files it works on, and expands @path references in copilot-instructions.md, AGENTS.md and CLAUDE.md. GEMINI.md is read only there, so it is not counted.",
       'Copilot cloud agent uses the nearest AGENTS.md, or a single root CLAUDE.md or GEMINI.md instead.',
       'Copilot code review also reads REVIEW.md and uses only skills in .github/skills.',
       'Same-name skills in different folders are not merged (VS Code shows both); both are counted.',
@@ -857,12 +861,14 @@ export const TOOLS: ToolSpec[] = [
         nested: 'on-demand',
         nestedTrigger: 'best effort when Warp edits files in',
       },
+      // The agent gets every skill's name, description and file path, same-name skills included.
       ...['agents', 'warp', 'claude', 'codex', 'cursor', 'gemini', 'copilot', 'factory', 'github', 'opencode'].map(
         (dir): FileRule => ({
           kind: 'skill',
           pattern: new RegExp(`^(?:.*\\/)?\\.${dir}\\/skills\\/[^/]+\\/SKILL\\.md$`),
           rootPrefix: `.${dir}/skills/`,
           bodyTrigger: 'when the skill is used',
+          listsPath: true,
         }),
       ),
     ],
@@ -901,12 +907,14 @@ export const TOOLS: ToolSpec[] = [
           note: 'Design guidelines; where Droid looks for this file is not documented, so only the root copy is counted.',
         }),
       ),
+      // Droid keeps one effective skill per name; the order of these three project folders is assumed.
       {
         kind: 'skill',
         pattern: /^(?:.*\/)?\.factory\/skills\/(?:[^/]+\/)+SKILL\.md$/,
         rootPrefix: '.factory/skills/',
         hideFlag: 'disable-model-invocation',
         bodyTrigger: 'when the skill is invoked',
+        dedupeByName: true,
       },
       ...['agents', 'agent'].map(
         (dir): FileRule => ({
@@ -915,6 +923,7 @@ export const TOOLS: ToolSpec[] = [
           rootPrefix: `.${dir}/skills/`,
           hideFlag: 'disable-model-invocation',
           bodyTrigger: 'when the skill is invoked',
+          dedupeByName: true,
         }),
       ),
       {
@@ -947,6 +956,7 @@ export const TOOLS: ToolSpec[] = [
       'Droid descriptions are assumed to be listed for the Task tool (inferred).',
       '.claude/skills, .claude/agents and .claude/commands are only imported (copied) on request, not read in place.',
       'Personal files in ~/.factory/, ~/.agents/ and ~/.agent/ are outside the repository; --include-user counts them, assuming the same file names.',
+      'When several skills share a name, Droid keeps one effective version (project skills rank above personal ones). Which of .factory/skills, .agents/skills and .agent/skills wins is not documented; that order is assumed. Same-name skills within one folder are both counted (Droid ignores one, which is not documented).',
     ],
   },
   {
@@ -999,12 +1009,6 @@ export const TOOLS: ToolSpec[] = [
       },
       {
         kind: 'pattern',
-        pattern: /^\.agents\/skills\/[^/]+\/SKILL\.md$/,
-        mode: 'manual',
-        trigger: 'only with "Enable .agents Skills Directory" switched on',
-      },
-      {
-        kind: 'pattern',
         pattern: /^\.trae\/commands\/(?:[^/]+\/){0,3}[^/]+\.md$/,
         mode: 'manual',
         trigger: 'only as a /command',
@@ -1018,7 +1022,8 @@ export const TOOLS: ToolSpec[] = [
     ],
     limits: [],
     notes: [
-      '.agents/skills and .trae/agents are read only when their switches in Settings are on; the defaults are not documented, so they are listed as manual and not counted.',
+      '.agents/skills is read only with "Enable .agents Skills Directory" switched on (.trae/skills wins on a name clash); the default is not documented, so .agents/skills is not counted for TRAE.',
+      '.trae/agents is read only with "Enable Subagents Directory" switched on; the default is not documented, so subagents are listed as manual and not counted.',
       'AGENTS.md (root, and nested when files there are read or mentioned) and root CLAUDE.md / CLAUDE.local.md are read only with the "Include AGENTS.md in the context" and "Include CLAUDE.md in context" switches on; the defaults are not documented, so they are not counted.',
       'Global rules (~/.trae/user_rules) have no documented file format and are not counted.',
       '.trae/mcp.json is read only with the Project MCP switch on; the default is not documented, so its servers are not counted.',
@@ -1085,12 +1090,14 @@ export const TOOLS: ToolSpec[] = [
         pattern: /^.+\/\.augment\/rules\/.+\.md$/,
         reason: 'Augment reads .augment/rules only at the workspace root; move the rule there or use an AGENTS.md in this folder.',
       },
+      // On a name clash the documented precedence applies: .augment, then .claude, then .agents.
       ...['augment', 'claude', 'agents'].map(
         (dir): FileRule => ({
           kind: 'skill',
           pattern: new RegExp(`^\\.${dir}\\/skills\\/[^/]+\\/SKILL\\.md$`),
           rootPrefix: `.${dir}/skills/`,
           bodyTrigger: 'when the skill is activated',
+          dedupeByName: true,
         }),
       ),
       {
@@ -1128,6 +1135,7 @@ export const TOOLS: ToolSpec[] = [
       'The 49,512-character limit covers .augment-guidelines and all workspace rules together; turntax checks each file on its own, so it can miss a combined overflow.',
       'Subagent descriptions are assumed to be listed for the agent (inferred).',
       'In VS Code, skills are a beta with Auto, Manual and Disabled modes whose default is not documented; the CLI behaviour (description listed, body on activation) is counted.',
+      'Of skills with the same name Augment uses the one from the highest-precedence folder: ~/.augment, .augment, ~/.claude, .claude, ~/.agents, .agents. Workspace copies are de-duplicated; a user skill hiding a workspace skill is not modelled.',
       'User rules (~/.augment/rules/) and ~/.augment/user-guidelines.md are always loaded; --include-user counts them.',
     ],
   },
@@ -1246,8 +1254,9 @@ export const TOOLS: ToolSpec[] = [
         nestedTrigger: 'when Devin accesses files in',
       },
       {
+        // Nested .windsurf/rules load when Devin accesses files there; nested .devin/rules are not read (below).
         kind: 'frontmatter',
-        pattern: /^(?:.*\/)?\.(?:devin|windsurf)\/rules\/[^/]+\.md$/,
+        pattern: /^(?:\.devin|(?:.*\/)?\.windsurf)\/rules\/[^/]+\.md$/,
         rootPrefixes: ['.devin/rules/', '.windsurf/rules/'],
         decide: (fm) => {
           switch (str(fm.trigger).trim()) {
@@ -1274,6 +1283,12 @@ export const TOOLS: ToolSpec[] = [
               };
           }
         },
+      },
+      {
+        kind: 'pattern',
+        pattern: /^.+\/\.devin\/rules\/[^/]+\.md$/,
+        mode: 'ignored',
+        trigger: 'Devin reads .devin folders only at the workspace root and in the folders between it and the current directory; not read when launched at the root.',
       },
       {
         kind: 'precedence',
@@ -1310,7 +1325,8 @@ export const TOOLS: ToolSpec[] = [
     notes: [
       'New Devin Desktop (Windsurf) conversations start on Devin Local, which follows these Devin CLI rules; the Windsurf (Devin Desktop) entry covers the legacy Cascade agent.',
       'Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default; turning one off with read_config_from is not modelled.',
-      'Nested .devin/rules folders are assumed to load like nested .windsurf/rules (documented for .windsurf only); nested .cursor/rules, global_rules.md and skill folders are not counted.',
+      "Nested .devin/rules are listed as not read: the rules page says .devin folders are read at the workspace root and in each folder between it and the current directory. Nested .windsurf/rules are counted on demand, as the page's Windsurf section says they load when Devin accesses files there (its .devin section can be read as limiting them the same way).",
+      'Nested .cursor/rules, global_rules.md and skill folders are not counted.',
       'A skill with triggers: [user] is still counted as listed for the agent.',
       'Global rules (~/.config/devin/AGENTS.md, ~/.devin/rules/) are outside the repository; --include-user counts them. Devin CLI also reads ~/.claude/CLAUDE.md, which --include-user counts too.',
     ],

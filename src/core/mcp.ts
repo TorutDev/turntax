@@ -32,7 +32,7 @@ export interface McpServer {
    * search; unset leaves it to each tool's `_meta["anthropic/alwaysLoad"]`.
    */
   alwaysLoad?: boolean;
-  /** Tool allow list from the config (see TOOL_FILTERS); empty or containing `*` allows every tool. */
+  /** Tool allow list from the config (see TOOL_FILTERS); containing `*` allows every tool, and so does an empty one except for Copilot. */
   includeTools?: string[];
   /** Tool deny list from the config (see TOOL_FILTERS); wins over the allow list. */
   excludeTools?: string[];
@@ -126,14 +126,15 @@ export const MCP_CONFIGS: McpConfigSpec[] = [
   spec('kiro', '.kiro/settings/mcp.json', 'project', 'mcpServers', 'standard', KIRO),
   spec('roo-code', '.roo/mcp.json', 'project', 'mcpServers', 'standard', ROO),
   spec('opencode', 'opencode.json', 'project', 'mcp', 'opencode', OPENCODE),
-  spec('kilo-code', 'opencode.json', 'project', 'mcp', 'opencode', KILO),
-  spec('devin', 'opencode.json', 'project', 'mcp', 'opencode', DEVIN_IMPORT),
   spec('opencode', 'opencode.jsonc', 'project', 'mcp', 'opencode', OPENCODE),
-  spec('kilo-code', 'opencode.jsonc', 'project', 'mcp', 'opencode', KILO),
   spec('kilo-code', 'kilo.json', 'project', 'mcp', 'opencode', KILO),
   spec('kilo-code', 'kilo.jsonc', 'project', 'mcp', 'opencode', KILO),
   spec('kilo-code', '.kilo/kilo.json', 'project', 'mcp', 'opencode', KILO),
   spec('kilo-code', '.kilo/kilo.jsonc', 'project', 'mcp', 'opencode', KILO),
+  // Legacy names Kilo still reads; listed after kilo.json(c), which they are assumed to rank below.
+  spec('kilo-code', 'opencode.json', 'project', 'mcp', 'opencode', KILO),
+  spec('kilo-code', 'opencode.jsonc', 'project', 'mcp', 'opencode', KILO),
+  spec('devin', 'opencode.json', 'project', 'mcp', 'opencode', DEVIN_IMPORT),
   spec('zed', '.zed/settings.json', 'project', 'context_servers', 'zed', ZED),
   spec('devin', '.zed/settings.json', 'project', 'context_servers', 'zed', DEVIN_IMPORT),
   spec('codex', '.codex/config.toml', 'project', 'mcp_servers', 'codex-toml', CODEX),
@@ -171,13 +172,15 @@ export const MCP_CONFIGS: McpConfigSpec[] = [
 /**
  * Per-server tool filters, by agent: the config field holding the allow list and the deny list. Tools they leave
  * out are never given to the model (Codex, Gemini CLI, Factory, Kiro, Roo Code and Windsurf docs; Copilot CLI's
- * required `tools` list, `["*"]` for all).
+ * required `tools` list, `["*"]` for all). `emptyAllowsNone`: an empty allow list allows no tool (Copilot CLI's
+ * `--tools ""` is "for none"); elsewhere it allows every tool (Factory: "When the list is non-empty, only these
+ * tools are loaded").
  */
-const TOOL_FILTERS: Partial<Record<ToolId, { include?: string; exclude?: string }>> = {
+const TOOL_FILTERS: Partial<Record<ToolId, { include?: string; exclude?: string; emptyAllowsNone?: true }>> = {
   codex: { include: 'enabled_tools', exclude: 'disabled_tools' },
   'gemini-cli': { include: 'includeTools', exclude: 'excludeTools' },
   'factory-droid': { include: 'enabledTools', exclude: 'disabledTools' },
-  copilot: { include: 'tools' },
+  copilot: { include: 'tools', emptyAllowsNone: true },
   kiro: { exclude: 'disabledTools' },
   'roo-code': { exclude: 'disabledTools' },
   windsurf: { exclude: 'disabledTools' },
@@ -186,18 +189,29 @@ const TOOL_FILTERS: Partial<Record<ToolId, { include?: string; exclude?: string 
 /**
  * The documented order, highest first, in which an agent picks one definition for a server name found in several of
  * its configs. Entries are config paths as in `configPath` (`~/.claude.json#local` is its `projects[<repo path>]`
- * entry) or a scope. Configs left out, ties and agents left out follow MCP_CONFIGS order, which is assumed.
+ * entry) or a scope; an array is a tie. Configs left out, ties and agents left out follow MCP_CONFIGS order, which is
+ * assumed.
  */
-const PRECEDENCE: Partial<Record<ToolId, { order: string[]; assumed?: true }>> = {
+const PRECEDENCE: Partial<Record<ToolId, { order: Array<string | string[]>; assumed?: true }>> = {
   'claude-code': { order: ['~/.claude.json#local', '.mcp.json', '~/.claude.json'] },
   copilot: { order: ['.mcp.json', '.github/mcp.json', '~/.copilot/mcp-config.json'] },
   'gemini-cli': { order: ['project', 'user'] },
   kiro: { order: ['project', 'user'] },
-  'kilo-code': { order: ['project', 'user'] },
+  // .kilo/ wins over the root file (kilo.ai/docs/getting-started/settings, /customize/custom-modes), project over
+  // global. Root kilo.json(c) and the legacy opencode.json(c) are all deep-merged with no documented order between them.
+  'kilo-code': {
+    order: [['.kilo/kilo.json', '.kilo/kilo.jsonc'], ['kilo.json', 'kilo.jsonc', 'opencode.json', 'opencode.jsonc'], 'user'],
+  },
   augment: { order: ['.augment/settings.local.json', '.augment/settings.json', '~/.augment/settings.json'] },
   // Factory documents only that one definition loads. Turning a project server on or off writes a copy with the new
   // state to the user config, which implies the user config wins.
   'factory-droid': { order: ['~/.factory/mcp.json', '.factory/mcp.json'], assumed: true },
+  // Devin's MCP page labels the local file "Local override" and puts personal keys there over a shared definition,
+  // but states no precedence; local, project, user and then imported configs is assumed.
+  devin: {
+    order: ['.devin/mcp_config.local.json', '.devin/mcp_config.json', ['~/.config/devin/mcp_config.json', '~/AppData/Roaming/devin/mcp_config.json']],
+    assumed: true,
+  },
 };
 
 export const MCP_CHECKED_AT = CHECKED_AT;
@@ -416,7 +430,7 @@ function resolveOverrides(servers: McpServer[], order: number[]): McpServer[] {
     if (group.length < 2) continue;
     const precedence = PRECEDENCE[servers[group[0]!]!.tool];
     const rank = (s: McpServer) => {
-      const r = precedence?.order.findIndex((e) => e === source(s) || e === s.scope) ?? -1;
+      const r = precedence?.order.findIndex((e) => [e].flat().some((x) => x === source(s) || x === s.scope)) ?? -1;
       return r < 0 ? Infinity : r;
     };
     const [win, ...rest] = [...group].sort((a, b) => rank(servers[a]!) - rank(servers[b]!) || order[a]! - order[b]!);
@@ -450,7 +464,9 @@ export function serverKey(s: McpServer): string {
 
 /** The tools that reach the model after the config's allow and deny lists (TOOL_FILTERS). */
 export function filterTools(s: McpServer, tools: McpToolDef[]): McpToolDef[] {
-  const allow = s.includeTools?.length && !s.includeTools.includes('*') ? new Set(s.includeTools) : undefined;
+  const include = s.includeTools ?? [];
+  const limited = include.length ? !include.includes('*') : s.includeTools !== undefined && TOOL_FILTERS[s.tool]?.emptyAllowsNone === true;
+  const allow = limited ? new Set(include) : undefined;
   const deny = new Set(s.excludeTools);
   return tools.filter((t) => (!allow || allow.has(t.name)) && !deny.has(t.name));
 }

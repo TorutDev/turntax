@@ -147,6 +147,37 @@ describe('duplicate lines', () => {
     expect(plan.skipped.some((s) => s.reason.startsWith('README.md is not an agent instruction file'))).toBe(true);
   });
 
+  it('never edits a file that is also a document for people, though its lines still count as copies', () => {
+    const files: RepoFile[] = [
+      { path: 'AGENTS.md', text: `# Rules\n\n${SHARED.join('\n')}\n` },
+      { path: 'docs/agents.md', text: `# Agent notes for contributors\n\n${SHARED.join('\n')}\nAsk in #dev before adding a new agent.\n` },
+    ];
+    const plan = planFixes(files);
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped.find((s) => s.paths[0] === 'docs/agents.md')!.reason).toBe('docs/agents.md is also a document for people; it is left alone.');
+    // A copy in Claude.md still lets the same line go from a rule file that every reader of both loads every turn.
+    const claude = planFixes(
+      [
+        { path: 'Claude.md', text: `${SHARED[0]}\n` },
+        { path: '.factory/AGENTS.md', text: `${SHARED[0]}\nPrefer named exports.\n` },
+      ],
+      { tools: ['factory-droid'] },
+    );
+    expect(claude.changes.map((c) => [c.path, c.after])).toEqual([['.factory/AGENTS.md', 'Prefer named exports.\n']]);
+  });
+
+  it('does not create a file that is a document for people on a case-insensitive file system', () => {
+    // On Windows and macOS packages/api/AGENTS.md would overwrite packages/api/agents.md.
+    const files: RepoFile[] = [
+      { path: 'AGENTS.md', text: `# Rules\n\nUse npm.\n\n${API_SECTION}` },
+      { path: 'packages/api/agents.md', text: '# API notes for people\n' },
+    ];
+    const exists = (p: string) => ['packages', 'packages/api'].includes(p);
+    const plan = planFixes(files, { exists, tools: ['codex'] });
+    expect(plan.changes).toEqual([]);
+    expect(planFixes([files[0]!], { exists, tools: ['codex'] }).changes.map((c) => c.path)).toContain('packages/api/AGENTS.md');
+  });
+
   it('applies edits to a renamed Cursor rule', () => {
     const files: RepoFile[] = [
       { path: 'AGENTS.md', text: `${SHARED.join('\n')}\n` },
@@ -378,6 +409,22 @@ describe('procedure sections', () => {
     );
   });
 
+  it('never moves a section out of a file that is also a document for people', () => {
+    const design = { path: 'DESIGN.md', text: `# Design\n\n${RELEASE}\n${API_SECTION}` };
+    const exists = (p: string) => ['packages', 'packages/api'].includes(p);
+    const plan = planFixes([design], { tools: ['factory-droid'], exists });
+    expect(plan.changes).toEqual([]);
+    expect(plan.skipped.map((s) => [s.kind, s.reason])).toEqual([
+      ['scopable-section', 'Section "API package": DESIGN.md is also a document for people; it is left alone.'],
+      ['oversized-section', 'Section "Release process": DESIGN.md is also a document for people; it is left alone.'],
+    ]);
+    // The same text in AGENTS.md moves.
+    expect(planFixes([{ ...design, path: 'AGENTS.md' }], { tools: ['factory-droid'], exists }).fixes.map((f) => f.kind)).toEqual([
+      'scopable-section',
+      'oversized-section',
+    ]);
+  });
+
   it('never moves text out of a personal CLAUDE.local.md', () => {
     const plan = planFixes([{ path: 'CLAUDE.local.md', text: `# Mine\n\n${RELEASE}` }], { tools: ['claude-code'] });
     expect(plan.changes).toEqual([]);
@@ -401,6 +448,16 @@ describe('procedure sections', () => {
       exists: (p) => p === '.claude/skills/release-process',
     });
     expect(onDisk.fixes[0]!.paths[1]).toBe('.claude/skills/release-process-2/SKILL.md');
+  });
+
+  it('does not take a name used by a skill in another folder or by a Claude Code command', () => {
+    const source = { path: 'CLAUDE.md', text: `# Project\n\n${RELEASE}` };
+    const named = { path: '.claude/skills/ship/SKILL.md', text: '---\nname: release-process\ndescription: Tag a release.\n---\n\nTag and push.\n' };
+    const command = { path: '.claude/commands/release-process.md', text: '---\ndescription: Tag a release.\n---\n\nTag and push.\n' };
+    for (const existing of [named, command]) {
+      const plan = planFixes([source, existing], { tools: ['claude-code'] });
+      expect(plan.fixes.map((f) => f.paths), existing.path).toEqual([['CLAUDE.md', '.claude/skills/release-process-2/SKILL.md']]);
+    }
   });
 
   it('leaves sections that can load only in their folder to the scopable move, and honours sectionTokens', () => {

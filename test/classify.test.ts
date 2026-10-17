@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { classify, detectTools } from '../src/core/classify.js';
+import { getTool } from '../src/core/tools.js';
 import { find, loadFixture } from './helpers.js';
 
 const MIXED = await loadFixture('mixed');
@@ -264,6 +265,7 @@ describe('Cursor', () => {
         { path: '.claude/skills/old/SKILL.md', text: '---\nname: old\ndescription: Legacy globs.\nglobs: ["**/*.rb"]\n---\nRules.' },
         { path: '.agents/skills/manual/SKILL.md', text: '---\nname: manual\ndescription: Only by hand.\ndisable-model-invocation: true\n---\nSteps.' },
         { path: 'apps/web/.cursor/skills/deploy-web/SKILL.md', text: '---\nname: deploy-web\ndescription: Deploy web.\n---\nSteps.' },
+        { path: 'apps/web/.claude/skills/claude-web/SKILL.md', text: '---\nname: claude-web\ndescription: Claude web.\n---\nSteps.' },
       ],
       ['cursor'],
     );
@@ -275,6 +277,8 @@ describe('Cursor', () => {
       mode: 'on-demand',
       trigger: 'listed when working in apps/web/',
     });
+    // Nested project skill folders are documented for .cursor and .agents only.
+    expect(find(u, 'cursor', 'apps/web/.claude/skills/claude-web/SKILL.md', 'description')).toBeUndefined();
   });
 
   it('presents a description-only rule description to the agent without an inference note', () => {
@@ -292,11 +296,13 @@ describe('Copilot', () => {
     expect(api.mode).toBe('on-demand');
     expect(api.trigger).toBe('applyTo: packages/api/**');
   });
-  it('reads CLAUDE.md together with AGENTS.md at the root, as VS Code does by default, but not GEMINI.md', () => {
+  it('reads CLAUDE.md together with AGENTS.md at the root, as the VS Code Local harness does by default', () => {
     expect(find(units, 'copilot', 'AGENTS.md')!.mode).toBe('always');
     expect(find(units, 'copilot', 'CLAUDE.md')!.mode).toBe('always');
-    expect(find(units, 'copilot', 'GEMINI.md')!.mode).toBe('ignored');
-    // VS Code reads neither nested CLAUDE.md nor (by default) nested AGENTS.md.
+    // Only Copilot CLI and the Copilot harness read GEMINI.md; it is described in a note, not modelled.
+    expect(find(units, 'copilot', 'GEMINI.md')).toBeUndefined();
+    expect(getTool('copilot').notes.join(' ')).toMatch(/GEMINI\.md is read only there/);
+    // The Local harness reads neither nested CLAUDE.md nor (by default) nested AGENTS.md.
     expect(find(units, 'copilot', 'packages/api/CLAUDE.md')!.mode).toBe('ignored');
     const nested = classify([{ path: 'AGENTS.md', text: 'Root.' }, { path: 'pkg/AGENTS.md', text: 'Nested.' }], ['copilot']);
     expect(find(nested, 'copilot', 'pkg/AGENTS.md')!.trigger).toMatch(/chat\.useNestedAgentsMdFiles/);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildAdvice } from '../src/core/advice.js';
-import { classify } from '../src/core/classify.js';
+import { classify, detectTools } from '../src/core/classify.js';
 import { isInstructionFile } from '../src/core/files.js';
 import type { RepoFile } from '../src/core/types.js';
 import { classifyUser } from '../src/core/user.js';
@@ -40,6 +40,21 @@ describe('Warp', () => {
     expect(find(u, 'warp', '.factory/skills/deploy/SKILL.md', 'body')!.mode).toBe('on-demand');
     expect(find(u, 'warp', 'pkg/.warp/skills/build/SKILL.md', 'description')!.mode).toBe('on-demand');
   });
+
+  it('lists the file path of every skill, same-name skills included', () => {
+    const skill = '---\nname: deploy\ndescription: Deploy the app\n---\nSteps.';
+    const u = classify(
+      [
+        { path: '.agents/skills/deploy/SKILL.md', text: skill },
+        { path: '.claude/skills/deploy/SKILL.md', text: skill },
+      ],
+      ['warp'],
+    );
+    expect(u.filter((x) => x.part === 'description').map((x) => [x.mode, x.text])).toEqual([
+      ['always', 'deploy: Deploy the app (.agents/skills/deploy/SKILL.md)'],
+      ['always', 'deploy: Deploy the app (.claude/skills/deploy/SKILL.md)'],
+    ]);
+  });
 });
 
 describe('Factory Droid', () => {
@@ -76,6 +91,14 @@ describe('Factory Droid', () => {
     expect(find(u, 'factory-droid', '.claude/skills/x/SKILL.md', 'description')).toBeUndefined();
     expect(find(u, 'factory-droid', '.factory/droids/reviewer.md', 'description')!.text).toBe('reviewer: Reviews diffs');
     expect(find(u, 'factory-droid', '.factory/commands/ship.md')!.mode).toBe('manual');
+  });
+
+  it('keeps one effective skill per name', () => {
+    const skill = (path: string) => ({ path, text: '---\nname: deploy\ndescription: Deploy the app\n---\nSteps.' });
+    const u = classify([skill('.agents/skills/deploy/SKILL.md'), skill('.factory/skills/ops/deploy/SKILL.md'), skill('.agent/skills/deploy/SKILL.md')], ['factory-droid']);
+    expect(find(u, 'factory-droid', '.factory/skills/ops/deploy/SKILL.md', 'description')!.mode).toBe('always');
+    for (const p of ['.agents/skills/deploy/SKILL.md', '.agent/skills/deploy/SKILL.md'])
+      expect(find(u, 'factory-droid', p, 'description')!, p).toMatchObject({ mode: 'ignored', trigger: 'same skill name as .factory/skills/ops/deploy/SKILL.md, which takes precedence' });
   });
 
   it('flags AGENTS-style files over the 80,000-character startup cap', () => {
@@ -124,7 +147,7 @@ describe('TRAE', () => {
     expect(find(u, 'trae', 'pkg/.trae/rules/pkg.md')!).toMatchObject({ mode: 'on-demand', trigger: 'when working in pkg/' });
   });
 
-  it('leaves AGENTS.md and CLAUDE.md out, since their switches have no documented default', () => {
+  it('leaves AGENTS.md, CLAUDE.md and .agents/skills out, since their switches have no documented default', () => {
     const u = classify(
       [
         { path: 'AGENTS.md', text: 'Agents.' },
@@ -139,7 +162,9 @@ describe('TRAE', () => {
     expect(find(u, 'trae', 'pkg/AGENTS.md')).toBeUndefined();
     expect(find(u, 'trae', 'CLAUDE.md')).toBeUndefined();
     expect(find(u, 'trae', '.trae/skills/review/SKILL.md', 'description')!.mode).toBe('always');
-    expect(find(u, 'trae', '.agents/skills/other/SKILL.md')!.mode).toBe('manual');
+    // Not even listed as manual, so a repository with only .agents/skills does not show TRAE.
+    expect(find(u, 'trae', '.agents/skills/other/SKILL.md')).toBeUndefined();
+    expect(detectTools(classify([{ path: '.agents/skills/other/SKILL.md', text: 'Steps.' }]))).not.toContain('trae');
   });
 });
 
@@ -185,6 +210,16 @@ describe('Augment Code', () => {
     const nested = find(u, 'augment', 'src/.augment/rules/nested.md')!;
     expect(nested.mode).toBe('ignored');
     expect(nested.problem).toMatch(/workspace root/);
+  });
+
+  it('uses the .augment, then .claude, then .agents copy of a skill name', () => {
+    const skill = (path: string) => ({ path, text: '---\nname: deploy\ndescription: Deploy the app\n---\nSteps.' });
+    const u = classify([skill('.agents/skills/deploy/SKILL.md'), skill('.claude/skills/deploy/SKILL.md')], ['augment']);
+    expect(find(u, 'augment', '.claude/skills/deploy/SKILL.md', 'description')!.mode).toBe('always');
+    expect(find(u, 'augment', '.agents/skills/deploy/SKILL.md', 'description')!.trigger).toBe('same skill name as .claude/skills/deploy/SKILL.md, which takes precedence');
+    const all = classify([skill('.claude/skills/deploy/SKILL.md'), skill('.augment/skills/deploy/SKILL.md')], ['augment']);
+    expect(find(all, 'augment', '.augment/skills/deploy/SKILL.md', 'description')!.mode).toBe('always');
+    expect(find(all, 'augment', '.claude/skills/deploy/SKILL.md', 'description')!.mode).toBe('ignored');
   });
 
   it('flags workspace guidelines past 49,512 characters', () => {
@@ -299,6 +334,22 @@ describe('Devin Local / Devin CLI', () => {
     expect(c.problem).toBeUndefined();
     expect(find(u, 'devin', '.devin/global_rules.md')!.mode).toBe('always');
     expect(find(u, 'devin', '.windsurf/global_rules.md')!.trigger).toBe('.devin/global_rules.md takes precedence');
+  });
+
+  it('does not read nested .devin/rules when launched at the root, but loads nested .windsurf/rules there', () => {
+    const rule = '---\ntrigger: always_on\n---\nPackage rule.';
+    const u = classify(
+      [
+        { path: 'pkg/.devin/rules/a.md', text: rule },
+        { path: 'pkg/.windsurf/rules/b.md', text: rule },
+      ],
+      ['devin'],
+    );
+    const devin = find(u, 'devin', 'pkg/.devin/rules/a.md')!;
+    expect(devin.mode).toBe('ignored');
+    expect(devin.trigger).toMatch(/workspace root and in the folders between it and the current directory/);
+    expect(devin.problem).toBeUndefined();
+    expect(find(u, 'devin', 'pkg/.windsurf/rules/b.md')).toMatchObject({ mode: 'on-demand', trigger: 'when working in pkg/' });
   });
 
   it('lists Devin, Windsurf, Claude Code and Copilot skills', () => {
