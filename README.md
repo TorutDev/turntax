@@ -46,7 +46,7 @@ Each agent's documented loading rules decide what is sent on every turn, what lo
 | Windsurf Cascade | `.devin/rules/`, `.windsurf/rules/`, `.windsurfrules`, `AGENTS.md`, skills (legacy agent; new conversations use Devin Local) |
 | Zed | the first of `.rules`, `.cursorrules`, `.windsurfrules`, `.clinerules`, `.github/copilot-instructions.md`, `AGENT.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`; `.agents/skills` |
 
-Where an agent reads the same skill name from two folders, it is counted once, in the order the agent documents.
+Where an agent reads the same skill name from two folders, it is counted once, in the order the agent documents (or an assumed order, noted for that agent).
 
 Agents that load exactly the same files share one row in the report:
 
@@ -117,7 +117,7 @@ npx turntax --fix --write    # apply them
 
 - **duplicate**: removes lines from a file when every agent that reads the file also reads the same lines every turn from another file. Skill, command and subagent files are left whole.
 - **scopable-section**: moves a section into the folder it is about: the same file name there (`packages/api/CLAUDE.md`), a nested `AGENTS.md`, or a Claude Code rule with `paths:`. The folder the section is about must already exist, and sections with `@imports` or relative links stay put. A section moves together with its subsections.
-- **oversized-section**: moves a large procedure (a section of at least `--section-tokens`, 600 by default, whose heading names a release, deploy, setup or similar procedure, or that is mostly numbered steps; each subsection must pass too) into a new skill, `.claude/skills/<name>/SKILL.md` for Claude Code or `.agents/skills/<name>/SKILL.md` for Codex, and leaves the heading with a one-line pointer. Only the skill's name and description load every turn. Other agents do not read skills, so by default this fix usually needs `--tools claude-code` or `--tools codex`.
+- **oversized-section**: moves a large procedure (a section of at least `--section-tokens`, 600 by default, whose heading names a release, deploy, setup or similar procedure, or that is mostly numbered steps; each subsection must pass too) into a new skill, `.claude/skills/<name>/SKILL.md` for Claude Code or `.agents/skills/<name>/SKILL.md` for Codex, and leaves the heading with a one-line pointer. Only the skill's name and description load every turn. Many agents now read one or both folders, but not all of them do (Zed reads only `.agents/skills`, for example), so by default this fix is often refused; `--tools` limits the check to the agents you use.
 - **misconfigured**: renames `.md` files in `.cursor/rules` to `.mdc`.
 
 Before a fix is kept, the files are classified again with the change applied: every agent must still read every line it read before, including files reached through `@imports`, and as often as before. The exceptions are moved text: a section moved into a folder may load only when the agent works there, and a procedure moved into a skill only when the skill is used. Otherwise the fix is skipped and the reason is printed. A moved section can reach agents that did not read it before (a nested `AGENTS.md` is read by more agents than a `CLAUDE.md`); the summary names them. By default that check covers every supported agent, so a section of `AGENTS.md` usually stays where it is, because some agents read only the root file. `--tools codex,claude-code` limits the check to the agents you use.
@@ -172,7 +172,7 @@ Counting the tool definitions needs the servers running, so it is opt-in:
 npx turntax --mcp
 ```
 
-`--mcp` starts each stdio server with the command from its config (in the repository folder) and connects to streamable HTTP servers, asks for `tools/list`, and counts the definitions as JSON with o200k. A server several agents share is started once. Environment variables in the config (`${VAR}`, `${VAR:-default}`, `${env:VAR}`) are expanded; servers that need a VS Code `${input:...}` prompt, legacy SSE and WebSocket servers and servers that fail or time out (`--mcp-timeout`, default 30 s) are listed with the reason and not counted.
+`--mcp` starts each stdio server with the command from its config (in the repository folder; environment variables are expanded into commands, URLs and headers the repository config defines, as the agents themselves do) and connects to streamable HTTP servers, asks for `tools/list`, and counts the definitions as JSON with o200k. A server several agents share is started once. Environment variables in the config (`${VAR}`, `${VAR:-default}`, `${env:VAR}`) are expanded; servers that need a VS Code `${input:...}` prompt, legacy SSE and WebSocket servers and servers that fail or time out (`--mcp-timeout`, default 30 s) are listed with the reason and not counted.
 
 Claude Code defers MCP tool definitions by default (tool search): only the tool names are in context until a tool is used, so its row counts the names and shows the full size separately. A server with `alwaysLoad: true`, or a tool marked `_meta["anthropic/alwaysLoad"]`, is counted in full. Server instructions load at the start of every session and are counted for Claude Code (cut at 4,096 characters, as Claude Code does), Gemini CLI, Codex and Kilo Code, whose docs say they reach the context.
 
@@ -186,7 +186,7 @@ Agents also read instruction files from your home directory in every project. `-
 npx turntax --include-user
 ```
 
-It reads only the documented locations: `~/.claude/` (CLAUDE.md, rules, skills, commands, agents), `~/.codex/AGENTS.md`, `~/.agents/skills`, `~/.gemini/GEMINI.md`, Windsurf's `global_rules.md`, Cline's global rules folders, `~/.roo/rules*`, `~/.kiro/steering`, `~/.config/goose/.goosehints`, Amp's `~/.config/AGENTS.md` and `~/.config/amp/AGENTS.md`, and `~/.config/opencode/AGENTS.md` (OpenCode falls back to `~/.claude/CLAUDE.md`), plus the user MCP configs above. Contradictions and duplicates between user-level and repository files are reported. User-level files never count toward the badge or `--max-tokens`, so the result does not depend on who runs it.
+It reads only the locations the agents document (the full list, per agent, is in [docs/how-it-counts.md](docs/how-it-counts.md#user-level-files)): for example `~/.claude/`, `~/.codex/AGENTS.md`, `~/.agents/`, `~/.gemini/`, `~/.copilot/`, `~/.cursor/skills`, Windsurf's and Devin's `global_rules.md` and `~/.config/devin/`, Cline's global rules, `~/.roo/`, `~/.kiro/`, `~/.junie/`, `~/.config/goose/`, `~/.config/amp/`, `~/.config/opencode/`, `~/.config/zed/AGENTS.md`, `~/.factory/`, `~/.augment/`, `~/.config/kilo/`, `~/.warp/` and `~/.trae/skills`, plus the user MCP configs above. Contradictions and duplicates between user-level and repository files are reported. User-level files never count toward the badge or `--max-tokens`, so the result does not depend on who runs it.
 
 ## Comparing with a baseline
 
@@ -214,7 +214,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TorutDev/turntax@v0.6.0
+      - uses: TorutDev/turntax@v0.7.0
         with:
           max-increase: 500      # optional: fail when an agent grows by more than 500 tokens per turn
           # max-tokens: 8000     # optional: absolute budget

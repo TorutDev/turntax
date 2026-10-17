@@ -223,7 +223,6 @@ Sources: [rules](https://opencode.ai/docs/rules/), [skills](https://opencode.ai/
 
 Files listed under `instructions` in `opencode.json` are not counted. When subdirectory `AGENTS.md` files load is not documented, so they are not counted. Which skill folder wins on a name clash is not documented; the order above is assumed.
 
-<!-- new agents -->
 
 ## Warp
 
@@ -262,10 +261,10 @@ Sources: [rules](https://docs.trae.ai/ide/rules?_lang=en), [skills](https://docs
 | `.trae/rules/` files four or more folder levels deep | ignored and flagged |
 | `.trae/rules/` in a subdirectory | on-demand, when files there are read or mentioned |
 | `.trae/skills/*/SKILL.md` | name and description always; body when the agent loads the skill |
-| `AGENTS.md`, `.agents/skills/*/SKILL.md`, `.trae/agents/*.md` | manual: read only with their switches in Settings on, and the defaults are not documented |
+| `.trae/agents/*.md` | manual: read only with its switch in Settings on, and the default is not documented |
 | `.trae/commands/**/*.md` | manual |
 
-The root `CLAUDE.md` and `CLAUDE.local.md` are read only with "Include CLAUDE.md in context" switched on; that default is not documented either, so they are not counted. Global rules in `~/.trae/user_rules` have no documented file format and are not counted; with `--include-user`, `~/.trae/skills/` is.
+`AGENTS.md` (root, and nested when files there are read or mentioned), the root `CLAUDE.md` and `CLAUDE.local.md`, and `.agents/skills` are read only with their switches in Settings on ("Include AGENTS.md in the context", "Include CLAUDE.md in context", "Enable .agents Skills Directory"); the defaults are not documented, so they are not counted. Global rules in `~/.trae/user_rules` have no documented file format and are not counted; with `--include-user`, `~/.trae/skills/` is.
 
 ## Augment Code
 
@@ -325,7 +324,7 @@ New Devin Desktop (Windsurf) conversations start on Devin Local, which follows t
 | `.cursor/rules/*.mdc` and `.cursor/rules/*.md` | the same as Cursor: `alwaysApply: true` always; `globs` on-demand; `description` only: description always, body on-demand; neither: manual |
 | `.devin/skills/*/SKILL.md`, `.windsurf/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `.claude/skills/**/SKILL.md`, `.github/skills/**/SKILL.md`, `.claude/commands/**/*.md` | name and description always; body when the skill is invoked |
 
-Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default (`read_config_from`); turning one off is not modelled. Nested `.cursor/rules`, nested `global_rules.md` and nested skill folders are not counted, and a skill with `triggers: [user]` is still counted as listed. With `--include-user`, `~/.config/devin/` (`%APPDATA%\devin\` on Windows) rule files and skills, `~/.devin/rules/`, `~/.devin/global_rules.md`, `~/.agents/skills/`, `~/.codeium/windsurf/skills/` and `~/.copilot/skills/` are counted; `~/.claude/CLAUDE.md`, which Devin CLI also reads, is not.
+Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default (`read_config_from`); turning one off is not modelled. Nested `.cursor/rules`, nested `global_rules.md` and nested skill folders are not counted, and a skill with `triggers: [user]` is still counted as listed. With `--include-user`, `~/.config/devin/` (`%APPDATA%\devin\` on Windows) rule files and skills, `~/.devin/rules/`, `~/.devin/global_rules.md`, `~/.agents/skills/`, `~/.codeium/windsurf/skills/`, `~/.copilot/skills/` and `~/.claude/CLAUDE.md` (which Devin CLI also reads) are counted.
 
 ## User-level files
 
@@ -335,7 +334,7 @@ With `--include-user`, files in the home directory are classified by the same ru
 | --- | --- | --- |
 | `~/.claude/CLAUDE.md`, `~/.claude/rules/`, `~/.claude/skills/`, `~/.claude/commands/`, `~/.claude/agents/` | Claude Code ([memory](https://code.claude.com/docs/en/memory), [skills](https://code.claude.com/docs/en/skills), [subagents](https://code.claude.com/docs/en/sub-agents)) | the same paths at the root |
 | `~/.codex/AGENTS.override.md`, else `~/.codex/AGENTS.md` | OpenAI Codex ([AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)) | root `AGENTS.override.md` / `AGENTS.md` |
-| `~/.agents/skills/` | OpenAI Codex, Gemini CLI, Cursor, GitHub Copilot, Windsurf Cascade, Roo Code, JetBrains Junie, Zed, Goose, Amp, OpenCode (skills pages above) | `.agents/skills` |
+| `~/.agents/skills/` | OpenAI Codex, Gemini CLI, Cursor, GitHub Copilot, Windsurf Cascade, Roo Code, JetBrains Junie, Zed, Goose, Amp, OpenCode, Warp, Factory Droid, Augment Code, Kilo Code, Devin (skills pages above) | `.agents/skills` |
 | `~/.gemini/GEMINI.md`, `~/.gemini/skills/` | Gemini CLI ([GEMINI.md](https://geminicli.com/docs/cli/gemini-md/), [skills](https://geminicli.com/docs/cli/skills/)) | root `GEMINI.md`, `.gemini/skills` |
 | `~/.cursor/skills/`, `~/.claude/skills/`, `~/.codex/skills/` | Cursor ([skills](https://cursor.com/docs/skills)) | the same folders |
 | `~/.copilot/copilot-instructions.md`, `~/.copilot/instructions/**/*.instructions.md`, `~/.copilot/skills/` | GitHub Copilot ([instructions](https://code.visualstudio.com/docs/agent-customization/custom-instructions), [skills](https://code.visualstudio.com/docs/agent-customization/agent-skills)) | `.github/copilot-instructions.md`, `.github/instructions/`, `.github/skills` |
