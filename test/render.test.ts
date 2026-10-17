@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { audit, type Report } from '../src/core/audit.js';
 import { planFixes, unifiedDiff, type FixPlan } from '../src/core/fix.js';
 import { noMentions, renderAnnotations, renderPrComment } from '../src/core/render.js';
+import { TOOL_IDS } from '../src/core/tools.js';
 import { existsIn } from '../src/node/discover.js';
 import { fixture, loadFixture } from './helpers.js';
 
 const mixed = await loadFixture('mixed');
 const report = await audit(mixed, { models: [], advice: { exists: existsIn(fixture('mixed')) } });
-const plan = planFixes(mixed, { exists: existsIn(fixture('mixed')) });
+// Without Copilot, which reads the root CLAUDE.md but no nested file, the API section can move too.
+const plan = planFixes(mixed, { exists: existsIn(fixture('mixed')), tools: TOOL_IDS.filter((t) => t !== 'copilot') });
 
 describe('renderPrComment with fixes', () => {
   it('adds the safe fixes and their diff before the full report', () => {

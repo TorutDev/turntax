@@ -4,7 +4,7 @@ import { MODELS } from '../src/core/prices.js';
 import { renderText } from '../src/core/render.js';
 import { classifyUser } from '../src/core/user.js';
 import { discoverUser } from '../src/node/discover.js';
-import { homeFixture } from './helpers.js';
+import { HOME_FIXTURE_FILES, homeFixture, materialize } from './helpers.js';
 
 const home = discoverUser(homeFixture());
 
@@ -24,8 +24,8 @@ describe('user-level files', () => {
   it('classifies each file only for its own agent', () => {
     const units = classifyUser(home.files);
     const who = (path: string) => units.filter((u) => u.path === path && u.mode === 'always').map((u) => u.tool);
-    // OpenCode falls back to ~/.claude/CLAUDE.md because there is no ~/.config/opencode/AGENTS.md.
-    expect(who('~/.claude/CLAUDE.md')).toEqual(['claude-code', 'opencode']);
+    // VS Code Copilot reads ~/.claude/CLAUDE.md; OpenCode falls back to it because there is no ~/.config/opencode/AGENTS.md.
+    expect(who('~/.claude/CLAUDE.md')).toEqual(['claude-code', 'copilot', 'opencode']);
     expect(who('~/.claude/rules/style.md')).toEqual(['claude-code']);
     expect(who('~/.codex/AGENTS.md')).toEqual(['codex']);
     expect(who('~/.gemini/GEMINI.md')).toEqual(['gemini-cli']);
@@ -62,5 +62,62 @@ describe('user-level files', () => {
     const report = await audit(files, { tools: ['codex'], models: [], userFiles: home.files });
     const c = report.advice.find((a) => a.kind === 'contradiction')!;
     expect(c.paths.sort()).toEqual(['AGENTS.md', '~/.codex/AGENTS.md']);
+  });
+
+  it('finds the documented user folders of every agent', () => {
+    const extra: Record<string, string> = {
+      '.copilot/copilot-instructions.md': 'Personal Copilot rules.\n',
+      '.copilot/instructions/py/style.instructions.md': '---\napplyTo: "**/*.py"\n---\nUse ruff.\n',
+      '.copilot/skills/triage/SKILL.md': '---\nname: triage\ndescription: Triage issues.\n---\nSteps.\n',
+      '.cursor/skills/team/review/SKILL.md': '---\nname: review\ndescription: Review.\n---\nSteps.\n',
+      '.config/zed/AGENTS.md': 'Personal Zed rules.\n',
+      'AppData/Roaming/Zed/AGENTS.md': 'Personal Zed rules on Windows.\n',
+      '.config/goose/AGENTS.md': 'Personal goose rules.\n',
+      '.junie/AGENTS.md': 'Personal Junie rules.\n',
+      '.config/agents/skills/a/b/SKILL.md': '---\nname: b\ndescription: Amp skill.\n---\nSteps.\n',
+      '.roo/skills-code/refactor/SKILL.md': '---\nname: refactor\ndescription: Refactor.\n---\nSteps.\n',
+      '.claude/agents/review/security.md': '---\nname: security\ndescription: Security review.\n---\nPrompt.\n',
+      '.codeium/windsurf/memories/global_rules.md': 'Global Windsurf rules.\n',
+      '.config/devin/skills/ship/SKILL.md': '---\nname: ship\ndescription: Ship it.\n---\nSteps.\n',
+    };
+    const found = discoverUser(materialize('home', { ...HOME_FIXTURE_FILES, ...extra })).files.map((f) => f.path);
+    for (const path of Object.keys(extra)) expect(found, path).toContain(`~/${path}`);
+  });
+
+  it('reads each new user file for its own agent, in the mode of its project counterpart', () => {
+    const files = [
+      { path: '~/.copilot/copilot-instructions.md', text: 'Personal Copilot rules.\n' },
+      { path: '~/.copilot/instructions/style.instructions.md', text: '---\napplyTo: "**/*.py"\n---\nUse ruff.\n' },
+      { path: '~/.copilot/skills/triage/SKILL.md', text: '---\nname: triage\ndescription: Triage issues.\n---\nSteps.\n' },
+      { path: '~/.config/zed/AGENTS.md', text: 'Personal Zed rules.\n' },
+      { path: '~/.config/goose/AGENTS.md', text: 'Personal goose rules.\n' },
+      { path: '~/.junie/AGENTS.md', text: 'Personal Junie rules.\n' },
+      { path: '~/.config/amp/skills/deploy/SKILL.md', text: '---\nname: deploy\ndescription: Deploy.\n---\nSteps.\n' },
+    ];
+    const units = classifyUser(files);
+    const mode = (tool: string, path: string, part = 'full') => units.find((u) => u.tool === tool && u.path === path && u.part === part)?.mode;
+    expect(mode('copilot', '~/.copilot/copilot-instructions.md')).toBe('always');
+    expect(mode('copilot', '~/.copilot/instructions/style.instructions.md')).toBe('on-demand');
+    expect(mode('copilot', '~/.copilot/skills/triage/SKILL.md', 'description')).toBe('always');
+    expect(mode('zed', '~/.config/zed/AGENTS.md')).toBe('always');
+    expect(mode('goose', '~/.config/goose/AGENTS.md')).toBe('always');
+    expect(mode('junie', '~/.junie/AGENTS.md')).toBe('always');
+    expect(mode('amp', '~/.config/amp/skills/deploy/SKILL.md', 'description')).toBe('always');
+    expect(units.filter((u) => u.path === '~/.config/zed/AGENTS.md').map((u) => u.tool)).toEqual(['zed']);
+  });
+
+  it('checks the Windsurf global rules file against its own 6,000-character limit', async () => {
+    const big = 'Prefer small, focused functions with clear names.\n'.repeat(140);
+    expect(big.length).toBeGreaterThan(6000);
+    expect(big.length).toBeLessThan(12000);
+    const userFiles = [{ path: '~/.codeium/windsurf/memories/global_rules.md', text: big }];
+    const report = await audit([], { tools: ['windsurf'], models: [], userFiles });
+    expect(report.files.find((f) => f.path === userFiles[0]!.path)).toMatchObject({ mode: 'always', scope: 'user' });
+    const limit = report.advice.find((a) => a.kind === 'size-limit')!;
+    expect(limit.paths).toEqual([userFiles[0]!.path]);
+    expect(limit.message).toMatch(/\(limit 6000\)\. Windsurf limits the global rules file to 6,000 characters\./);
+    // A workspace .windsurfrules of the same size is within its 12,000-character limit.
+    const repo = await audit([{ path: '.windsurfrules', text: big }], { tools: ['windsurf'], models: [] });
+    expect(repo.advice.some((a) => a.kind === 'size-limit')).toBe(false);
   });
 });

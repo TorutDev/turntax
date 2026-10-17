@@ -19,7 +19,8 @@ describe('duplicates', () => {
   it('reports lines shared by CLAUDE.md and AGENTS.md with a per-turn saving for tools that load both', () => {
     const dup = of('duplicate').find((a) => a.paths.includes('CLAUDE.md') && a.paths.includes('AGENTS.md'))!;
     expect(dup).toBeDefined();
-    expect(dup.tools).toEqual(['cursor']);
+    // VS Code Copilot reads CLAUDE.md together with AGENTS.md.
+    expect(dup.tools).toEqual(['cursor', 'copilot']);
     expect(dup.severity).toBe('high');
     expect(dup.savingTokens).toBeGreaterThan(20);
   });

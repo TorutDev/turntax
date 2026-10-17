@@ -7,6 +7,7 @@ import { main } from '../src/cli.js';
 import { classify } from '../src/core/classify.js';
 import { planFixes, unifiedDiff } from '../src/core/fix.js';
 import { countO200k } from '../src/core/tokenize.js';
+import { TOOL_IDS } from '../src/core/tools.js';
 import type { RepoFile } from '../src/core/types.js';
 import { applyChanges } from '../src/node/apply.js';
 import { discover, existsIn } from '../src/node/discover.js';
@@ -42,8 +43,18 @@ const after = (plan: ReturnType<typeof planFixes>, path: string) => plan.changes
 
 const files = await loadFixture('mixed');
 
+// Copilot in VS Code reads the root CLAUDE.md but no nested instruction file, so the API section can move only
+// for the other agents.
+const MIXED_TOOLS = TOOL_IDS.filter((t) => t !== 'copilot');
+
 describe('planFixes on the mixed fixture', () => {
-  const plan = planFixes(files, { exists: existsIn(fixture('mixed')) });
+  const plan = planFixes(files, { exists: existsIn(fixture('mixed')), tools: MIXED_TOOLS });
+
+  it('keeps the API section where it is for every agent, since Copilot would lose it', () => {
+    const all = planFixes(files, { exists: existsIn(fixture('mixed')) });
+    expect(all.fixes.map((f) => f.kind)).toEqual(['misconfigured']);
+    expect(all.skipped.find((s) => s.kind === 'scopable-section')!.reason).toMatch(/packages\/api\/CLAUDE\.md \(GitHub Copilot would lose context\)/);
+  });
 
   it('renames a .md rule in .cursor/rules to .mdc', () => {
     const rename = plan.changes.find((c) => c.renamedFrom === '.cursor/rules/wrong.md')!;
@@ -54,6 +65,7 @@ describe('planFixes on the mixed fixture', () => {
   it('moves the API section into the nested CLAUDE.md that Claude Code and Cursor read there', () => {
     const fix = plan.fixes.find((f) => f.kind === 'scopable-section')!;
     expect(fix.paths).toEqual(['CLAUDE.md', 'packages/api/CLAUDE.md']);
+    expect(fix.message).toMatch(/Not kept for GitHub Copilot \(outside --tools\)\.$/);
     expect(fix.savingTokens).toBeGreaterThan(100);
     expect(after(plan, 'CLAUDE.md')).not.toContain('## API package');
     // A Windows checkout may have CRLF fixtures; the fix keeps each file's line endings.
@@ -166,12 +178,23 @@ describe('scopable sections', () => {
     const message = planFixes(files, { exists, tools: ['codex', 'cursor', 'claude-code'] }).fixes[0]!.message;
     expect(message).toMatch(/ Not kept for [^.]*\bZed\b[^.]* \(outside --tools\)\.$/);
     expect(message).toMatch(/Not kept for [^.]*JetBrains Junie/);
-    // Agents that read the nested AGENTS.md as well are not named.
-    expect(message).not.toMatch(/Not kept for [^.]*(OpenAI Codex|Cursor|Claude Code|GitHub Copilot)/);
+    // Agents that read the nested AGENTS.md as well are not named; VS Code Copilot reads no nested AGENTS.md by default.
+    expect(message).not.toMatch(/Not kept for [^.]*(OpenAI Codex|Cursor|Claude Code)/);
+    expect(message).toMatch(/Not kept for [^.]*GitHub Copilot/);
     const all = planFixes(files, { exists, tools: ['codex', 'cursor', 'claude-code', 'zed', 'junie'] });
     expect(all.fixes).toEqual([]);
     const other = planFixes([{ path: 'CLAUDE.md', text: `# Rules\n\n${API_SECTION}` }], { exists, tools: ['claude-code', 'cursor'] });
     expect(other.fixes[0]!.message).toMatch(/Not kept for GitHub Copilot, Zed, OpenCode \(outside --tools\)\.$/);
+  });
+
+  it('does not count a move as a saving for agents that load nested files every turn', () => {
+    // Kiro loads every AGENTS.md, nested ones included, every turn.
+    const files: RepoFile[] = [{ path: 'AGENTS.md', text: `# Rules\n\nUse npm.\n\n${API_SECTION}` }];
+    const both = planFixes(files, { exists, tools: ['codex', 'kiro'] });
+    expect(both.fixes[0]!.message).toMatch(/; OpenAI Codex load it only when working in packages\/api\/\. Kiro still load it every turn\. /);
+    const kiro = planFixes(files, { exists, tools: ['kiro'] });
+    expect(kiro.changes).toEqual([]);
+    expect(kiro.skipped[0]!.reason).toMatch(/packages\/api\/AGENTS\.md \(Kiro would still load it every turn\)/);
   });
 
   it('keeps a section where it is when an agent would stop reading it', () => {
@@ -253,7 +276,7 @@ const SKILL = '.claude/skills/release-process/SKILL.md';
 describe('procedure sections', () => {
   const text = `# Project\n\nUse npm.\n\n${RELEASE}\n## Code style\n\n- Keep functions small.\n`;
 
-  it('keeps a procedure in CLAUDE.md by default, since Cursor and others read no skill folder', () => {
+  it('keeps a procedure in CLAUDE.md by default, since no skill folder is read by every agent', () => {
     const plan = planFixes([{ path: 'CLAUDE.md', text }]);
     expect(plan.changes).toEqual([]);
     expect(plan.skipped).toEqual([
@@ -261,10 +284,17 @@ describe('procedure sections', () => {
         kind: 'oversized-section',
         paths: ['CLAUDE.md'],
         reason:
-          `Section "Release process": no target keeps every agent's context: ${SKILL} (Cursor, GitHub Copilot, Zed, Amp, OpenCode would lose context); ` +
-          '.agents/skills/release-process/SKILL.md (Claude Code, Cursor, GitHub Copilot, Zed, Amp, OpenCode would lose context). Use --tools to choose the agents to keep it for.',
+          `Section "Release process": no target keeps every agent's context: ${SKILL} (Zed would lose context); ` +
+          '.agents/skills/release-process/SKILL.md (Claude Code would lose context). Use --tools to choose the agents to keep it for.',
       },
     ]);
+  });
+
+  it('does not take a skill name already used in the other skill folder', () => {
+    // Cursor and others read both folders and use only the first skill of a name.
+    const existing = { path: '.agents/skills/release-process/SKILL.md', text: '---\nname: release-process\ndescription: Tag a release.\n---\n\nTag and push.\n' };
+    const plan = planFixes([{ path: 'CLAUDE.md', text }, existing], { tools: ['claude-code', 'cursor'] });
+    expect(plan.fixes.map((f) => f.paths)).toEqual([['CLAUDE.md', '.claude/skills/release-process-2/SKILL.md']]);
   });
 
   it('moves a large release procedure from CLAUDE.md into a Claude Code skill, leaving a pointer', () => {
@@ -281,7 +311,7 @@ describe('procedure sections', () => {
       {
         kind: 'oversized-section',
         paths: ['CLAUDE.md', SKILL],
-        message: `Moved section "Release process" from CLAUDE.md to ${SKILL} (new skill); Claude Code load it only when the skill is used. Not kept for Cursor, GitHub Copilot, Zed, Amp, OpenCode (outside --tools).`,
+        message: `Moved section "Release process" from CLAUDE.md to ${SKILL} (new skill); Claude Code load it only when the skill is used. Not kept for Zed (outside --tools).`,
         // The skill's listing and the pointer still load every turn.
         savingTokens:
           countO200k(RELEASE.trimEnd()) - countO200k(`release-process: ${description}`) - countO200k('## Release process\n\nSee the `release-process` skill.'),
@@ -298,7 +328,8 @@ describe('procedure sections', () => {
   it('moves an AGENTS.md procedure into a Codex skill with --tools codex', () => {
     const plan = planFixes([{ path: 'AGENTS.md', text }], { tools: ['codex'] });
     expect(plan.fixes.map((f) => f.paths)).toEqual([['AGENTS.md', '.agents/skills/release-process/SKILL.md']]);
-    expect(plan.fixes[0]!.message).toMatch(/; OpenAI Codex load it only when the skill is used\. Not kept for Claude Code, Cursor, /);
+    // Agents that read .agents/skills keep it; Claude Code and Kiro read only their own skill folders.
+    expect(plan.fixes[0]!.message).toMatch(/; OpenAI Codex load it only when the skill is used\. Not kept for Claude Code, Kiro\b/);
     expect(after(plan, '.agents/skills/release-process/SKILL.md')).toMatch(/^---\nname: "release-process"\ndescription: "Release process \(moved from AGENTS\.md by turntax\)\./);
     expect(plan.changes.some((c) => c.path.startsWith('.claude/'))).toBe(false);
   });
@@ -420,10 +451,10 @@ describe('cli --fix', () => {
   it('applies the changes with --write, after which nothing is left to fix', async () => {
     const dir = materialize('mixed', {});
     const io = capture();
-    expect(await main([dir, '--fix', '--write'], {})).toBe(0);
+    expect(await main([dir, '--fix', '--write', '--tools', MIXED_TOOLS.join(',')], {})).toBe(0);
     expect(io.out()).toMatch(/Changed 3 file\(s\)/);
     expect(readFileSync(join(dir, 'packages/api/CLAUDE.md'), 'utf8')).toContain('## API package');
-    const again = planFixes(await discover(dir), { exists: existsIn(dir) });
+    const again = planFixes(await discover(dir), { exists: existsIn(dir), tools: MIXED_TOOLS });
     expect(again.changes).toEqual([]);
   });
 
@@ -488,7 +519,7 @@ describe('cli --fix', () => {
 
   it('writes nothing when a file changed after it was read', async () => {
     const dir = materialize('mixed', {});
-    const plan = planFixes(await discover(dir), { exists: existsIn(dir) });
+    const plan = planFixes(await discover(dir), { exists: existsIn(dir), tools: MIXED_TOOLS });
     writeFileSync(join(dir, 'CLAUDE.md'), 'edited\n');
     expect(() => applyChanges(dir, plan.changes)).toThrow(/CLAUDE\.md changed/);
     expect(existsSync(join(dir, '.cursor/rules/wrong.md'))).toBe(true);

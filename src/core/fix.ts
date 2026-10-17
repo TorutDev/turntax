@@ -407,6 +407,14 @@ function moveScopableSections(ws: Workspace, opts: FixOptions, readOnly: (path: 
           continue;
         }
         const readers = [...new Set(ws.units.filter((u) => u.path === path && u.mode === 'always' && u.part !== 'description').map((u) => u.tool))];
+        // Some agents load nested files every turn too (Kiro's AGENTS.md); the move saves nothing for them.
+        const everyTurn = (tool: ToolId) => keysOf(body).every((k) => trial.loaded.get(tool)?.get(k) === RANK.always);
+        const still = readers.filter(everyTurn);
+        const gaining = readers.filter((tool) => !everyTurn(tool));
+        if (!gaining.length) {
+          refused.push(`${t.path} (${names(still)} would still load it every turn)`);
+          continue;
+        }
         const reads = (l: Loaded, tool: ToolId) => keysOf(body).some((k) => l.get(tool)?.has(k));
         const added = [...trial.loaded.keys()].filter((tool) => !reads(ws.state.loaded, tool) && reads(trial.loaded, tool));
         const dropped = opts.tools ? leftOut(ws.files, trial.files, body, opts.tools) : [];
@@ -415,7 +423,8 @@ function moveScopableSections(ws: Workspace, opts: FixOptions, readOnly: (path: 
           kind: 'scopable-section',
           paths: [path, t.path],
           message:
-            `Moved section "${heading}" from ${path} to ${t.path}${existing ? '' : ' (new file)'}; ${names(readers)} load it only when working in ${scope}/.` +
+            `Moved section "${heading}" from ${path} to ${t.path}${existing ? '' : ' (new file)'}; ${names(gaining)} load it only when working in ${scope}/.` +
+            (still.length ? ` ${names(still)} still load it every turn.` : '') +
             (added.length ? ` Now also read there by ${names(added)}.` : '') +
             (dropped.length ? ` Not kept for ${names(dropped)} (outside --tools).` : ''),
           savingTokens: countO200k(body),
@@ -456,7 +465,8 @@ function relativeRefs(body: string): string | null {
 
 /**
  * Skill folders at the root, tried in order (see tools.ts): Claude Code lists `.claude/skills` and Codex
- * `.agents/skills` every session and loads a skill's body only when it is used. No other agent reads either.
+ * `.agents/skills` every session and loads a skill's body only when it is used; many other agents read one or
+ * both. The check keeps every agent's context, so a folder an agent does not read is refused for it.
  */
 const SKILL_DIRS = ['.claude/skills', '.agents/skills'];
 
@@ -481,14 +491,17 @@ function isProcedureSection(body: string): boolean {
   return parts.every((p) => isProcedure(p.join('\n')));
 }
 
-/** The section's slug, with -2, -3... when a skill folder of that name exists in `dir` (at most 64 characters). */
-function skillSlug(ws: Workspace, opts: FixOptions, dir: string, heading: string): string {
+/**
+ * The section's slug, with -2, -3... when a skill folder of that name exists in any of SKILL_DIRS (at most 64
+ * characters): agents that read both folders use only one skill of a name.
+ */
+function skillSlug(ws: Workspace, opts: FixOptions, heading: string): string {
   const base = slugOf(heading);
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? '' : `-${n}`;
     const slug = base.slice(0, 64 - suffix.length).replace(/-+$/, '') + suffix;
-    const folder = `${dir}/${slug}`;
-    if (!opts.exists?.(folder) && ![...ws.files.keys()].some((p) => p.startsWith(`${folder}/`))) return slug;
+    const taken = (folder: string) => opts.exists?.(folder) || [...ws.files.keys()].some((p) => p.startsWith(`${folder}/`));
+    if (!SKILL_DIRS.some((dir) => taken(`${dir}/${slug}`))) return slug;
   }
 }
 
@@ -534,7 +547,7 @@ function moveProcedureSections(ws: Workspace, opts: FixOptions, readOnly: (path:
       let moved = false;
       const refused: string[] = [];
       for (const dir of SKILL_DIRS) {
-        const slug = skillSlug(ws, opts, dir, heading);
+        const slug = skillSlug(ws, opts, heading);
         const target = `${dir}/${slug}/SKILL.md`;
         const blocked = readOnly(target);
         if (blocked) {

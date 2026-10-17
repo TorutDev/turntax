@@ -29,6 +29,7 @@ const NAMES = new Set([
   'CLAUDE.md',
   'CLAUDE.local.md',
   'AGENTS.md',
+  'agents.md',
   'AGENTS.override.md',
   'GEMINI.md',
   '.cursorrules',
@@ -45,10 +46,10 @@ const NAMES = new Set([
 const PATTERNS = [
   /^\.github\/copilot-instructions\.md$/,
   /^\.github\/instructions\/.+\.instructions\.md$/,
-  /(^|\/)\.claude\/(rules|commands)\/.+\.md$/,
-  /(^|\/)\.claude\/skills\/[^/]+\/SKILL\.md$/,
-  /(^|\/)\.claude\/agents\/[^/]+\.md$/,
-  /(^|\/)\.agents\/skills\/[^/]+\/SKILL\.md$/,
+  /(^|\/)\.claude\/(rules|commands|agents)\/.+\.md$/,
+  // Skill folders of every agent; some agents also read skills in category subfolders.
+  /(^|\/)\.(agents|claude|cursor|codex|github|gemini|devin|windsurf|cline|clinerules|roo|kiro|junie|goose|opencode)\/skills\/(?:[^/]+\/)+SKILL\.md$/,
+  /(^|\/)\.(roo|agents)\/skills-[\w-]+\/[^/]+\/SKILL\.md$/,
   /(^|\/)\.cursor\/rules\/.+\.mdc?$/,
   /(^|\/)\.(devin|windsurf)\/rules\/.+\.md$/,
   /^\.(clinerules|cline\/rules)\/.+\.md$/,

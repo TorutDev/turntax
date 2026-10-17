@@ -1,5 +1,5 @@
 import { basename, configList, dirname, findImports, firstParagraph, parseFrontmatter, resolvePath, stripHtmlComments } from './markdown.js';
-import { TOOLS, type FileRule, type ToolSpec } from './tools.js';
+import { TOOLS, type FileRule, type Frontmatter, type ToolSpec } from './tools.js';
 import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
 
 /** Works out which files each tool loads, when, and with what text. */
@@ -11,11 +11,15 @@ export function classify(input: RepoFile[], toolIds?: ToolId[]): LoadedUnit[] {
   const units: LoadedUnit[] = [];
   for (const tool of tools) {
     const toolUnits: LoadedUnit[] = [];
-    for (const rule of tool.rules) toolUnits.push(...applyRule(tool, rule, files, byPath));
+    const claims: SkillClaims = new Map();
+    for (const rule of tool.rules) toolUnits.push(...applyRule(tool, rule, files, byPath, claims));
     units.push(...dedupe(toolUnits));
   }
   return units;
 }
+
+/** Skill names taken per level (`<dir>\0<name>`), with the file and rule that took them. */
+type SkillClaims = Map<string, { path: string; rule: FileRule }>;
 
 /** Tools that read at least one of the given files (in any mode except ignored). */
 export function detectTools(units: LoadedUnit[]): ToolId[] {
@@ -47,7 +51,30 @@ function isRootClaudeMd(f: RepoFile): boolean {
   return ['CLAUDE.md', '.claude/CLAUDE.md', 'CLAUDE.local.md', '.claude/CLAUDE.local.md'].includes(f.path);
 }
 
-function applyRule(tool: ToolSpec, rule: FileRule, files: RepoFile[], byPath: Map<string, RepoFile>): LoadedUnit[] {
+/** Directory holding a nested copy of a folder, e.g. `pkg/` for `pkg/.claude/skills/x/SKILL.md`; '' at the root. */
+function nestedDir(path: string, rootPrefix: string): string {
+  if (path.startsWith(rootPrefix)) return '';
+  const i = path.indexOf('/' + rootPrefix);
+  return i < 0 ? path.slice(0, path.indexOf('/.') + 1) : path.slice(0, i + 1);
+}
+
+const fmText = (v: Frontmatter[string] | undefined): string => (v === undefined ? '' : Array.isArray(v) ? v.join(', ') : String(v));
+
+/** A skill's name: frontmatter `name`, else its folder (SKILL.md) or its path below the folder (`frontend:component`). */
+function skillName(path: string, rootPrefix: string, frontmatter: Frontmatter): string {
+  if (frontmatter.name !== undefined && String(frontmatter.name) !== '') return String(frontmatter.name);
+  if (basename(path) === 'SKILL.md') return basename(dirname(path));
+  const rel = path.slice(path.indexOf(rootPrefix) + rootPrefix.length);
+  return rel.replace(/\.md$/, '').split('/').join(':');
+}
+
+function applyRule(
+  tool: ToolSpec,
+  rule: FileRule,
+  files: RepoFile[],
+  byPath: Map<string, RepoFile>,
+  claims: SkillClaims,
+): LoadedUnit[] {
   switch (rule.kind) {
     case 'root-file': {
       const f = byPath.get(rule.path);
@@ -110,9 +137,8 @@ function applyRule(tool: ToolSpec, rule: FileRule, files: RepoFile[], byPath: Ma
         .filter((f) => rule.pattern.test(f.path))
         .flatMap((f) => {
           const { frontmatter, body } = parseFrontmatter(f.text);
-          const isRoot = f.path.startsWith(rule.rootPrefix);
-          const hidden = rule.hideFlag ? frontmatter[rule.hideFlag] === true : false;
-          const name = String(frontmatter.name ?? basename(dirname(f.path)) ?? '');
+          const dir = nestedDir(f.path, rule.rootPrefix);
+          const name = skillName(f.path, rule.rootPrefix, frontmatter);
           let description = String(frontmatter.description ?? '') || firstParagraph(body);
           if (frontmatter.when_to_use) description += ' ' + String(frontmatter.when_to_use);
           const notes: string[] = [];
@@ -120,13 +146,28 @@ function applyRule(tool: ToolSpec, rule: FileRule, files: RepoFile[], byPath: Ma
             description = description.slice(0, rule.descriptionCap);
             notes.push(`Description cut to ${rule.descriptionCap} characters in the listing.`);
           }
-          const listed = `${name}: ${description}`;
-          const descMode: LoadMode = hidden ? 'manual' : isRoot ? 'always' : 'on-demand';
-          const descTrigger = hidden
-            ? `${rule.hideFlag}: true`
-            : isRoot
-              ? 'listed every session'
-              : `listed when working in ${f.path.slice(0, f.path.indexOf('/.') + 1) || './'}`;
+          const listed = `${name}: ${description}${rule.listsPath ? ` (${f.path})` : ''}`;
+          const skip = (reason: string) => [
+            unit(tool.id, f.path, 'ignored', reason, listed, { part: 'description' }),
+            unit(tool.id, f.path, 'ignored', reason, body, { part: 'body' }),
+          ];
+          if (dir && rule.nested === 'ignored') return skip(`${rule.nestedTrigger ?? 'not read from the root'} ${dir}`);
+          if (rule.dedupeByName) {
+            // The first rule (in the tool's precedence order) to list a name at this level keeps it.
+            const key = `${dir}\0${name}`;
+            const prev = claims.get(key);
+            if (prev && prev.rule !== rule) return skip(`same skill name as ${prev.path}, which takes precedence`);
+            if (!prev) claims.set(key, { path: f.path, rule });
+          }
+          const hidden = rule.hideFlag ? frontmatter[rule.hideFlag] === true : false;
+          const pathsKey = rule.pathsKeys?.find((k) => fmText(frontmatter[k]).trim() !== '');
+          const [descMode, descTrigger]: [LoadMode, string] = hidden
+            ? ['manual', `${rule.hideFlag}: true`]
+            : dir
+              ? ['on-demand', `${rule.nestedTrigger ?? 'listed when working in'} ${dir}`]
+              : pathsKey
+                ? ['on-demand', `${pathsKey}: ${fmText(frontmatter[pathsKey])}`]
+                : ['always', 'listed every session'];
           return [
             unit(tool.id, f.path, descMode, descTrigger, listed, { part: 'description', notes }),
             unit(tool.id, f.path, hidden ? 'manual' : 'on-demand', rule.bodyTrigger, body, { part: 'body' }),
@@ -149,8 +190,6 @@ function applyHierarchical(
   let conditionFails: string | null = null;
   if (rule.condition === 'claude-reads-agents-md' && files.some(isRootClaudeMd))
     conditionFails = 'CLAUDE.md exists at the root, so Claude Code reads it instead of AGENTS.md (default setting).';
-  if (rule.condition === 'copilot-no-agents-md' && files.some((f) => f.path === 'AGENTS.md'))
-    conditionFails = 'A root AGENTS.md exists, which Copilot uses instead.';
 
   // Every matching file is read, except where the tool reads only one file per directory.
   const firstPerLevel = new Map<string, RepoFile>();
@@ -188,10 +227,10 @@ function applyHierarchical(
       continue;
     }
     if (!isRoot && rule.nested === 'ignored') {
-      out.push(unit(tool.id, f.path, 'ignored', 'only the root file is read', f.text));
+      out.push(unit(tool.id, f.path, 'ignored', rule.nestedTrigger || 'only the root file is read', f.text));
       continue;
     }
-    const mode: LoadMode = isRoot ? 'always' : 'on-demand';
+    const mode: LoadMode = isRoot || rule.nested === 'always' ? 'always' : 'on-demand';
     const trigger = isRoot ? 'project root' : `${rule.nestedTrigger} ${level}/`;
     const notes = rule.note ? [rule.note] : [];
     const text = transform(f.text, rule, notes);
