@@ -58,7 +58,8 @@ describe('cli', () => {
     const report = JSON.parse(io.out());
     const codex = report.tools.find((t: { tool: string }) => t.tool === 'codex');
     expect(codex.userPerTurnO200k).toBeGreaterThan(0);
-    expect(report.mcp.map((m: { name: string }) => m.name)).toEqual(['personal']);
+    // One row per agent that reads ~/.claude.json (Claude Code, and Devin's import).
+    expect([...new Set(report.mcp.map((m: { name: string }) => m.name))]).toEqual(['personal']);
     io = capture();
     await main([fixture('agents-only'), '--badge'], { HOME: home });
     const badge = io.out();

@@ -1,7 +1,18 @@
 import { buildAdvice, type Advice, type AdviceOptions } from './advice.js';
 import { classify, detectTools } from './classify.js';
 import type { ReportDiff } from './diff.js';
-import { defersTools, serverKey, type McpServer, type McpTransport } from './mcp.js';
+import {
+  defersTool,
+  descriptionCut,
+  filterTools,
+  instructionsText,
+  serverKey,
+  toolDefinitionsText,
+  toolNamesText,
+  type McpServer,
+  type McpToolDef,
+  type McpTransport,
+} from './mcp.js';
 import { countO200k, offlineCounter } from './tokenize.js';
 import { TOOLS } from './tools.js';
 import { classifyUser } from './user.js';
@@ -22,8 +33,8 @@ export interface AuditOptions {
   mcp?: { servers: McpServer[]; measured?: Map<string, McpMeasurement> };
 }
 
-/** o200k of the full tool definitions, and of the tool names alone (what a deferring agent lists). */
-export type McpMeasurement = { tools: number; o200k: number; namesO200k: number } | { error: string };
+/** What a server returned with --mcp: its tool definitions and initialize instructions, or why it was not measured. */
+export type McpMeasurement = { tools: McpToolDef[]; instructions?: string } | { error: string };
 
 export interface McpRow {
   name: string;
@@ -36,14 +47,30 @@ export interface McpRow {
    * measured     - started and listed; `tools` and `o200k` are set
    * failed       - could not be measured; `error` says why
    * disabled     - turned off in the config, so the agent does not start it
+   * overridden   - the agent uses the same server name from another config (`overriddenBy`) instead
    */
-  status: 'not-measured' | 'measured' | 'failed' | 'disabled';
+  status: 'not-measured' | 'measured' | 'failed' | 'disabled' | 'overridden';
+  /** The config whose definition the agent uses instead, when `status` is 'overridden'. */
+  overriddenBy?: string;
+  /** Set when that precedence is not documented (MCP_CONFIGS order decided it). */
+  overrideAssumed?: boolean;
+  /** Tools that reach the agent, after the config's tool filters. */
   tools?: number;
-  /** o200k reference tokens this server adds to every turn: the tool definitions (names, descriptions, input schemas as JSON), or only the names when the agent defers them. */
+  /** Tools the server lists that the config's tool filters keep out of context. */
+  excludedTools?: number;
+  /**
+   * o200k reference tokens this server adds to every turn: the tool definitions (names, descriptions, input schemas
+   * as JSON), only the names of tools the agent defers, and the server instructions when the agent sends them.
+   */
   o200k?: number;
-  /** Set when the agent defers the definitions (Claude Code tool search): their full size, loaded when a tool is used. */
+  /** Set when the agent defers some definitions (Claude Code tool search): how many, and their full size, loaded when a tool is used. */
+  deferredTools?: number;
   deferredO200k?: number;
+  /** Server instructions counted in `o200k`. */
+  instructionsO200k?: number;
   error?: string;
+  /** Something the config does not show that can change what the agent loads. */
+  note?: string;
 }
 
 export interface FileRow {
@@ -127,10 +154,11 @@ function counterFor(model: ModelInfo, opts: AuditOptions): Counter {
 export async function audit(files: RepoFile[], opts: AuditOptions): Promise<Report> {
   const turns = opts.turns ?? 100;
   const allUnits = [...classify(files), ...classifyUser(opts.userFiles ?? [])];
-  const servers = opts.mcp?.servers ?? [];
+  // MCP_CONFIGS can name an agent before TOOLS has its loading rules; such servers cannot be reported yet.
+  const servers = (opts.mcp?.servers ?? []).filter((s) => TOOLS.some((t) => t.id === s.tool));
   const toolIds =
     opts.tools ??
-    [...new Set([...detectTools(allUnits), ...servers.filter((s) => !s.disabled).map((s) => s.tool)])].sort(
+    [...new Set([...detectTools(allUnits), ...servers.filter((s) => !s.disabled && !s.overriddenBy).map((s) => s.tool)])].sort(
       (a, b) => TOOLS.findIndex((t) => t.id === a) - TOOLS.findIndex((t) => t.id === b),
     );
   const units = allUnits.filter((u) => toolIds.includes(u.tool));
@@ -176,7 +204,7 @@ export async function audit(files: RepoFile[], opts: AuditOptions): Promise<Repo
     const userAlways = always.filter((r) => r.scope === 'user');
     const onDemand = rows.filter((r) => r.mode === 'on-demand' && !r.scope);
     const models = modelsForTool(id, opts.models).map((m) => modelCost(m, always, turns));
-    const toolMcp = mcp.filter((r) => r.tool === id && r.status !== 'disabled');
+    const toolMcp = mcp.filter((r) => r.tool === id && r.status !== 'disabled' && r.status !== 'overridden');
     const mcpTokens = (scope: McpRow['scope']) => sum(toolMcp.filter((r) => r.scope === scope).map((r) => r.o200k ?? 0));
     const perTurnO200k = sum(repoAlways.map((r) => r.o200k));
     const userPerTurnO200k = sum(userAlways.map((r) => r.o200k)) + mcpTokens('user');
@@ -205,13 +233,38 @@ export async function audit(files: RepoFile[], opts: AuditOptions): Promise<Repo
 }
 
 function mcpRow(s: McpServer, measured?: Map<string, McpMeasurement>): McpRow {
-  const row: McpRow = { name: s.name, tool: s.tool, configPath: s.configPath, scope: s.scope, transport: s.transport, status: 'not-measured' };
+  const row: McpRow = {
+    name: s.name,
+    tool: s.tool,
+    configPath: s.configPath,
+    scope: s.scope,
+    transport: s.transport,
+    status: 'not-measured',
+    ...(s.note ? { note: s.note } : {}),
+  };
+  if (s.overriddenBy)
+    return { ...row, status: 'overridden', overriddenBy: s.overriddenBy, ...(s.overrideAssumed ? { overrideAssumed: true } : {}) };
   if (s.disabled) return { ...row, status: 'disabled' };
   const m = measured?.get(serverKey(s));
   if (!m) return row;
   if ('error' in m) return { ...row, status: 'failed', error: m.error };
-  if (defersTools(s)) return { ...row, status: 'measured', tools: m.tools, o200k: m.namesO200k, deferredO200k: m.o200k };
-  return { ...row, status: 'measured', tools: m.tools, o200k: m.o200k };
+  // What this agent puts in context: the tools its config keeps, in full or (deferred) by name, and the instructions.
+  const kept = filterTools(s, m.tools);
+  const deferred = kept.filter((t) => defersTool(s, t));
+  const upfront = kept.filter((t) => !defersTool(s, t));
+  const instructionsO200k = countO200k(instructionsText(s, m.instructions));
+  const o200k = countO200k(toolDefinitionsText(upfront, descriptionCut(s, false))) + countO200k(toolNamesText(deferred)) + instructionsO200k;
+  return {
+    ...row,
+    status: 'measured',
+    tools: kept.length,
+    o200k,
+    ...(kept.length < m.tools.length ? { excludedTools: m.tools.length - kept.length } : {}),
+    ...(deferred.length
+      ? { deferredTools: deferred.length, deferredO200k: countO200k(toolDefinitionsText(deferred, descriptionCut(s, true))) }
+      : {}),
+    ...(instructionsO200k ? { instructionsO200k } : {}),
+  };
 }
 
 function modelCost(model: ModelInfo, always: FileRow[], turns: number): ModelCost {

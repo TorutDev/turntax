@@ -32,8 +32,18 @@ export const MCP_FIXTURE_FILES: Record<string, string> = {
   '.mcp.json': `{
   "mcpServers": {
     "docs": { "command": "node", "args": ["server.mjs"] },
-    "broken": { "command": "node", "args": ["-e", "process.exit(3)"] }
+    "broken": { "command": "node", "args": ["-e", "process.exit(3)"] },
+    "socket": { "type": "ws", "url": "wss://example.invalid/socket" }
   }
+}
+`,
+  // Copilot CLI also accepts a bare server map; its required tools list keeps one of the two tools.
+  '.github/mcp.json': `{
+  "search": { "type": "local", "command": "node", "args": ["server.mjs"], "tools": ["search_docs"] }
+}
+`,
+  '.gemini/settings.json': `{
+  "mcpServers": { "docs": { "command": "node", "args": ["server.mjs"], "excludeTools": ["open_ticket"] } }
 }
 `,
   '.vscode/mcp.json': `{

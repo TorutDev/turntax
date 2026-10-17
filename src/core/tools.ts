@@ -870,6 +870,7 @@ export const TOOLS: ToolSpec[] = [
     notes: [
       'Only all-caps AGENTS.md and WARP.md are read; /init can link CLAUDE.md, .cursorrules and similar files to AGENTS.md, but Warp does not read them by name.',
       'Global Rules live in Warp Drive and are not counted; the Warp Agent CLI also reads ~/.agents/AGENTS.md, which --include-user counts.',
+      'Project MCP configs (.warp/.mcp.json, .mcp.json and others) never start on their own, so their servers are not counted; ~/.warp/.mcp.json is.',
     ],
   },
   {
@@ -1020,6 +1021,7 @@ export const TOOLS: ToolSpec[] = [
       '.agents/skills and .trae/agents are read only when their switches in Settings are on; the defaults are not documented, so they are listed as manual and not counted.',
       'AGENTS.md (root, and nested when files there are read or mentioned) and root CLAUDE.md / CLAUDE.local.md are read only with the "Include AGENTS.md in the context" and "Include CLAUDE.md in context" switches on; the defaults are not documented, so they are not counted.',
       'Global rules (~/.trae/user_rules) have no documented file format and are not counted.',
+      '.trae/mcp.json is read only with the Project MCP switch on; the default is not documented, so its servers are not counted.',
     ],
   },
   {
@@ -1310,7 +1312,7 @@ export const TOOLS: ToolSpec[] = [
       'Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default; turning one off with read_config_from is not modelled.',
       'Nested .devin/rules folders are assumed to load like nested .windsurf/rules (documented for .windsurf only); nested .cursor/rules, global_rules.md and skill folders are not counted.',
       'A skill with triggers: [user] is still counted as listed for the agent.',
-      'Global rules (~/.config/devin/AGENTS.md, ~/.devin/rules/) are outside the repository; --include-user counts them. Devin CLI also reads ~/.claude/CLAUDE.md, which turntax does not count for it.',
+      'Global rules (~/.config/devin/AGENTS.md, ~/.devin/rules/) are outside the repository; --include-user counts them. Devin CLI also reads ~/.claude/CLAUDE.md, which --include-user counts too.',
     ],
   },
 ];

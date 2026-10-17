@@ -102,6 +102,8 @@ export const USER_FILES: UserFileRule[] = [
   { tool: 'kilo-code', pattern: /^\.config\/kilo\/agents\/[^/]+\.md$/, as: (p) => '.kilo/agents/' + p.slice(p.lastIndexOf('/') + 1), source: 'https://kilo.ai/docs/customize/custom-subagents' },
   { tool: 'devin', pattern: /^(\.config\/devin|AppData\/Roaming\/devin)\/(AGENTS\.md|AGENTS\.local\.md|AGENT\.md|\.windsurfrules)$/, as: (p) => p.slice(p.lastIndexOf('/') + 1), source: 'https://docs.devin.ai/cli/extensibility/rules' },
   { tool: 'devin', pattern: /^\.devin\/(rules\/[^/]+|global_rules)\.md$/, as: same, source: 'https://docs.devin.ai/cli/extensibility/rules' },
+  // Devin CLI also reads the personal Claude Code file.
+  { tool: 'devin', pattern: /^\.claude\/CLAUDE\.md$/, as: () => 'CLAUDE.md', source: 'https://docs.devin.ai/cli/extensibility/rules' },
   { tool: 'devin', pattern: /^\.agents\/skills\/[^/]+\/SKILL\.md$/, as: same, source: 'https://docs.devin.ai/cli/extensibility/skills/overview' },
   { tool: 'devin', pattern: /^(\.config\/devin|AppData\/Roaming\/devin)\/skills\/[^/]+\/SKILL\.md$/, as: (p) => '.devin/skills/' + p.replace(/^.*?\/skills\//, ''), source: 'https://docs.devin.ai/cli/extensibility/skills/overview' },
   // Devin CLI's stable channel reads Windsurf's stable folder; the next and insiders channels are not modelled.
