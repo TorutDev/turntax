@@ -384,6 +384,7 @@ describe('detectTools', () => {
   it('reports tools that read at least one file', () => {
     expect(detectTools(classify(AGENTS_ONLY))).toEqual([
       'claude-code', 'codex', 'cursor', 'copilot', 'windsurf', 'roo-code', 'kiro', 'junie', 'zed', 'goose', 'amp', 'opencode',
+      'warp', 'factory-droid', 'augment', 'kilo-code', 'jules', 'devin',
     ]);
   });
 });

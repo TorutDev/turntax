@@ -184,7 +184,7 @@ describe('scopable sections', () => {
     const all = planFixes(files, { exists, tools: ['codex', 'cursor', 'claude-code', 'zed', 'junie'] });
     expect(all.fixes).toEqual([]);
     const other = planFixes([{ path: 'CLAUDE.md', text: `# Rules\n\n${API_SECTION}` }], { exists, tools: ['claude-code', 'cursor'] });
-    expect(other.fixes[0]!.message).toMatch(/Not kept for GitHub Copilot, Zed, OpenCode \(outside --tools\)\.$/);
+    expect(other.fixes[0]!.message).toMatch(/Not kept for GitHub Copilot, Zed, OpenCode, Kilo Code \(outside --tools\)\.$/);
   });
 
   it('does not count a move as a saving for agents that load nested files every turn', () => {
@@ -284,7 +284,7 @@ describe('procedure sections', () => {
         kind: 'oversized-section',
         paths: ['CLAUDE.md'],
         reason:
-          `Section "Release process": no target keeps every agent's context: ${SKILL} (Zed would lose context); ` +
+          `Section "Release process": no target keeps every agent's context: ${SKILL} (Zed, Factory Droid would lose context); ` +
           '.agents/skills/release-process/SKILL.md (Claude Code would lose context). Use --tools to choose the agents to keep it for.',
       },
     ]);
@@ -311,7 +311,7 @@ describe('procedure sections', () => {
       {
         kind: 'oversized-section',
         paths: ['CLAUDE.md', SKILL],
-        message: `Moved section "Release process" from CLAUDE.md to ${SKILL} (new skill); Claude Code load it only when the skill is used. Not kept for Zed (outside --tools).`,
+        message: `Moved section "Release process" from CLAUDE.md to ${SKILL} (new skill); Claude Code load it only when the skill is used. Not kept for Zed, Factory Droid (outside --tools).`,
         // The skill's listing and the pointer still load every turn.
         savingTokens:
           countO200k(RELEASE.trimEnd()) - countO200k(`release-process: ${description}`) - countO200k('## Release process\n\nSee the `release-process` skill.'),

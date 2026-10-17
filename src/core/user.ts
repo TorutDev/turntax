@@ -84,6 +84,29 @@ export const USER_FILES: UserFileRule[] = [
   { tool: 'opencode', pattern: /^\.claude\/CLAUDE\.md$/, as: () => 'CLAUDE.md', source: 'https://opencode.ai/docs/rules/' },
   { tool: 'opencode', pattern: skills('.config/opencode'), as: moved('.config/opencode/skills/', '.opencode/skills/'), source: OPENCODE_SKILLS },
   { tool: 'opencode', pattern: skills('.claude|.agents'), as: same, source: OPENCODE_SKILLS },
+  // The Warp Agent CLI's global rule; Global Rules in the Warp app live in Warp Drive.
+  { tool: 'warp', pattern: /^\.agents\/AGENTS\.md$/, as: () => 'AGENTS.md', source: 'https://docs.warp.dev/agents/cli/configuration/' },
+  { tool: 'warp', pattern: /^\.(agents|warp|claude|codex|cursor|gemini|copilot|factory|github|opencode)\/skills\/[^/]+\/SKILL\.md$/, as: same, source: 'https://docs.warp.dev/agents/capabilities/skills/' },
+  // Factory documents the personal folders, not the file names in them; the project names are assumed.
+  { tool: 'factory-droid', pattern: /^\.(factory|agents|agent)\/(AGENTS|agents|Agents|CLAUDE|Claude)\.md$/, as: (p) => p.slice(p.indexOf('/') + 1), source: 'https://docs.factory.com/harness/agents-md' },
+  { tool: 'factory-droid', pattern: /^\.(factory|agents|agent)\/skills\/(?:[^/]+\/)+SKILL\.md$/, as: same, source: 'https://docs.factory.com/harness/skills' },
+  { tool: 'factory-droid', pattern: /^\.factory\/droids\/[^/]+\.md$/, as: same, source: 'https://docs.factory.com/harness/subagents' },
+  { tool: 'trae', pattern: /^\.trae\/skills\/[^/]+\/SKILL\.md$/, as: same, source: 'https://docs.trae.ai/ide/skills?_lang=en' },
+  // User rules and user guidelines are always loaded, whatever their frontmatter says.
+  { tool: 'augment', pattern: /^\.augment\/(rules\/.+|user-guidelines)\.md$/, as: () => '.augment-guidelines', source: 'https://docs.augmentcode.com/setup-augment/guidelines' },
+  { tool: 'augment', pattern: /^\.(augment|claude|agents)\/skills\/[^/]+\/SKILL\.md$/, as: same, source: 'https://docs.augmentcode.com/cli/skills' },
+  { tool: 'augment', pattern: /^\.augment\/agents\/[^/]+\.md$/, as: same, source: 'https://docs.augmentcode.com/cli/subagents' },
+  { tool: 'kilo-code', pattern: /^\.config\/kilo\/AGENTS\.md$/, as: () => 'AGENTS.md', source: 'https://kilo.ai/docs/customize/custom-instructions' },
+  { tool: 'kilo-code', pattern: /^\.(kilo|kilocode)\/rules\/[^/]+\.md$/, as: same, source: 'https://kilo.ai/docs/getting-started/migrating' },
+  { tool: 'kilo-code', pattern: /^\.(kilo|claude|agents)\/skills\/[^/]+\/SKILL\.md$/, as: same, source: 'https://kilo.ai/docs/customize/skills' },
+  { tool: 'kilo-code', pattern: /^\.config\/kilo\/agents\/[^/]+\.md$/, as: (p) => '.kilo/agents/' + p.slice(p.lastIndexOf('/') + 1), source: 'https://kilo.ai/docs/customize/custom-subagents' },
+  { tool: 'devin', pattern: /^(\.config\/devin|AppData\/Roaming\/devin)\/(AGENTS\.md|AGENTS\.local\.md|AGENT\.md|\.windsurfrules)$/, as: (p) => p.slice(p.lastIndexOf('/') + 1), source: 'https://docs.devin.ai/cli/extensibility/rules' },
+  { tool: 'devin', pattern: /^\.devin\/(rules\/[^/]+|global_rules)\.md$/, as: same, source: 'https://docs.devin.ai/cli/extensibility/rules' },
+  { tool: 'devin', pattern: /^\.agents\/skills\/[^/]+\/SKILL\.md$/, as: same, source: 'https://docs.devin.ai/cli/extensibility/skills/overview' },
+  { tool: 'devin', pattern: /^(\.config\/devin|AppData\/Roaming\/devin)\/skills\/[^/]+\/SKILL\.md$/, as: (p) => '.devin/skills/' + p.replace(/^.*?\/skills\//, ''), source: 'https://docs.devin.ai/cli/extensibility/skills/overview' },
+  // Devin CLI's stable channel reads Windsurf's stable folder; the next and insiders channels are not modelled.
+  { tool: 'devin', pattern: /^\.codeium\/windsurf\/skills\/[^/]+\/SKILL\.md$/, as: (p) => '.windsurf/skills/' + p.replace(/^.*?\/skills\//, ''), source: 'https://docs.devin.ai/cli/reference/configuration/read-config-from' },
+  { tool: 'devin', pattern: /^\.copilot\/skills\/(?:[^/]+\/)+SKILL\.md$/, as: (p) => '.github/skills/' + p.replace(/^\.copilot\/skills\//, ''), source: 'https://docs.devin.ai/cli/reference/configuration/read-config-from' },
 ];
 
 /** Home-relative folders to search, and how deep. Kept narrow so nothing else in the home directory is read. */
@@ -98,7 +121,6 @@ export const USER_ROOTS: Array<{ dir: string; depth: number }> = [
   { dir: '.cursor/skills', depth: 5 },
   { dir: '.copilot', depth: 0 },
   { dir: '.copilot/instructions', depth: 5 },
-  { dir: '.copilot/skills', depth: 1 },
   { dir: '.codeium/windsurf/memories', depth: 0 },
   { dir: '.codeium/windsurf/skills', depth: 1 },
   { dir: '.config/devin/skills', depth: 1 },
@@ -120,6 +142,30 @@ export const USER_ROOTS: Array<{ dir: string; depth: number }> = [
   { dir: '.config/amp/skills', depth: 5 },
   { dir: '.config/opencode', depth: 0 },
   { dir: '.config/opencode/skills', depth: 1 },
+  { dir: '.agent', depth: 0 },
+  { dir: '.agent/skills', depth: 3 },
+  { dir: '.factory', depth: 0 },
+  { dir: '.factory/skills', depth: 3 },
+  { dir: '.factory/droids', depth: 0 },
+  { dir: '.warp/skills', depth: 1 },
+  { dir: '.copilot/skills', depth: 3 },
+  { dir: '.github/skills', depth: 1 },
+  { dir: '.opencode/skills', depth: 1 },
+  { dir: '.trae/skills', depth: 1 },
+  { dir: '.augment', depth: 0 },
+  { dir: '.augment/rules', depth: 3 },
+  { dir: '.augment/skills', depth: 1 },
+  { dir: '.augment/agents', depth: 0 },
+  { dir: '.config/kilo', depth: 0 },
+  { dir: '.config/kilo/agents', depth: 0 },
+  { dir: '.kilo/rules', depth: 0 },
+  { dir: '.kilocode/rules', depth: 0 },
+  { dir: '.kilo/skills', depth: 1 },
+  { dir: '.config/devin', depth: 0 },
+  { dir: 'AppData/Roaming/devin', depth: 0 },
+  { dir: 'AppData/Roaming/devin/skills', depth: 1 },
+  { dir: '.devin', depth: 0 },
+  { dir: '.devin/rules', depth: 0 },
 ];
 
 export function isUserInstructionFile(homePath: string): boolean {

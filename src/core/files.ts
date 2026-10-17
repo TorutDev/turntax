@@ -41,6 +41,11 @@ const NAMES = new Set([
   'CONVENTIONS.md',
   '.goosehints',
   '.aider.conf.yml',
+  'WARP.md',
+  'AGENTS.local.md',
+  'agents.md',
+  'Agents.md',
+  'Claude.md',
 ]);
 
 const PATTERNS = [
@@ -59,6 +64,21 @@ const PATTERNS = [
   /^\.junie\/(AGENTS|playbook|guidelines)\.md$/,
   /^\.junie\/(rules|guidelines)\/[^/]+\.md$/,
   /^\.continue\/rules\/[^/]+\.md$/,
+  /^(CONTEXT|DESIGN|Design|design)\.md$/,
+  /^\.augment-guidelines$/,
+  /^\.kilocoderules(-[\w-]+)?$/,
+  /(^|\/)\.(agents?|claude|warp|codex|cursor|gemini|copilot|factory|github|opencode|devin|windsurf|trae|augment|kilo|kilocode)\/skills\/(?:[^/]+\/)+SKILL\.md$/,
+  /^\.(devin|windsurf)\/global_rules\.md$/,
+  /^\.factory\/(droids\/[^/]+|commands\/.+)\.md$/,
+  /(^|\/)\.factory\/output-styles\/[^/]+\.md$/,
+  /(^|\/)\.trae\/rules\/.+\.md$/,
+  /^\.trae\/(commands\/.+|agents\/[^/]+)\.md$/,
+  /(^|\/)\.augment\/rules\/.+\.md$/,
+  /^\.augment\/agents\/[^/]+\.md$/,
+  /^\.(augment|agents|cursor)\/commands\/.+\.md$/,
+  /^\.(kilo|kilocode)\/rules(-[\w-]+)?\/[^/]+\.md$/,
+  /^\.(kilo\/agents?|kilocode\/agents)\/[^/]+\.md$/,
+  /^\.kilo\/commands\/.+\.md$/,
 ];
 
 export const MAX_DEPTH = 12;

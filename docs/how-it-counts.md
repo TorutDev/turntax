@@ -225,6 +225,108 @@ Files listed under `instructions` in `opencode.json` are not counted. When subdi
 
 <!-- new agents -->
 
+## Warp
+
+Sources: [rules](https://docs.warp.dev/agents/capabilities/rules/), [skills](https://docs.warp.dev/agents/capabilities/skills/), [Agent CLI](https://docs.warp.dev/agents/cli/configuration/)
+
+| File | Mode |
+| --- | --- |
+| `WARP.md`, else `AGENTS.md`, at the root | always (all caps only; `WARP.md` wins in the same folder) |
+| The same files in a subdirectory | on-demand: best effort when Warp edits files there |
+| `.agents`, `.warp`, `.claude`, `.codex`, `.cursor`, `.gemini`, `.copilot`, `.factory`, `.github`, `.opencode` + `/skills/*/SKILL.md` | name and description always; body when the skill is used; skill folders in a subdirectory only when working there |
+
+Warp does not read `CLAUDE.md`, `.cursorrules` or similar files by name; `/init` can link them to `AGENTS.md`. Global Rules live in Warp Drive and are not counted. With `--include-user`, `~/.agents/AGENTS.md` (Warp Agent CLI) and the same skill folders in the home directory are counted.
+
+## Factory Droid
+
+Sources: [AGENTS.md](https://docs.factory.com/harness/agents-md), [skills](https://docs.factory.com/harness/skills), [custom droids](https://docs.factory.com/harness/subagents), [custom commands](https://docs.factory.com/harness/custom-slash-commands), [output styles](https://docs.factory.com/droid-cli/output-styles)
+
+| File | Mode |
+| --- | --- |
+| `AGENTS.md`, `agents.md`, `Agents.md`, `CLAUDE.md`, `Claude.md` at the root or in `.factory/`, `.agents/`, `.agent/` | always; every file found is assumed to be read |
+| The same files in a subdirectory | on-demand, when Droid reads files there |
+| `DESIGN.md`, `Design.md`, `design.md` at the root | always (where Droid looks for them is not documented, so only the root copy is counted) |
+| `.factory/skills/**/SKILL.md`, `.agents/skills/**/SKILL.md`, `.agent/skills/**/SKILL.md` | name and description always; body when the skill is invoked; `disable-model-invocation: true` is assumed to keep the description out; `.factory/skills` in a subdirectory only when working there |
+| `.factory/droids/*.md` | description always (assumed, for the Task tool); body is the droid's own prompt |
+| `.factory/commands/**/*.md`, `.factory/output-styles/*.md` | manual |
+
+Factory caps the AGENTS-style files loaded at startup at 80,000 characters together (40,000 for files found later); `turntax` flags single files over 80,000 characters. Skills turned off with `enabled: false` or `disabledSkills` are still counted. `.claude/skills`, `.claude/agents` and `.claude/commands` are only imported on request, not read in place. With `--include-user`, the same files in `~/.factory/`, `~/.agents/` and `~/.agent/` are counted (the file names there are assumed).
+
+## TRAE
+
+Sources: [rules](https://docs.trae.ai/ide/rules?_lang=en), [skills](https://docs.trae.ai/ide/skills?_lang=en), [slash commands](https://docs.trae.ai/ide/slash-commands?_lang=en), [subagents](https://docs.trae.ai/ide/subagents?_lang=en)
+
+| File | Mode |
+| --- | --- |
+| `.trae/rules/**/*.md`, up to three folder levels deep | `alwaysApply: true` always; `alwaysApply: false` with `globs` on-demand; with only a `description`: description always, body on-demand; with neither: manual (`#Rule`); no `alwaysApply`: manual (the default is not documented) |
+| `.trae/rules/` files four or more folder levels deep | ignored and flagged |
+| `.trae/rules/` in a subdirectory | on-demand, when files there are read or mentioned |
+| `.trae/skills/*/SKILL.md` | name and description always; body when the agent loads the skill |
+| `AGENTS.md`, `.agents/skills/*/SKILL.md`, `.trae/agents/*.md` | manual: read only with their switches in Settings on, and the defaults are not documented |
+| `.trae/commands/**/*.md` | manual |
+
+The root `CLAUDE.md` and `CLAUDE.local.md` are read only with "Include CLAUDE.md in context" switched on; that default is not documented either, so they are not counted. Global rules in `~/.trae/user_rules` have no documented file format and are not counted; with `--include-user`, `~/.trae/skills/` is.
+
+## Augment Code
+
+Sources: [rules and guidelines](https://docs.augmentcode.com/setup-augment/guidelines), [CLI rules](https://docs.augmentcode.com/cli/rules), [CLI skills](https://docs.augmentcode.com/cli/skills), [IDE skills](https://docs.augmentcode.com/using-augment/skills), [custom commands](https://docs.augmentcode.com/cli/custom-commands), [subagents](https://docs.augmentcode.com/cli/subagents)
+
+| File | Mode |
+| --- | --- |
+| `AGENTS.md` and `CLAUDE.md` at the root | always (both are read) |
+| `AGENTS.md` and `CLAUDE.md` in a subdirectory | on-demand, when Augment works on a file there |
+| `.augment-guidelines` | always |
+| `.augment/rules/**/*.md` at the root | `type: always_apply` or no type: always; `agent_requested`: description always, body on-demand (flagged without a description); `manual`: manual (the CLI skips it); an unknown type is counted as always and flagged |
+| `.augment/rules/` in a subdirectory | ignored and flagged (only the workspace root is read) |
+| `.augment/skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md` | name and description always; body when the skill is activated |
+| `.augment/agents/*.md` | description always (assumed); body is the subagent's own prompt |
+| `.augment/commands/`, `.claude/commands/`, `.agents/commands/`, `.cursor/commands/` | manual |
+
+Workspace guidelines and rules are limited to 49,512 characters together; `turntax` flags single files over the limit. VS Code skills are a beta with modes whose default is not documented, so the CLI behaviour is counted. With `--include-user`, `~/.augment/rules/` and `~/.augment/user-guidelines.md` count as always (user rules ignore their frontmatter), plus the user skill and subagent folders.
+
+## Kilo Code
+
+Sources: [custom instructions](https://kilo.ai/docs/customize/custom-instructions), [AGENTS.md](https://kilo.ai/docs/customize/agents-md), [custom rules](https://kilo.ai/docs/customize/custom-rules), [skills](https://kilo.ai/docs/customize/skills), [workflows](https://kilo.ai/docs/customize/workflows), [subagents](https://kilo.ai/docs/customize/custom-subagents), [migrating](https://kilo.ai/docs/getting-started/migrating), [Cloud Agents](https://kilo.ai/docs/code-with-ai/platforms/cloud-agent), [rules migration (GitHub)](https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md)
+
+| File | Mode |
+| --- | --- |
+| The first of `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CONTEXT.md` at the root (order after `AGENT.md` assumed from the source) | always; the others are ignored |
+| `AGENTS.md` in a subdirectory | on-demand, when the Read tool opens a file there |
+| `.kilo/rules/*.md`, `.kilocode/rules/*.md`, `.kilocoderules` | always |
+| `.kilo/rules-{mode}/*.md`, `.kilocode/rules-{mode}/*.md`, `.kilocoderules-{mode}` | on-demand: only in that mode |
+| `.kilo/skills/`, `.kilocode/skills/`, `.agents/skills/`, `.claude/skills/` + `*/SKILL.md` | name and description always; body when the agent uses the skill |
+| `.kilo/agents/*.md`, `.kilo/agent/*.md`, `.kilocode/agents/*.md` | description always (assumed, for the Task tool); body is the agent's own prompt |
+| `.kilo/commands/**/*.md` | manual |
+
+Kilo's docs disagree in places, and `turntax` follows the user-facing pages: the custom rules page adds `.kilo/rules` files through `instructions` in `kilo.jsonc`, while the migration guide and the source read `.kilo/rules` and `.kilocode/rules` automatically; the user docs load mode rules only in their mode, while the GitHub migration doc loads them in every mode. Files under `instructions` in `kilo.json(c)` and nested `CLAUDE.md` or `CONTEXT.md` files are not counted. In VS Code, `.claude/skills` are read only with Claude Code Compatibility on. With `--include-user`, `~/.config/kilo/AGENTS.md`, `~/.kilo/rules/`, `~/.kilocode/rules/`, the user skill folders and `~/.config/kilo/agents/` are counted; the `~/.claude/CLAUDE.md` fallback is not.
+
+## Google Jules
+
+Sources: [getting started](https://jules.google/docs/), [environment](https://jules.google/docs/environment/), [changelog](https://jules.google/docs/changelog/)
+
+| File | Mode |
+| --- | --- |
+| `AGENTS.md` at the root | always (assumed for every task) |
+
+Jules runs each task in a cloud VM. Setup scripts, MCP connections and memories are configured in the Jules web app and are not counted. When subdirectory `AGENTS.md` files load is not documented, so they are not counted.
+
+## Devin Local / Devin CLI
+
+Sources: [rules](https://docs.devin.ai/cli/extensibility/rules), [configuration import](https://docs.devin.ai/cli/reference/configuration/read-config-from), [skills](https://docs.devin.ai/cli/extensibility/skills/overview), [Devin Local](https://docs.devin.ai/desktop/devin-local)
+
+New Devin Desktop (Windsurf) conversations start on Devin Local, which follows the Devin CLI rules below; the Windsurf entry above covers the legacy Cascade agent.
+
+| File | Mode |
+| --- | --- |
+| `AGENTS.md`, `AGENTS.local.md`, `AGENT.md`, `.windsurfrules`, `CLAUDE.md` at the root | always (all are read) |
+| The same files in a subdirectory | on-demand, when Devin accesses files there |
+| `.devin/rules/*.md`, `.windsurf/rules/*.md` | `trigger: always_on` always; `model_decision` or `agent` (assumed alike): description always, body on-demand; `glob` on-demand; `manual` or no trigger: manual (not counted); in a subdirectory only when working there |
+| `.devin/global_rules.md`, else `.windsurf/global_rules.md` | always |
+| `.cursor/rules/*.mdc` and `.cursor/rules/*.md` | the same as Cursor: `alwaysApply: true` always; `globs` on-demand; `description` only: description always, body on-demand; neither: manual |
+| `.devin/skills/*/SKILL.md`, `.windsurf/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `.claude/skills/**/SKILL.md`, `.github/skills/**/SKILL.md`, `.claude/commands/**/*.md` | name and description always; body when the skill is invoked |
+
+Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default (`read_config_from`); turning one off is not modelled. Nested `.cursor/rules`, nested `global_rules.md` and nested skill folders are not counted, and a skill with `triggers: [user]` is still counted as listed. With `--include-user`, `~/.config/devin/` (`%APPDATA%\devin\` on Windows) rule files and skills, `~/.devin/rules/`, `~/.devin/global_rules.md`, `~/.agents/skills/`, `~/.codeium/windsurf/skills/` and `~/.copilot/skills/` are counted; `~/.claude/CLAUDE.md`, which Devin CLI also reads, is not.
+
 ## User-level files
 
 With `--include-user`, files in the home directory are classified by the same rules as their project counterpart, for each agent that reads them. Checked on 2026-10-17.

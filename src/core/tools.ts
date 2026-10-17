@@ -176,6 +176,20 @@ function skillFolders(
 /** Any number of folder levels below `skills/`, for tools that also find skills in category folders. */
 const RECURSIVE = '(?:[^/]+/)+';
 
+/** Cursor's `.cursor/rules` frontmatter; Devin CLI reads those rules with the same activation logic. */
+const cursorRule = (fm: Frontmatter): FrontmatterDecision => {
+  if (fm.alwaysApply === true || str(fm.alwaysApply) === 'true')
+    return { mode: 'always', trigger: 'alwaysApply: true' };
+  if (has(fm, 'globs')) return { mode: 'on-demand', trigger: `globs: ${str(fm.globs)}` };
+  if (has(fm, 'description'))
+    return {
+      mode: 'on-demand',
+      trigger: 'agent decides from description',
+      descriptionOnly: true,
+    };
+  return { mode: 'manual', trigger: '@-mention only' };
+};
+
 export const TOOLS: ToolSpec[] = [
   {
     id: 'claude-code',
@@ -347,14 +361,7 @@ export const TOOLS: ToolSpec[] = [
         kind: 'frontmatter',
         pattern: /^(?:.*\/)?\.cursor\/rules\/.+\.mdc$/,
         rootPrefixes: ['.cursor/rules/'],
-        decide: (fm) => {
-          if (fm.alwaysApply === true || str(fm.alwaysApply) === 'true')
-            return { mode: 'always', trigger: 'alwaysApply: true' };
-          if (has(fm, 'globs')) return { mode: 'on-demand', trigger: `globs: ${str(fm.globs)}` };
-          if (has(fm, 'description'))
-            return { mode: 'on-demand', trigger: 'agent decides from description', descriptionOnly: true };
-          return { mode: 'manual', trigger: '@-mention only' };
-        },
+        decide: cursorRule,
       },
       {
         kind: 'ignored',
@@ -830,6 +837,480 @@ export const TOOLS: ToolSpec[] = [
     notes: [
       'Extra files listed under instructions in opencode.json are not counted.',
       'Which skill folder wins on a name clash is not documented; .opencode, .claude, .agents is assumed. Skills hidden with metadata opencode/autoinvoke are counted like others.',
+    ],
+  },
+  {
+    id: 'warp',
+    name: 'Warp',
+    families: [],
+    sources: [
+      'https://docs.warp.dev/agents/capabilities/rules/',
+      'https://docs.warp.dev/agents/capabilities/skills/',
+      'https://docs.warp.dev/agents/cli/configuration/',
+    ],
+    checkedAt: '2026-10-17',
+    rules: [
+      {
+        kind: 'hierarchical',
+        names: ['WARP.md', 'AGENTS.md'],
+        onePerDirectory: true,
+        nested: 'on-demand',
+        nestedTrigger: 'best effort when Warp edits files in',
+      },
+      ...['agents', 'warp', 'claude', 'codex', 'cursor', 'gemini', 'copilot', 'factory', 'github', 'opencode'].map(
+        (dir): FileRule => ({
+          kind: 'skill',
+          pattern: new RegExp(`^(?:.*\\/)?\\.${dir}\\/skills\\/[^/]+\\/SKILL\\.md$`),
+          rootPrefix: `.${dir}/skills/`,
+          bodyTrigger: 'when the skill is used',
+        }),
+      ),
+    ],
+    limits: [],
+    notes: [
+      'Only all-caps AGENTS.md and WARP.md are read; /init can link CLAUDE.md, .cursorrules and similar files to AGENTS.md, but Warp does not read them by name.',
+      'Global Rules live in Warp Drive and are not counted; the Warp Agent CLI also reads ~/.agents/AGENTS.md, which --include-user counts.',
+    ],
+  },
+  {
+    id: 'factory-droid',
+    name: 'Factory Droid',
+    families: [],
+    sources: [
+      'https://docs.factory.com/harness/agents-md',
+      'https://docs.factory.com/harness/skills',
+      'https://docs.factory.com/harness/subagents',
+      'https://docs.factory.com/harness/custom-slash-commands',
+      'https://docs.factory.com/droid-cli/output-styles',
+    ],
+    checkedAt: '2026-10-17',
+    rules: [
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md', 'agents.md', 'Agents.md', 'CLAUDE.md', 'Claude.md'],
+        sameLevelDirs: ['.factory', '.agents', '.agent'],
+        nested: 'on-demand',
+        nestedTrigger: 'when Droid reads files in',
+        note: 'Every compatible file Droid finds is assumed to be read; the docs list the names but do not say that one wins.',
+      },
+      ...['DESIGN.md', 'Design.md', 'design.md'].map(
+        (path): FileRule => ({
+          kind: 'root-file',
+          path,
+          note: 'Design guidelines; where Droid looks for this file is not documented, so only the root copy is counted.',
+        }),
+      ),
+      {
+        kind: 'skill',
+        pattern: /^(?:.*\/)?\.factory\/skills\/(?:[^/]+\/)+SKILL\.md$/,
+        rootPrefix: '.factory/skills/',
+        hideFlag: 'disable-model-invocation',
+        bodyTrigger: 'when the skill is invoked',
+      },
+      ...['agents', 'agent'].map(
+        (dir): FileRule => ({
+          kind: 'skill',
+          pattern: new RegExp(`^\\.${dir}\\/skills\\/(?:[^/]+\\/)+SKILL\\.md$`),
+          rootPrefix: `.${dir}/skills/`,
+          hideFlag: 'disable-model-invocation',
+          bodyTrigger: 'when the skill is invoked',
+        }),
+      ),
+      {
+        kind: 'skill',
+        pattern: /^\.factory\/droids\/[^/]+\.md$/,
+        rootPrefix: '.factory/droids/',
+        bodyTrigger: "as the droid's own system prompt when it runs",
+      },
+      { kind: 'pattern', pattern: /^\.factory\/commands\/.+\.md$/, mode: 'manual', trigger: 'only as a /command' },
+      {
+        kind: 'pattern',
+        pattern: /^(?:.*\/)?\.factory\/output-styles\/[^/]+\.md$/,
+        mode: 'manual',
+        trigger: 'only when picked as the output style',
+      },
+    ],
+    limits: [
+      {
+        pattern: /(^|\/)(AGENTS|agents|Agents|CLAUDE|Claude)\.md$/,
+        unit: 'chars',
+        max: 80000,
+        severity: 'limit',
+        text: 'Factory caps the initial AGENTS-style guideline load at 80,000 characters (40,000 for files Droid finds later while reading).',
+        source: 'https://docs.factory.com/harness/agents-md',
+      },
+    ],
+    notes: [
+      'The 80,000-character cap covers all guideline files loaded at startup together, and what happens past it is not documented; turntax checks each file on its own.',
+      'A skill with disable-model-invocation: true is assumed to keep its description out of context (not documented); skills turned off with enabled: false or disabledSkills are still counted.',
+      'Droid descriptions are assumed to be listed for the Task tool (inferred).',
+      '.claude/skills, .claude/agents and .claude/commands are only imported (copied) on request, not read in place.',
+      'Personal files in ~/.factory/, ~/.agents/ and ~/.agent/ are outside the repository; --include-user counts them, assuming the same file names.',
+    ],
+  },
+  {
+    id: 'trae',
+    name: 'TRAE',
+    families: [],
+    sources: [
+      'https://docs.trae.ai/ide/rules?_lang=en',
+      'https://docs.trae.ai/ide/skills?_lang=en',
+      'https://docs.trae.ai/ide/slash-commands?_lang=en',
+      'https://docs.trae.ai/ide/subagents?_lang=en',
+    ],
+    checkedAt: '2026-10-17',
+    rules: [
+      {
+        kind: 'frontmatter',
+        pattern: /^(?:.*\/)?\.trae\/rules\/(?:[^/]+\/){0,3}[^/]+\.md$/,
+        rootPrefixes: ['.trae/rules/'],
+        decide: (fm) => {
+          if (fm.alwaysApply === true || str(fm.alwaysApply) === 'true')
+            return { mode: 'always', trigger: 'alwaysApply: true' };
+          if (fm.alwaysApply === false || str(fm.alwaysApply) === 'false') {
+            if (has(fm, 'globs')) return { mode: 'on-demand', trigger: `globs: ${str(fm.globs)}` };
+            if (has(fm, 'description'))
+              return {
+                mode: 'on-demand',
+                trigger: 'agent decides from description',
+                descriptionOnly: true,
+                note: 'Description assumed to be in context so the agent can decide (inferred, not documented).',
+              };
+            return { mode: 'manual', trigger: 'alwaysApply: false (#Rule only)' };
+          }
+          return {
+            mode: 'manual',
+            trigger: 'no alwaysApply set',
+            note: 'TRAE docs do not say how a rule without alwaysApply loads; not counted.',
+          };
+        },
+      },
+      {
+        kind: 'ignored',
+        pattern: /^(?:.*\/)?\.trae\/rules\/(?:[^/]+\/){4,}[^/]+\.md$/,
+        reason: 'TRAE reads .trae/rules only three folder levels deep; move this rule up a level.',
+      },
+      {
+        kind: 'skill',
+        pattern: /^\.trae\/skills\/[^/]+\/SKILL\.md$/,
+        rootPrefix: '.trae/skills/',
+        bodyTrigger: 'when the agent loads the skill',
+      },
+      {
+        kind: 'pattern',
+        pattern: /^\.agents\/skills\/[^/]+\/SKILL\.md$/,
+        mode: 'manual',
+        trigger: 'only with "Enable .agents Skills Directory" switched on',
+      },
+      {
+        kind: 'pattern',
+        pattern: /^\.trae\/commands\/(?:[^/]+\/){0,3}[^/]+\.md$/,
+        mode: 'manual',
+        trigger: 'only as a /command',
+      },
+      {
+        kind: 'pattern',
+        pattern: /^\.trae\/agents\/[^/]+\.md$/,
+        mode: 'manual',
+        trigger: 'only with "Enable Subagents Directory" (Settings > Beta) switched on',
+      },
+    ],
+    limits: [],
+    notes: [
+      '.agents/skills and .trae/agents are read only when their switches in Settings are on; the defaults are not documented, so they are listed as manual and not counted.',
+      'AGENTS.md (root, and nested when files there are read or mentioned) and root CLAUDE.md / CLAUDE.local.md are read only with the "Include AGENTS.md in the context" and "Include CLAUDE.md in context" switches on; the defaults are not documented, so they are not counted.',
+      'Global rules (~/.trae/user_rules) have no documented file format and are not counted.',
+    ],
+  },
+  {
+    id: 'augment',
+    name: 'Augment Code',
+    families: [],
+    sources: [
+      'https://docs.augmentcode.com/setup-augment/guidelines',
+      'https://docs.augmentcode.com/cli/rules',
+      'https://docs.augmentcode.com/cli/skills',
+      'https://docs.augmentcode.com/using-augment/skills',
+      'https://docs.augmentcode.com/cli/custom-commands',
+      'https://docs.augmentcode.com/cli/subagents',
+    ],
+    checkedAt: '2026-10-17',
+    rules: [
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md', 'CLAUDE.md'],
+        nested: 'on-demand',
+        nestedTrigger: 'when Augment works on a file in',
+      },
+      { kind: 'root-file', path: '.augment-guidelines' },
+      {
+        kind: 'frontmatter',
+        pattern: /^\.augment\/rules\/.+\.md$/,
+        rootPrefixes: ['.augment/rules/'],
+        decide: (fm) => {
+          const type = str(fm.type).trim();
+          switch (type) {
+            case '':
+            case 'always_apply':
+              return { mode: 'always', trigger: 'type: always_apply' };
+            case 'agent_requested':
+              if (!has(fm, 'description'))
+                return {
+                  mode: 'on-demand',
+                  trigger: 'type: agent_requested without a description',
+                  problem: 'agent_requested rule has no description; Augment needs one to decide when to attach it.',
+                };
+              return {
+                mode: 'on-demand',
+                trigger: 'type: agent_requested',
+                descriptionOnly: true,
+                note: 'Description assumed to be in context so the agent can decide (inferred, not documented).',
+              };
+            case 'manual':
+              return { mode: 'manual', trigger: 'type: manual (@-mention in the IDE; the CLI skips it)' };
+            default:
+              return {
+                mode: 'always',
+                trigger: `type: ${type} (unknown, treated as always_apply)`,
+                note: 'An unknown type is assumed to load like always_apply (not documented).',
+                problem: `Unknown rule type "${type}"; use always_apply, agent_requested or manual.`,
+              };
+          }
+        },
+      },
+      {
+        kind: 'ignored',
+        pattern: /^.+\/\.augment\/rules\/.+\.md$/,
+        reason: 'Augment reads .augment/rules only at the workspace root; move the rule there or use an AGENTS.md in this folder.',
+      },
+      ...['augment', 'claude', 'agents'].map(
+        (dir): FileRule => ({
+          kind: 'skill',
+          pattern: new RegExp(`^\\.${dir}\\/skills\\/[^/]+\\/SKILL\\.md$`),
+          rootPrefix: `.${dir}/skills/`,
+          bodyTrigger: 'when the skill is activated',
+        }),
+      ),
+      {
+        kind: 'skill',
+        pattern: /^\.augment\/agents\/[^/]+\.md$/,
+        rootPrefix: '.augment/agents/',
+        bodyTrigger: "as the subagent's own prompt when it runs",
+      },
+      {
+        kind: 'pattern',
+        pattern: /^\.(?:augment|claude|agents|cursor)\/commands\/.+\.md$/,
+        mode: 'manual',
+        trigger: 'only as a /command',
+      },
+    ],
+    limits: [
+      {
+        pattern: /^(\.augment-guidelines|\.augment\/rules\/.+\.md)$/,
+        unit: 'chars',
+        max: 49512,
+        severity: 'limit',
+        text: 'Augment limits workspace guidelines and rules to 49,512 characters combined.',
+        source: 'https://docs.augmentcode.com/setup-augment/guidelines',
+      },
+      {
+        pattern: /(^|\/)\.augment\/user-guidelines\.md$/,
+        unit: 'chars',
+        max: 24576,
+        severity: 'limit',
+        text: 'Augment limits User Guidelines to 24,576 characters.',
+        source: 'https://docs.augmentcode.com/setup-augment/guidelines',
+      },
+    ],
+    notes: [
+      'The 49,512-character limit covers .augment-guidelines and all workspace rules together; turntax checks each file on its own, so it can miss a combined overflow.',
+      'Subagent descriptions are assumed to be listed for the agent (inferred).',
+      'In VS Code, skills are a beta with Auto, Manual and Disabled modes whose default is not documented; the CLI behaviour (description listed, body on activation) is counted.',
+      'User rules (~/.augment/rules/) and ~/.augment/user-guidelines.md are always loaded; --include-user counts them.',
+    ],
+  },
+  {
+    id: 'kilo-code',
+    name: 'Kilo Code',
+    families: [],
+    sources: [
+      'https://kilo.ai/docs/customize/custom-instructions',
+      'https://kilo.ai/docs/customize/agents-md',
+      'https://kilo.ai/docs/customize/custom-rules',
+      'https://kilo.ai/docs/customize/skills',
+      'https://kilo.ai/docs/customize/workflows',
+      'https://kilo.ai/docs/customize/custom-subagents',
+      'https://kilo.ai/docs/getting-started/migrating',
+      'https://kilo.ai/docs/code-with-ai/platforms/cloud-agent',
+      'https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md',
+    ],
+    checkedAt: '2026-10-17',
+    rules: [
+      {
+        kind: 'precedence',
+        groups: ['AGENTS.md', 'AGENT.md', 'CLAUDE.md', 'CONTEXT.md'].map((path) => ({
+          label: path,
+          patterns: [new RegExp(`^${path.replace(/\./g, '\\.')}$`)],
+        })),
+        note: 'Kilo reads the first of these root files it finds; AGENT.md is documented as an AGENTS.md fallback, and the order of CLAUDE.md and CONTEXT.md is assumed from the source.',
+      },
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md'],
+        nested: 'on-demand',
+        nestedTrigger: 'when the Read tool opens a file in',
+      },
+      { kind: 'root-file', path: '.kilocoderules', note: 'Legacy file, still loaded through auto-migration.' },
+      { kind: 'pattern', pattern: /^\.(?:kilo|kilocode)\/rules\/[^/]+\.md$/, mode: 'always', trigger: 'rules folder (all modes)' },
+      {
+        kind: 'pattern',
+        pattern: /^\.(?:kilo|kilocode)\/rules-[\w-]+\/[^/]+\.md$/,
+        mode: 'on-demand',
+        trigger: 'only in that Kilo mode',
+        note: "Kilo's user docs say mode rules load only in their mode; its GitHub migration doc says they load in every mode.",
+      },
+      {
+        kind: 'pattern',
+        pattern: /^\.kilocoderules-[\w-]+$/,
+        mode: 'on-demand',
+        trigger: 'only in that Kilo mode (legacy)',
+        note: "Kilo's user docs say mode rules load only in their mode; its GitHub migration doc says they load in every mode.",
+      },
+      ...['kilo', 'kilocode', 'agents', 'claude'].map(
+        (dir): FileRule => ({
+          kind: 'skill',
+          pattern: new RegExp(`^\\.${dir}\\/skills\\/[^/]+\\/SKILL\\.md$`),
+          rootPrefix: `.${dir}/skills/`,
+          bodyTrigger: 'when the agent uses the skill',
+        }),
+      ),
+      ...['kilo/agents', 'kilo/agent', 'kilocode/agents'].map(
+        (dir): FileRule => ({
+          kind: 'skill',
+          pattern: new RegExp(`^\\.${dir.replace('/', '\\/')}\\/[^/]+\\.md$`),
+          rootPrefix: `.${dir}/`,
+          bodyTrigger: "as the agent's own prompt when it runs",
+        }),
+      ),
+      { kind: 'pattern', pattern: /^\.kilo\/commands\/.+\.md$/, mode: 'manual', trigger: 'only as a /command' },
+    ],
+    limits: [],
+    notes: [
+      'The custom rules page says .kilo/rules files are added through instructions in kilo.jsonc; the migration guide and the source read .kilo/rules and .kilocode/rules automatically, which is what is counted. When both folders hold a file with the same name, only the .kilo copy is read (not modelled).',
+      'Files listed under instructions in kilo.json or kilo.jsonc are not counted.',
+      'Nested CLAUDE.md and CONTEXT.md files are not documented and not counted.',
+      'In VS Code, .claude/skills are read only with Claude Code Compatibility on; the CLI reads them by default and they are counted. The legacy .kilocode/skills folder is documented on the Cloud Agents page.',
+      'Custom agent descriptions are assumed to be listed for the Task tool (inferred).',
+      'Kilo also reads ~/.claude/CLAUDE.md as a global fallback until Claude Code migration runs; turntax does not count it for Kilo.',
+    ],
+  },
+  {
+    id: 'jules',
+    name: 'Google Jules',
+    families: ['gemini'],
+    sources: ['https://jules.google/docs/', 'https://jules.google/docs/environment/', 'https://jules.google/docs/changelog/'],
+    checkedAt: '2026-10-17',
+    rules: [
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md'],
+        nested: 'skip',
+        nestedTrigger: '',
+        note: 'Jules looks for AGENTS.md at the repository root; reading it for every task is assumed.',
+      },
+    ],
+    limits: [],
+    notes: [
+      'Jules runs each task in a cloud VM; setup scripts, MCP connections and memories are configured in the Jules web app and are not counted.',
+      'When subdirectory AGENTS.md files load is not documented, so they are not counted.',
+    ],
+  },
+  {
+    id: 'devin',
+    name: 'Devin Local / Devin CLI',
+    families: [],
+    sources: [
+      'https://docs.devin.ai/cli/extensibility/rules',
+      'https://docs.devin.ai/cli/reference/configuration/read-config-from',
+      'https://docs.devin.ai/cli/extensibility/skills/overview',
+      'https://docs.devin.ai/desktop/devin-local',
+    ],
+    checkedAt: '2026-10-17',
+    rules: [
+      {
+        kind: 'hierarchical',
+        names: ['AGENTS.md', 'AGENTS.local.md', 'AGENT.md', '.windsurfrules', 'CLAUDE.md'],
+        nested: 'on-demand',
+        nestedTrigger: 'when Devin accesses files in',
+      },
+      {
+        kind: 'frontmatter',
+        pattern: /^(?:.*\/)?\.(?:devin|windsurf)\/rules\/[^/]+\.md$/,
+        rootPrefixes: ['.devin/rules/', '.windsurf/rules/'],
+        decide: (fm) => {
+          switch (str(fm.trigger).trim()) {
+            case 'always_on':
+              return { mode: 'always', trigger: 'trigger: always_on' };
+            case 'model_decision':
+              return { mode: 'on-demand', trigger: 'trigger: model_decision', descriptionOnly: true };
+            case 'agent':
+              return {
+                mode: 'on-demand',
+                trigger: 'trigger: agent',
+                descriptionOnly: true,
+                note: 'trigger: agent is assumed to be agent-decided from the description, like model_decision (not documented).',
+              };
+            case 'glob':
+              return { mode: 'on-demand', trigger: `trigger: glob ${str(fm.globs)}`.trim() };
+            case 'manual':
+              return { mode: 'manual', trigger: 'trigger: manual' };
+            default:
+              return {
+                mode: 'manual',
+                trigger: 'no trigger set',
+                note: 'Docs do not state the default when trigger is missing; not counted.',
+              };
+          }
+        },
+      },
+      {
+        kind: 'precedence',
+        groups: [
+          { label: '.devin/global_rules.md', patterns: [/^\.devin\/global_rules\.md$/] },
+          { label: '.windsurf/global_rules.md', patterns: [/^\.windsurf\/global_rules\.md$/] },
+        ],
+      },
+      { kind: 'frontmatter', pattern: /^\.cursor\/rules\/[^/]+\.mdc?$/, rootPrefixes: ['.cursor/rules/'], decide: cursorRule },
+      ...['devin', 'windsurf', 'agents'].map(
+        (dir): FileRule => ({
+          kind: 'skill',
+          pattern: new RegExp(`^\\.${dir}\\/skills\\/[^/]+\\/SKILL\\.md$`),
+          rootPrefix: `.${dir}/skills/`,
+          bodyTrigger: 'when the skill is invoked',
+        }),
+      ),
+      ...['claude', 'github'].map(
+        (dir): FileRule => ({
+          kind: 'skill',
+          pattern: new RegExp(`^\\.${dir}\\/skills\\/(?:[^/]+\\/)+SKILL\\.md$`),
+          rootPrefix: `.${dir}/skills/`,
+          bodyTrigger: 'when the skill is invoked',
+        }),
+      ),
+      {
+        kind: 'skill',
+        pattern: /^\.claude\/commands\/.+\.md$/,
+        rootPrefix: '.claude/commands/',
+        bodyTrigger: 'when the command is invoked',
+      },
+    ],
+    limits: [],
+    notes: [
+      'New Devin Desktop (Windsurf) conversations start on Devin Local, which follows these Devin CLI rules; the Windsurf (Devin Desktop) entry covers the legacy Cascade agent.',
+      'Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default; turning one off with read_config_from is not modelled.',
+      'Nested .devin/rules folders are assumed to load like nested .windsurf/rules (documented for .windsurf only); nested .cursor/rules, global_rules.md and skill folders are not counted.',
+      'A skill with triggers: [user] is still counted as listed for the agent.',
+      'Global rules (~/.config/devin/AGENTS.md, ~/.devin/rules/) are outside the repository; --include-user counts them. Devin CLI also reads ~/.claude/CLAUDE.md, which turntax does not count for it.',
     ],
   },
 ];
