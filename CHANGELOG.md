@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 (2026-10-17)
+
+- Seven more agents, 23 in all: Warp, Factory Droid, TRAE, Augment Code, Kilo Code, Google Jules and Devin Local / Devin CLI, each from its official docs with sources, notes and documented limits. TRAE files behind settings switches with undocumented defaults are noted and not counted.
+- The 16 existing agents were checked against their docs again (2026-10-17):
+  - Skill folders are now read for Gemini CLI, Cursor, GitHub Copilot, Windsurf, Cline, Roo Code, Kiro, JetBrains Junie, Zed, Goose, Amp and OpenCode. A skill name an agent finds in two folders is counted once, in the agent's documented order (or an assumed order, noted per agent).
+  - GitHub Copilot follows the defaults of VS Code's Local harness: `CLAUDE.md` and `.claude/rules` are read together with `AGENTS.md`; nested files are not read. CLI and cloud-agent differences are in the notes.
+  - Kiro reads nested `AGENTS.md` files every turn; Claude Code subagents are found recursively and nested `.claude/agents` folders are not read; Windsurf's global rules are limited to 6,000 characters; Goose `@` includes are followed; moved documentation links are updated.
+- MCP:
+  - Claude Code: server instructions are counted every turn (cut at 4,096 characters), tools marked `alwaysLoad` count in full, and WebSocket servers are listed. Server instructions also count for Gemini CLI, Codex and Kilo Code.
+  - New configs for Copilot (`.mcp.json`, `.github/mcp.json`, `~/.copilot/mcp-config.json`), Devin, Augment, Factory, Kilo and Warp; tool filters in the configs are applied; a server name found in several configs of one agent is counted once.
+- Totals for the same repository can be higher than in 0.6: skills, Copilot's `CLAUDE.md`, Kiro's nested files and MCP instructions are now counted, and the new agents (Devin, Augment Code and Factory Droid read `AGENTS.md` and `CLAUDE.md` together) can raise the largest per-turn total. That total drives the badge and `--max-tokens`, so an existing CI budget may need a look.
+
 ## 0.6.1 (2026-10-16)
 
 - turntax is listed in the official MCP Registry as `io.github.TorutDev/turntax` (`server.json`, `mcpName` in package.json). No change to the CLI.

@@ -29,6 +29,7 @@ const NAMES = new Set([
   'CLAUDE.md',
   'CLAUDE.local.md',
   'AGENTS.md',
+  'agents.md',
   'AGENTS.override.md',
   'GEMINI.md',
   '.cursorrules',
@@ -40,15 +41,19 @@ const NAMES = new Set([
   'CONVENTIONS.md',
   '.goosehints',
   '.aider.conf.yml',
+  'WARP.md',
+  'AGENTS.local.md',
+  'Agents.md',
+  'Claude.md',
 ]);
 
 const PATTERNS = [
   /^\.github\/copilot-instructions\.md$/,
   /^\.github\/instructions\/.+\.instructions\.md$/,
-  /(^|\/)\.claude\/(rules|commands)\/.+\.md$/,
-  /(^|\/)\.claude\/skills\/[^/]+\/SKILL\.md$/,
-  /(^|\/)\.claude\/agents\/[^/]+\.md$/,
-  /(^|\/)\.agents\/skills\/[^/]+\/SKILL\.md$/,
+  /(^|\/)\.claude\/(rules|commands|agents)\/.+\.md$/,
+  // Skill folders of every agent; some agents also read skills in category subfolders.
+  /(^|\/)\.(agents?|claude|cursor|codex|github|gemini|devin|windsurf|cline|clinerules|roo|kiro|junie|goose|opencode|warp|copilot|factory|trae|augment|kilo|kilocode)\/skills\/(?:[^/]+\/)+SKILL\.md$/,
+  /(^|\/)\.(roo|agents)\/skills-[\w-]+\/[^/]+\/SKILL\.md$/,
   /(^|\/)\.cursor\/rules\/.+\.mdc?$/,
   /(^|\/)\.(devin|windsurf)\/rules\/.+\.md$/,
   /^\.(clinerules|cline\/rules)\/.+\.md$/,
@@ -58,6 +63,20 @@ const PATTERNS = [
   /^\.junie\/(AGENTS|playbook|guidelines)\.md$/,
   /^\.junie\/(rules|guidelines)\/[^/]+\.md$/,
   /^\.continue\/rules\/[^/]+\.md$/,
+  /^(CONTEXT|DESIGN|Design|design)\.md$/,
+  /^\.augment-guidelines$/,
+  /^\.kilocoderules(-[\w-]+)?$/,
+  /^\.(devin|windsurf)\/global_rules\.md$/,
+  /^\.factory\/(droids\/[^/]+|commands\/.+)\.md$/,
+  /(^|\/)\.factory\/output-styles\/[^/]+\.md$/,
+  /(^|\/)\.trae\/rules\/.+\.md$/,
+  /^\.trae\/(commands\/.+|agents\/[^/]+)\.md$/,
+  /(^|\/)\.augment\/rules\/.+\.md$/,
+  /^\.augment\/agents\/[^/]+\.md$/,
+  /^\.(augment|agents|cursor)\/commands\/.+\.md$/,
+  /^\.(kilo|kilocode)\/rules(-[\w-]+)?\/[^/]+\.md$/,
+  /^\.(kilo\/agents?|kilocode\/agents)\/[^/]+\.md$/,
+  /^\.kilo\/commands\/.+\.md$/,
 ];
 
 export const MAX_DEPTH = 12;

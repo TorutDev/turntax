@@ -72,7 +72,11 @@ describe('diff', () => {
     const report = JSON.parse(io.out());
     expect(report.diff.base).toBe('HEAD');
     expect(report.diff.tools.find((t: { tool: string }) => t.tool === 'codex').delta).toBeGreaterThan(0);
-    expect(report.diff.mcp).toEqual({ added: ['new (claude-code)'], removed: ['old (claude-code)'] });
+    // Every agent that reads .mcp.json (Claude Code, Copilot CLI, ...) lists the change.
+    expect(report.diff.mcp.added).toEqual(expect.arrayContaining(['new (claude-code)', 'new (copilot)']));
+    expect(report.diff.mcp.removed).toEqual(expect.arrayContaining(['old (claude-code)', 'old (copilot)']));
+    expect(report.diff.mcp.added.every((s: string) => s.startsWith('new ('))).toBe(true);
+    expect(report.diff.mcp.removed.every((s: string) => s.startsWith('old ('))).toBe(true);
     capture();
     expect(await main([dir, '--compare', 'no-such-ref'], {})).toBe(2);
   });

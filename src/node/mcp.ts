@@ -3,8 +3,9 @@ import { isAbsolute, resolve } from 'node:path';
 import type { McpServer, McpToolDef } from '../core/mcp.js';
 
 /**
- * Starts MCP servers and asks them for their tool definitions (initialize + tools/list).
- * Runs only with --mcp: stdio servers execute the command from the config file.
+ * Starts MCP servers and asks them for their instructions and tool definitions (initialize + tools/list).
+ * Runs only with --mcp: stdio servers execute the command from the config file. Streamable HTTP is spoken;
+ * legacy SSE and WebSocket servers are listed but not measured.
  */
 
 const PROTOCOL_VERSION = '2025-06-18';
@@ -12,20 +13,29 @@ const CLIENT_INFO = { name: 'turntax', version: '0' };
 
 export interface MeasureResult {
   tools?: McpToolDef[];
+  /** The `instructions` the server returned from initialize. */
+  instructions?: string;
   error?: string;
 }
 
-/** Expands `${VAR}`, `${VAR:-default}` and `${env:VAR}`; returns null when a VS Code `${input:...}` is needed. */
-export function expandVars(value: string, env: NodeJS.ProcessEnv): string | null {
+/**
+ * Expands `${VAR}`, `${VAR:-default}`, `${env:VAR}`, OpenCode/Kilo `{env:VAR}` and `${workspaceFolder}` (the repository
+ * folder, as Cursor, VS Code and Augment define it); returns null when a VS Code `${input:...}` is needed.
+ */
+export function expandVars(value: string, env: NodeJS.ProcessEnv, root = ''): string | null {
   if (/\$\{input:[^}]+\}/.test(value)) return null;
-  return value.replace(/\$\{(?:env:)?([A-Za-z_][\w]*)(?::-([^}]*))?\}/g, (_, name: string, fallback?: string) => env[name] ?? fallback ?? '');
+  return value
+    .replace(/\$\{(env:)?([A-Za-z_][\w]*)(?::-([^}]*))?\}/g, (_, prefix: string | undefined, name: string, fallback?: string) =>
+      !prefix && name === 'workspaceFolder' ? root : (env[name] ?? fallback ?? ''),
+    )
+    .replace(/\{env:([A-Za-z_][\w]*)\}/g, (_, name: string) => env[name] ?? '');
 }
 
-function expandAll(server: McpServer, env: NodeJS.ProcessEnv): McpServer | string {
-  const one = (v: string | undefined) => (v === undefined ? undefined : expandVars(v, env));
-  const many = (vs: string[] | undefined) => vs?.map((v) => expandVars(v, env));
+function expandAll(server: McpServer, env: NodeJS.ProcessEnv, root: string): McpServer | string {
+  const one = (v: string | undefined) => (v === undefined ? undefined : expandVars(v, env, root));
+  const many = (vs: string[] | undefined) => vs?.map((v) => expandVars(v, env, root));
   const map = (m: Record<string, string> | undefined) =>
-    m ? Object.fromEntries(Object.entries(m).map(([k, v]) => [k, expandVars(v, env)])) : undefined;
+    m ? Object.fromEntries(Object.entries(m).map(([k, v]) => [k, expandVars(v, env, root)])) : undefined;
   const out = { ...server, command: one(server.command), args: many(server.args), env: map(server.env), url: one(server.url), headers: map(server.headers) };
   const values = [out.command, ...(out.args ?? []), ...Object.values(out.env ?? {}), out.url, ...Object.values(out.headers ?? {})];
   if (values.some((v) => v === null)) return 'needs a value VS Code prompts for (${input:...}); not measured';
@@ -36,34 +46,42 @@ export async function measureServer(
   server: McpServer,
   opts: { root: string; timeoutMs: number; env?: NodeJS.ProcessEnv; fetchFn?: typeof fetch },
 ): Promise<MeasureResult> {
-  const expanded = expandAll(server, opts.env ?? process.env);
+  if (server.transport === 'sse') return { error: 'legacy SSE transport is not supported; not measured' };
+  if (server.transport === 'ws') return { error: 'WebSocket transport is not supported; not measured' };
+  const expanded = expandAll(server, opts.env ?? process.env, opts.root);
   if (typeof expanded === 'string') return { error: expanded };
   try {
-    if (expanded.transport === 'stdio') return { tools: await viaStdio(expanded, opts.root, opts.timeoutMs, opts.env ?? process.env) };
-    if (expanded.transport === 'http') return { tools: await viaHttp(expanded, opts.timeoutMs, opts.fetchFn ?? fetch) };
-    return { error: 'legacy SSE transport is not supported; not measured' };
+    if (expanded.transport === 'stdio') return await viaStdio(expanded, opts.root, opts.timeoutMs, opts.env ?? process.env);
+    return await viaHttp(expanded, opts.timeoutMs, opts.fetchFn ?? fetch);
   } catch (e) {
     return { error: (e as Error).message };
   }
 }
 
 type Rpc = (method: string, params?: unknown) => Promise<any>;
+type Listed = { tools: McpToolDef[]; instructions?: string };
 
-async function listTools(rpc: Rpc, notify: (method: string) => Promise<void>): Promise<McpToolDef[]> {
-  await rpc('initialize', { protocolVersion: PROTOCOL_VERSION, capabilities: {}, clientInfo: CLIENT_INFO });
+async function listTools(rpc: Rpc, notify: (method: string) => Promise<void>): Promise<Listed> {
+  const init = await rpc('initialize', { protocolVersion: PROTOCOL_VERSION, capabilities: {}, clientInfo: CLIENT_INFO });
   await notify('notifications/initialized');
   const tools: McpToolDef[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < 50; page++) {
     const r = await rpc('tools/list', cursor ? { cursor } : {});
-    for (const t of r?.tools ?? []) tools.push({ name: String(t.name), description: t.description, inputSchema: t.inputSchema });
+    for (const t of r?.tools ?? [])
+      tools.push({
+        name: String(t.name),
+        description: t.description,
+        inputSchema: t.inputSchema,
+        ...(t._meta && typeof t._meta === 'object' ? { _meta: t._meta } : {}),
+      });
     cursor = r?.nextCursor;
     if (!cursor) break;
   }
-  return tools;
+  return { tools, ...(typeof init?.instructions === 'string' ? { instructions: init.instructions } : {}) };
 }
 
-function viaStdio(server: McpServer, root: string, timeoutMs: number, env: NodeJS.ProcessEnv): Promise<McpToolDef[]> {
+function viaStdio(server: McpServer, root: string, timeoutMs: number, env: NodeJS.ProcessEnv): Promise<Listed> {
   if (!server.command) return Promise.reject(new Error('no command in the config'));
   const cwd = server.cwd ? (isAbsolute(server.cwd) ? server.cwd : resolve(root, server.cwd)) : root;
   // npx and similar launchers are .cmd shims on Windows, which only start through the shell.
@@ -148,7 +166,7 @@ function lastLine(s: string): string {
   return (lines.find((l) => /error|not found|cannot|denied/i.test(l)) ?? lines.at(-1) ?? '').slice(0, 200);
 }
 
-async function viaHttp(server: McpServer, timeoutMs: number, fetchFn: typeof fetch): Promise<McpToolDef[]> {
+async function viaHttp(server: McpServer, timeoutMs: number, fetchFn: typeof fetch): Promise<Listed> {
   const url = server.url!;
   let session: string | undefined;
   let nextId = 1;

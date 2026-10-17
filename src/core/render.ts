@@ -1,7 +1,7 @@
 import type { McpRow, Report, ToolSummary } from './audit.js';
 import type { ReportDiff } from './diff.js';
 import { unifiedDiff, type FixPlan } from './fix.js';
-import { DEFERRED_NOTE } from './mcp.js';
+import { DEFERRED_NOTE, INSTRUCTIONS_NOTE } from './mcp.js';
 import type { CountMethod } from './types.js';
 
 export const METHOD_LABEL: Record<CountMethod, string> = {
@@ -144,7 +144,19 @@ export function renderDiffMarkdown(diff: ReportDiff): string {
 function groupMcp(rows: McpRow[]): Array<{ row: McpRow; tools: string[] }> {
   const groups = new Map<string, { row: McpRow; tools: string[] }>();
   for (const r of rows) {
-    const key = JSON.stringify([r.configPath, r.name, r.status, r.tools, r.o200k, r.error]);
+    const key = JSON.stringify([
+      r.configPath,
+      r.name,
+      r.status,
+      r.tools,
+      r.excludedTools,
+      r.o200k,
+      r.deferredO200k,
+      r.instructionsO200k,
+      r.error,
+      r.overriddenBy,
+      r.overrideAssumed,
+    ]);
     const g = groups.get(key);
     if (g) g.tools.push(r.tool);
     else groups.set(key, { row: r, tools: [r.tool] });
@@ -153,11 +165,17 @@ function groupMcp(rows: McpRow[]): Array<{ row: McpRow; tools: string[] }> {
 }
 
 function mcpDetail(r: McpRow): string {
-  if (r.status === 'measured')
-    return r.deferredO200k === undefined
-      ? `${r.tools} tools`
-      : `${r.tools} tools; names only, full definitions (${fmtTokens(r.deferredO200k)}) load when used`;
+  if (r.status === 'measured') {
+    const parts = [`${r.tools} tools${r.excludedTools ? ` (${r.excludedTools} more left out by the config)` : ''}`];
+    if (r.deferredO200k !== undefined) {
+      const upfront = (r.tools ?? 0) - (r.deferredTools ?? 0);
+      parts.push(`${upfront ? `${upfront} in full, ${r.deferredTools} as ` : ''}names only, full definitions (${fmtTokens(r.deferredO200k)}) load when used`);
+    }
+    if (r.instructionsO200k) parts.push(`server instructions ${fmtTokens(r.instructionsO200k)}`);
+    return parts.join('; ');
+  }
   if (r.status === 'disabled') return 'disabled in the config';
+  if (r.status === 'overridden') return `overridden by ${r.overriddenBy}${r.overrideAssumed ? ' (precedence assumed)' : ''}`;
   if (r.status === 'failed') return r.error ?? 'failed';
   return 'run with --mcp to count its tool definitions';
 }
@@ -221,7 +239,12 @@ export function renderText(report: Report, root?: string): string {
       mcpRows.push([r.status, r.name, r.configPath, r.o200k === undefined ? '-' : fmtTokens(r.o200k), mcpDetail(r), tools.join(', ')]);
     out.push(table(mcpRows, '  '));
   }
-  const notes = [...new Set(report.files.flatMap((f) => f.notes.map((n) => `${f.path}: ${n}`)))];
+  const notes = [
+    ...new Set([
+      ...report.files.flatMap((f) => f.notes.map((n) => `${f.path}: ${n}`)),
+      ...report.mcp.flatMap((m) => (m.note ? [`${m.configPath}: ${m.note}`] : [])),
+    ]),
+  ];
   if (notes.length) {
     out.push('');
     out.push('Notes');
@@ -252,6 +275,7 @@ function footer(report: Report): string {
       ? ['MCP tool definitions are counted as JSON with o200k (an estimate of what the agent sends) and are not included in model costs.']
       : []),
     ...(report.mcp.some((m) => m.deferredO200k !== undefined) ? [DEFERRED_NOTE] : []),
+    ...(report.mcp.some((m) => m.instructionsO200k) ? [INSTRUCTIONS_NOTE] : []),
     'Prices (USD per 1M input tokens):',
   ];
   for (const m of report.models) {
@@ -311,6 +335,7 @@ export function renderMarkdown(report: Report): string {
   out.push('- "Cached" assumes every turn reads the context from the prompt cache.');
   if (report.mcp.length) out.push('- MCP tool definitions are counted as JSON with o200k, an estimate of what the agent sends; they are not in the model costs.');
   if (report.mcp.some((m) => m.deferredO200k !== undefined)) out.push(`- ${DEFERRED_NOTE}`);
+  if (report.mcp.some((m) => m.instructionsO200k)) out.push(`- ${INSTRUCTIONS_NOTE}`);
   for (const m of report.models)
     out.push(`- ${m.label}: $${m.inputPerMTok ?? 'n/a'} input / $${m.cachedInputPerMTok ?? 'n/a'} cached per 1M tokens ([source](${m.source}), checked ${m.checkedAt}).`);
   out.push('', badgeMarkdown(report));

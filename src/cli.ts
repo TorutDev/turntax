@@ -8,10 +8,9 @@ import { classify } from './core/classify.js';
 import { asDiffInput, diffReports, maxIncrease } from './core/diff.js';
 import { unifiedDiff } from './core/fix.js';
 import { globMatcher } from './core/glob.js';
-import { parseMcpConfigs, serverKey, toolDefinitionsText, toolNamesText, type McpServer } from './core/mcp.js';
+import { parseMcpConfigs, serverKey, type McpServer } from './core/mcp.js';
 import { DEFAULT_MODEL_IDS, MODELS, validateModels } from './core/prices.js';
 import { badgeMarkdown, headlineTokens, renderAnnotations, renderMarkdown, renderPrComment, renderText } from './core/render.js';
-import { countO200k } from './core/tokenize.js';
 import { TOOL_IDS } from './core/tools.js';
 import type { ModelInfo, RepoFile, ToolId } from './core/types.js';
 import { applyChanges } from './node/apply.js';
@@ -229,7 +228,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
     if (o.mcp) {
       const timeoutMs = positiveInt('mcp-timeout', o['mcp-timeout'], 30) * 1000;
       measured = await measureAll(
-        servers.filter((s) => !s.disabled && (!tools || tools.includes(s.tool))),
+        servers.filter((s) => !s.disabled && !s.overriddenBy && (!tools || tools.includes(s.tool))),
         root,
         timeoutMs,
         env,
@@ -411,7 +410,10 @@ function nonNegativeInt(name: string, value: string): number {
   return n;
 }
 
-/** Starts each distinct server once (several agents often share one) and counts its tool definitions. */
+/**
+ * Starts each distinct server once (several agents often share one) and lists its tools and instructions;
+ * the audit counts them per agent.
+ */
 async function measureAll(
   servers: McpServer[],
   root: string,
@@ -423,17 +425,14 @@ async function measureAll(
   const out = new Map<string, McpMeasurement>();
   const queue = [...unique.entries()];
   for (const [, s] of queue)
-    notice(
-      s.transport === 'stdio'
-        ? `Starting MCP server "${s.name}" from ${s.configPath}: ${[s.command, ...(s.args ?? [])].join(' ')}`
-        : `Connecting to MCP server "${s.name}" from ${s.configPath}: ${s.url}`,
-    );
+    if (s.transport === 'stdio') notice(`Starting MCP server "${s.name}" from ${s.configPath}: ${[s.command, ...(s.args ?? [])].join(' ')}`);
+    else if (s.transport === 'http') notice(`Connecting to MCP server "${s.name}" from ${s.configPath}: ${s.url}`);
   const worker = async () => {
     for (let next = queue.shift(); next; next = queue.shift()) {
       const [key, s] = next;
       const r = await measureServer(s, { root, timeoutMs, env });
       if (r.tools) {
-        out.set(key, { tools: r.tools.length, o200k: countO200k(toolDefinitionsText(r.tools)), namesO200k: countO200k(toolNamesText(r.tools)) });
+        out.set(key, { tools: r.tools, ...(r.instructions !== undefined ? { instructions: r.instructions } : {}) });
       } else {
         out.set(key, { error: r.error ?? 'failed' });
         notice(`MCP server "${s.name}" was not measured: ${r.error}`);

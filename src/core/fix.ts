@@ -56,6 +56,13 @@ const DEFAULT_SECTION_TOKENS = 600;
 
 const RANK: Record<LoadMode, number> = { ignored: 0, manual: 1, 'on-demand': 2, always: 3 };
 
+/**
+ * Agent files that are also documents for people: design docs (Factory's DESIGN.md), project context (Kilo's
+ * CONTEXT.md) and the mixed-case names Factory and Windsurf read (agents.md in any folder). Fixes never edit, move
+ * text out of, rename or create them; their lines still count as copies for other files.
+ */
+const FOR_PEOPLE = new Set(['DESIGN.md', 'Design.md', 'design.md', 'CONTEXT.md', 'agents.md', 'Agents.md', 'Claude.md']);
+
 const toolName = (id: ToolId) => TOOLS.find((t) => t.id === id)?.name ?? id;
 const names = (ids: Iterable<ToolId>) => [...ids].map(toolName).join(', ');
 
@@ -174,6 +181,9 @@ export function planFixes(input: RepoFile[], opts: FixOptions = {}): FixPlan {
   // Files reached only through @imports (a README, docs) are for people too; they are never changed.
   const readOnly = (path: string): string | null => {
     if (!isInstructionFile(path)) return `${path} is not an agent instruction file (it is @imported); it is left alone.`;
+    // Case-insensitively too: on Windows and macOS a new pkg/AGENTS.md would be the existing pkg/agents.md.
+    const forPeople = [path, ...ws.files.keys()].find((p) => p.toLowerCase() === path.toLowerCase() && FOR_PEOPLE.has(basename(p)));
+    if (forPeople) return `${forPeople} is also a document for people; it is left alone.`;
     const reason = opts.readOnly?.(path);
     return typeof reason === 'string' ? reason : reason ? `${path} is a symlink, in a symlinked folder or the target of a symlink; it is left alone.` : null;
   };
@@ -407,6 +417,14 @@ function moveScopableSections(ws: Workspace, opts: FixOptions, readOnly: (path: 
           continue;
         }
         const readers = [...new Set(ws.units.filter((u) => u.path === path && u.mode === 'always' && u.part !== 'description').map((u) => u.tool))];
+        // Some agents load nested files every turn too (Kiro's AGENTS.md); the move saves nothing for them.
+        const everyTurn = (tool: ToolId) => keysOf(body).every((k) => trial.loaded.get(tool)?.get(k) === RANK.always);
+        const still = readers.filter(everyTurn);
+        const gaining = readers.filter((tool) => !everyTurn(tool));
+        if (!gaining.length) {
+          refused.push(`${t.path} (${names(still)} would still load it every turn)`);
+          continue;
+        }
         const reads = (l: Loaded, tool: ToolId) => keysOf(body).some((k) => l.get(tool)?.has(k));
         const added = [...trial.loaded.keys()].filter((tool) => !reads(ws.state.loaded, tool) && reads(trial.loaded, tool));
         const dropped = opts.tools ? leftOut(ws.files, trial.files, body, opts.tools) : [];
@@ -415,7 +433,8 @@ function moveScopableSections(ws: Workspace, opts: FixOptions, readOnly: (path: 
           kind: 'scopable-section',
           paths: [path, t.path],
           message:
-            `Moved section "${heading}" from ${path} to ${t.path}${existing ? '' : ' (new file)'}; ${names(readers)} load it only when working in ${scope}/.` +
+            `Moved section "${heading}" from ${path} to ${t.path}${existing ? '' : ' (new file)'}; ${names(gaining)} load it only when working in ${scope}/.` +
+            (still.length ? ` ${names(still)} still load it every turn.` : '') +
             (added.length ? ` Now also read there by ${names(added)}.` : '') +
             (dropped.length ? ` Not kept for ${names(dropped)} (outside --tools).` : ''),
           savingTokens: countO200k(body),
@@ -456,7 +475,8 @@ function relativeRefs(body: string): string | null {
 
 /**
  * Skill folders at the root, tried in order (see tools.ts): Claude Code lists `.claude/skills` and Codex
- * `.agents/skills` every session and loads a skill's body only when it is used. No other agent reads either.
+ * `.agents/skills` every session and loads a skill's body only when it is used; many other agents read one or
+ * both. The check keeps every agent's context, so a folder an agent does not read is refused for it.
  */
 const SKILL_DIRS = ['.claude/skills', '.agents/skills'];
 
@@ -481,14 +501,25 @@ function isProcedureSection(body: string): boolean {
   return parts.every((p) => isProcedure(p.join('\n')));
 }
 
-/** The section's slug, with -2, -3... when a skill folder of that name exists in `dir` (at most 64 characters). */
-function skillSlug(ws: Workspace, opts: FixOptions, dir: string, heading: string): string {
+/**
+ * The section's slug, with -2, -3... (at most 64 characters) when a skill folder of that name exists in any of
+ * SKILL_DIRS, a root skill already has that frontmatter name, or a Claude Code command has that file name: agents
+ * that de-duplicate by name use only one skill of a name, and a Claude Code skill hides a command of its name.
+ */
+function skillSlug(ws: Workspace, opts: FixOptions, heading: string): string {
   const base = slugOf(heading);
+  const names = new Set(
+    [...ws.files.values()].flatMap((f) => {
+      const name = /^\.[^/]+\/skills\/.+\/SKILL\.md$/.test(f.path) ? parseFrontmatter(f.text).frontmatter.name : undefined;
+      const command = /^\.claude\/commands\/([^/]+)\.md$/.exec(f.path)?.[1];
+      return [name, command].filter((n) => n !== undefined).map(String);
+    }),
+  );
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? '' : `-${n}`;
     const slug = base.slice(0, 64 - suffix.length).replace(/-+$/, '') + suffix;
-    const folder = `${dir}/${slug}`;
-    if (!opts.exists?.(folder) && ![...ws.files.keys()].some((p) => p.startsWith(`${folder}/`))) return slug;
+    const taken = (folder: string) => opts.exists?.(folder) || [...ws.files.keys()].some((p) => p.startsWith(`${folder}/`));
+    if (!names.has(slug) && !opts.exists?.(`.claude/commands/${slug}.md`) && !SKILL_DIRS.some((dir) => taken(`${dir}/${slug}`))) return slug;
   }
 }
 
@@ -534,7 +565,7 @@ function moveProcedureSections(ws: Workspace, opts: FixOptions, readOnly: (path:
       let moved = false;
       const refused: string[] = [];
       for (const dir of SKILL_DIRS) {
-        const slug = skillSlug(ws, opts, dir, heading);
+        const slug = skillSlug(ws, opts, heading);
         const target = `${dir}/${slug}/SKILL.md`;
         const blocked = readOnly(target);
         if (blocked) {

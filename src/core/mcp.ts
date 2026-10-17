@@ -1,12 +1,14 @@
 /**
  * MCP server configuration: which agent starts which server, read from the agents' config files.
- * Every server an agent starts adds its tool definitions (names, descriptions, JSON schemas) to the
- * context, so they are part of the per-turn cost. This module only parses configs; measuring the
- * tool definitions needs the server running (src/node/mcp.ts, opt-in with --mcp).
+ * Every server an agent starts adds its tool definitions (names, descriptions, JSON schemas) and, for
+ * some agents, its instructions to the context, so they are part of the per-turn cost. This module
+ * parses configs and decides what each agent keeps; measuring needs the server running
+ * (src/node/mcp.ts, opt-in with --mcp).
  */
 import type { RepoFile, ToolId } from './types.js';
 
-export type McpTransport = 'stdio' | 'http' | 'sse';
+/** 'ws': Claude Code's WebSocket transport (`type: "ws"`). */
+export type McpTransport = 'stdio' | 'http' | 'sse' | 'ws';
 
 export interface McpServer {
   /** Server name as written in the config. */
@@ -25,8 +27,26 @@ export interface McpServer {
   headers?: Record<string, string>;
   /** Turned off in the config; not started by the agent and not counted. */
   disabled: boolean;
-  /** Claude Code `alwaysLoad: true`: the server's tool definitions are not deferred to tool search. */
+  /**
+   * Claude Code `alwaysLoad`: true loads every tool of the server upfront, false keeps every tool behind tool
+   * search; unset leaves it to each tool's `_meta["anthropic/alwaysLoad"]`.
+   */
   alwaysLoad?: boolean;
+  /** Tool allow list from the config (see TOOL_FILTERS); containing `*` allows every tool, and so does an empty one except for Copilot. */
+  includeTools?: string[];
+  /** Tool deny list from the config (see TOOL_FILTERS); wins over the allow list. */
+  excludeTools?: string[];
+  /** Something the config does not show that can change what the agent loads. */
+  note?: string;
+  /** From the `projects[<repo path>]` entry of ~/.claude.json (Claude Code's local scope). */
+  local?: boolean;
+  /**
+   * Set when the agent finds the same server name in a config it prefers (see PRECEDENCE): that config, which the
+   * agent uses instead of this definition. This copy is not started or counted.
+   */
+  overriddenBy?: string;
+  /** The precedence behind `overriddenBy` is not documented; MCP_CONFIGS order decided it. */
+  overrideAssumed?: boolean;
 }
 
 /** Tool definitions a server returned from tools/list, as the agent receives them. */
@@ -34,6 +54,8 @@ export interface McpToolDef {
   name: string;
   description?: string;
   inputSchema?: unknown;
+  /** The tool's `_meta` object from tools/list; read for flags such as `anthropic/alwaysLoad`, never sent to the model. */
+  _meta?: Record<string, unknown>;
 }
 
 export interface McpConfigSpec {
@@ -44,33 +66,153 @@ export interface McpConfigSpec {
   /** Top-level key that holds the servers. */
   key: string;
   shape: 'standard' | 'gemini' | 'vscode' | 'opencode' | 'zed' | 'codex-toml' | 'claude-json';
+  /** The file may also hold the servers as a bare top-level map, without `key` (Copilot CLI project files). */
+  bare?: boolean;
+  /** Shown with every server from this file. */
+  note?: string;
   source: string;
 }
 
-const CHECKED_AT = '2026-10-11';
+const CHECKED_AT = '2026-10-17';
 
-/** Where each agent reads MCP servers from. Paths and keys come from the cited pages. */
+const CLAUDE = 'https://code.claude.com/docs/en/mcp';
+const CURSOR = 'https://cursor.com/docs/mcp';
+const COPILOT_CLI = 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers';
+const VSCODE = 'https://code.visualstudio.com/docs/agent-customization/mcp-servers';
+const GEMINI = 'https://geminicli.com/docs/tools/mcp-server/';
+const KIRO = 'https://kiro.dev/docs/mcp/configuration/';
+const ROO = 'https://roocodeinc.github.io/Roo-Code/features/mcp/using-mcp-in-roo';
+const OPENCODE = 'https://opencode.ai/docs/mcp-servers/';
+const ZED = 'https://zed.dev/docs/ai/mcp';
+const CODEX = 'https://learn.chatgpt.com/docs/extend/mcp';
+const CASCADE = 'https://docs.devin.ai/desktop/cascade/mcp';
+const DEVIN = 'https://docs.devin.ai/cli/extensibility/mcp/configuration';
+const DEVIN_IMPORT = 'https://docs.devin.ai/cli/reference/configuration/read-config-from';
+const AUGMENT = 'https://docs.augmentcode.com/cli/integrations';
+const FACTORY = 'https://docs.factory.com/harness/mcp';
+const KILO = 'https://kilo.ai/docs/automate/mcp/using-in-kilo-code';
+const WARP = 'https://docs.warp.dev/agents/capabilities/mcp/';
+
+const COPILOT_NOTE =
+  'Copilot CLI defers MCP tools to tool search on supported models once there are more than about 30 tools (deferTools: "never" opts a server out); turntax counts them in full.';
+const VSCODE_NOTE =
+  'Deprecated for Copilot: Copilot CLI does not read .vscode/mcp.json, and VS Code forwards only servers that need no ${input:...} value to Copilot sessions.';
+const AUGMENT_NOTE = 'Augment loads every MCP tool upfront unless enableToolSearch is on; turntax does not read that setting.';
+const DEVIN_CLAUDE_NOTE = 'Devin imports Claude Code MCP servers from this file; that it uses the same per-project servers as Claude Code is assumed.';
+
+const spec = (
+  tool: ToolId,
+  path: string,
+  scope: McpConfigSpec['scope'],
+  key: string,
+  shape: McpConfigSpec['shape'],
+  source: string,
+  extra: Pick<McpConfigSpec, 'bare' | 'note'> = {},
+): McpConfigSpec => ({ tool, path, scope, key, shape, source, ...extra });
+
+/**
+ * Where each agent reads MCP servers from. Paths and keys come from the cited pages. The agent that owns a file is
+ * listed first; Devin entries for other agents' files are the imports Devin CLI does by default (`read_config_from`).
+ */
 export const MCP_CONFIGS: McpConfigSpec[] = [
-  { tool: 'claude-code', path: '.mcp.json', scope: 'project', key: 'mcpServers', shape: 'standard', source: 'https://code.claude.com/docs/en/mcp' },
-  { tool: 'cursor', path: '.cursor/mcp.json', scope: 'project', key: 'mcpServers', shape: 'standard', source: 'https://cursor.com/docs/context/mcp' },
-  { tool: 'copilot', path: '.vscode/mcp.json', scope: 'project', key: 'servers', shape: 'vscode', source: 'https://code.visualstudio.com/docs/copilot/customization/mcp-servers' },
-  { tool: 'gemini-cli', path: '.gemini/settings.json', scope: 'project', key: 'mcpServers', shape: 'gemini', source: 'https://geminicli.com/docs/tools/mcp-server/' },
-  { tool: 'kiro', path: '.kiro/settings/mcp.json', scope: 'project', key: 'mcpServers', shape: 'standard', source: 'https://kiro.dev/docs/mcp/configuration/' },
-  { tool: 'roo-code', path: '.roo/mcp.json', scope: 'project', key: 'mcpServers', shape: 'standard', source: 'https://roocodeinc.github.io/Roo-Code/features/mcp/using-mcp-in-roo' },
-  { tool: 'opencode', path: 'opencode.json', scope: 'project', key: 'mcp', shape: 'opencode', source: 'https://opencode.ai/docs/mcp-servers/' },
-  { tool: 'opencode', path: 'opencode.jsonc', scope: 'project', key: 'mcp', shape: 'opencode', source: 'https://opencode.ai/docs/mcp-servers/' },
-  { tool: 'zed', path: '.zed/settings.json', scope: 'project', key: 'context_servers', shape: 'zed', source: 'https://zed.dev/docs/ai/mcp' },
-  { tool: 'codex', path: '.codex/config.toml', scope: 'project', key: 'mcp_servers', shape: 'codex-toml', source: 'https://learn.chatgpt.com/docs/extend/mcp' },
+  spec('claude-code', '.mcp.json', 'project', 'mcpServers', 'standard', CLAUDE),
+  spec('copilot', '.mcp.json', 'project', 'mcpServers', 'standard', COPILOT_CLI, { bare: true, note: COPILOT_NOTE }),
+  spec('devin', '.mcp.json', 'project', 'mcpServers', 'standard', DEVIN_IMPORT),
+  spec('cursor', '.cursor/mcp.json', 'project', 'mcpServers', 'standard', CURSOR),
+  spec('devin', '.cursor/mcp.json', 'project', 'mcpServers', 'standard', DEVIN_IMPORT),
+  spec('copilot', '.github/mcp.json', 'project', 'mcpServers', 'standard', COPILOT_CLI, { bare: true, note: COPILOT_NOTE }),
+  spec('copilot', '.vscode/mcp.json', 'project', 'servers', 'vscode', VSCODE, { note: VSCODE_NOTE }),
+  spec('gemini-cli', '.gemini/settings.json', 'project', 'mcpServers', 'gemini', GEMINI),
+  spec('kiro', '.kiro/settings/mcp.json', 'project', 'mcpServers', 'standard', KIRO),
+  spec('roo-code', '.roo/mcp.json', 'project', 'mcpServers', 'standard', ROO),
+  spec('opencode', 'opencode.json', 'project', 'mcp', 'opencode', OPENCODE),
+  spec('opencode', 'opencode.jsonc', 'project', 'mcp', 'opencode', OPENCODE),
+  spec('kilo-code', 'kilo.json', 'project', 'mcp', 'opencode', KILO),
+  spec('kilo-code', 'kilo.jsonc', 'project', 'mcp', 'opencode', KILO),
+  spec('kilo-code', '.kilo/kilo.json', 'project', 'mcp', 'opencode', KILO),
+  spec('kilo-code', '.kilo/kilo.jsonc', 'project', 'mcp', 'opencode', KILO),
+  // Legacy names Kilo still reads; listed after kilo.json(c), which they are assumed to rank below.
+  spec('kilo-code', 'opencode.json', 'project', 'mcp', 'opencode', KILO),
+  spec('kilo-code', 'opencode.jsonc', 'project', 'mcp', 'opencode', KILO),
+  spec('devin', 'opencode.json', 'project', 'mcp', 'opencode', DEVIN_IMPORT),
+  spec('zed', '.zed/settings.json', 'project', 'context_servers', 'zed', ZED),
+  spec('devin', '.zed/settings.json', 'project', 'context_servers', 'zed', DEVIN_IMPORT),
+  spec('codex', '.codex/config.toml', 'project', 'mcp_servers', 'codex-toml', CODEX),
+  spec('augment', '.augment/settings.json', 'project', 'mcpServers', 'standard', AUGMENT, { note: AUGMENT_NOTE }),
+  spec('augment', '.augment/settings.local.json', 'project', 'mcpServers', 'standard', AUGMENT, { note: AUGMENT_NOTE }),
+  spec('factory-droid', '.factory/mcp.json', 'project', 'mcpServers', 'standard', FACTORY),
+  spec('devin', '.devin/mcp_config.json', 'project', 'mcpServers', 'standard', DEVIN),
+  spec('devin', '.devin/mcp_config.local.json', 'project', 'mcpServers', 'standard', DEVIN),
 
-  { tool: 'claude-code', path: '.claude.json', scope: 'user', key: 'mcpServers', shape: 'claude-json', source: 'https://code.claude.com/docs/en/mcp' },
-  { tool: 'cursor', path: '.cursor/mcp.json', scope: 'user', key: 'mcpServers', shape: 'standard', source: 'https://cursor.com/docs/context/mcp' },
-  { tool: 'gemini-cli', path: '.gemini/settings.json', scope: 'user', key: 'mcpServers', shape: 'gemini', source: 'https://geminicli.com/docs/tools/mcp-server/' },
-  { tool: 'kiro', path: '.kiro/settings/mcp.json', scope: 'user', key: 'mcpServers', shape: 'standard', source: 'https://kiro.dev/docs/mcp/configuration/' },
-  { tool: 'windsurf', path: '.config/devin/mcp_config.json', scope: 'user', key: 'mcpServers', shape: 'standard', source: 'https://docs.devin.ai/desktop/cascade/mcp' },
-  { tool: 'windsurf', path: 'AppData/Roaming/devin/mcp_config.json', scope: 'user', key: 'mcpServers', shape: 'standard', source: 'https://docs.devin.ai/desktop/cascade/mcp' },
-  { tool: 'codex', path: '.codex/config.toml', scope: 'user', key: 'mcp_servers', shape: 'codex-toml', source: 'https://learn.chatgpt.com/docs/extend/mcp' },
-  { tool: 'opencode', path: '.config/opencode/opencode.json', scope: 'user', key: 'mcp', shape: 'opencode', source: 'https://opencode.ai/docs/mcp-servers/' },
+  spec('claude-code', '.claude.json', 'user', 'mcpServers', 'claude-json', CLAUDE),
+  spec('devin', '.claude.json', 'user', 'mcpServers', 'claude-json', DEVIN_IMPORT, { note: DEVIN_CLAUDE_NOTE }),
+  spec('copilot', '.copilot/mcp-config.json', 'user', 'mcpServers', 'standard', COPILOT_CLI, { note: COPILOT_NOTE }),
+  spec('cursor', '.cursor/mcp.json', 'user', 'mcpServers', 'standard', CURSOR),
+  spec('gemini-cli', '.gemini/settings.json', 'user', 'mcpServers', 'gemini', GEMINI),
+  spec('kiro', '.kiro/settings/mcp.json', 'user', 'mcpServers', 'standard', KIRO),
+  spec('windsurf', '.config/devin/mcp_config.json', 'user', 'mcpServers', 'standard', CASCADE),
+  spec('devin', '.config/devin/mcp_config.json', 'user', 'mcpServers', 'standard', DEVIN),
+  spec('windsurf', 'AppData/Roaming/devin/mcp_config.json', 'user', 'mcpServers', 'standard', CASCADE),
+  spec('devin', 'AppData/Roaming/devin/mcp_config.json', 'user', 'mcpServers', 'standard', DEVIN),
+  spec('devin', '.codeium/windsurf/mcp_config.json', 'user', 'mcpServers', 'standard', DEVIN_IMPORT),
+  spec('codex', '.codex/config.toml', 'user', 'mcp_servers', 'codex-toml', CODEX),
+  spec('opencode', '.config/opencode/opencode.json', 'user', 'mcp', 'opencode', OPENCODE),
+  spec('devin', '.config/opencode/opencode.json', 'user', 'mcp', 'opencode', DEVIN_IMPORT),
+  spec('devin', '.config/zed/settings.json', 'user', 'context_servers', 'zed', DEVIN_IMPORT),
+  spec('kilo-code', '.config/kilo/kilo.json', 'user', 'mcp', 'opencode', KILO),
+  spec('kilo-code', '.config/kilo/kilo.jsonc', 'user', 'mcp', 'opencode', KILO),
+  spec('kilo-code', '.config/kilo/opencode.json', 'user', 'mcp', 'opencode', KILO),
+  spec('kilo-code', '.config/kilo/opencode.jsonc', 'user', 'mcp', 'opencode', KILO),
+  spec('kilo-code', '.config/kilo/config.json', 'user', 'mcp', 'opencode', KILO),
+  spec('augment', '.augment/settings.json', 'user', 'mcpServers', 'standard', AUGMENT, { note: AUGMENT_NOTE }),
+  spec('factory-droid', '.factory/mcp.json', 'user', 'mcpServers', 'standard', FACTORY),
+  spec('warp', '.warp/.mcp.json', 'user', 'mcpServers', 'standard', WARP),
 ];
+
+/**
+ * Per-server tool filters, by agent: the config field holding the allow list and the deny list. Tools they leave
+ * out are never given to the model (Codex, Gemini CLI, Factory, Kiro, Roo Code and Windsurf docs; Copilot CLI's
+ * required `tools` list, `["*"]` for all). `emptyAllowsNone`: an empty allow list allows no tool (Copilot CLI's
+ * `--tools ""` is "for none"); elsewhere it allows every tool (Factory: "When the list is non-empty, only these
+ * tools are loaded").
+ */
+const TOOL_FILTERS: Partial<Record<ToolId, { include?: string; exclude?: string; emptyAllowsNone?: true }>> = {
+  codex: { include: 'enabled_tools', exclude: 'disabled_tools' },
+  'gemini-cli': { include: 'includeTools', exclude: 'excludeTools' },
+  'factory-droid': { include: 'enabledTools', exclude: 'disabledTools' },
+  copilot: { include: 'tools', emptyAllowsNone: true },
+  kiro: { exclude: 'disabledTools' },
+  'roo-code': { exclude: 'disabledTools' },
+  windsurf: { exclude: 'disabledTools' },
+};
+
+/**
+ * The documented order, highest first, in which an agent picks one definition for a server name found in several of
+ * its configs. Entries are config paths as in `configPath` (`~/.claude.json#local` is its `projects[<repo path>]`
+ * entry) or a scope; an array is a tie. Configs left out, ties and agents left out follow MCP_CONFIGS order, which is
+ * assumed.
+ */
+const PRECEDENCE: Partial<Record<ToolId, { order: Array<string | string[]>; assumed?: true }>> = {
+  'claude-code': { order: ['~/.claude.json#local', '.mcp.json', '~/.claude.json'] },
+  copilot: { order: ['.mcp.json', '.github/mcp.json', '~/.copilot/mcp-config.json'] },
+  'gemini-cli': { order: ['project', 'user'] },
+  kiro: { order: ['project', 'user'] },
+  // .kilo/ wins over the root file (kilo.ai/docs/getting-started/settings, /customize/custom-modes), project over
+  // global. Root kilo.json(c) and the legacy opencode.json(c) are all deep-merged with no documented order between them.
+  'kilo-code': {
+    order: [['.kilo/kilo.json', '.kilo/kilo.jsonc'], ['kilo.json', 'kilo.jsonc', 'opencode.json', 'opencode.jsonc'], 'user'],
+  },
+  augment: { order: ['.augment/settings.local.json', '.augment/settings.json', '~/.augment/settings.json'] },
+  // Factory documents only that one definition loads. Turning a project server on or off writes a copy with the new
+  // state to the user config, which implies the user config wins.
+  'factory-droid': { order: ['~/.factory/mcp.json', '.factory/mcp.json'], assumed: true },
+  // Devin's MCP page labels the local file "Local override" and puts personal keys there over a shared definition,
+  // but states no precedence; local, project, user and then imported configs is assumed.
+  devin: {
+    order: ['.devin/mcp_config.local.json', '.devin/mcp_config.json', ['~/.config/devin/mcp_config.json', '~/AppData/Roaming/devin/mcp_config.json']],
+    assumed: true,
+  },
+};
 
 export const MCP_CHECKED_AT = CHECKED_AT;
 
@@ -116,21 +258,22 @@ const record = (v: unknown): Record<string, string> | undefined =>
 function fromStandard(name: string, v: Obj, gemini = false): Omit<McpServer, 'tool' | 'configPath' | 'scope'> {
   const type = String(v.type ?? v.transport ?? '').toLowerCase();
   // Gemini CLI has no type field: `httpUrl` is streamable HTTP and `url` is SSE.
-  // Elsewhere `url` (Windsurf: `serverUrl`) is streamable HTTP unless the type says SSE.
+  // Elsewhere `url` (Windsurf: `serverUrl`) is streamable HTTP unless the type says SSE or WebSocket (Claude Code `ws`).
   const httpUrl = typeof v.httpUrl === 'string' ? v.httpUrl : undefined;
   const url = httpUrl ?? (typeof v.url === 'string' ? v.url : typeof v.serverUrl === 'string' ? v.serverUrl : undefined);
-  const transport: McpTransport = !url ? 'stdio' : httpUrl ? 'http' : gemini || type === 'sse' ? 'sse' : 'http';
+  const transport: McpTransport = !url ? 'stdio' : httpUrl ? 'http' : gemini || type === 'sse' ? 'sse' : type === 'ws' ? 'ws' : 'http';
   return {
     name,
     transport,
     command: typeof v.command === 'string' ? v.command : undefined,
     args: strings(v.args),
     env: record(v.env),
-    cwd: typeof v.cwd === 'string' ? v.cwd : undefined,
+    // Warp calls it `working_directory`.
+    cwd: typeof v.cwd === 'string' ? v.cwd : typeof v.working_directory === 'string' ? v.working_directory : undefined,
     url,
     headers: record(v.headers),
     disabled: v.disabled === true || v.enabled === false,
-    ...(v.alwaysLoad === true ? { alwaysLoad: true } : {}),
+    ...(typeof v.alwaysLoad === 'boolean' ? { alwaysLoad: v.alwaysLoad } : {}),
   };
 }
 
@@ -158,17 +301,31 @@ function fromZed(name: string, v: Obj): Omit<McpServer, 'tool' | 'configPath' | 
   return fromStandard(name, v);
 }
 
-function serversIn(container: unknown, shape: McpConfigSpec['shape']): Array<Omit<McpServer, 'tool' | 'configPath' | 'scope'>> {
+function serversIn(container: unknown, spec: McpConfigSpec, configPath: string, local: boolean): McpServer[] {
   if (!isObj(container)) return [];
+  const filter = TOOL_FILTERS[spec.tool];
   return Object.entries(container)
     .filter(([, v]) => isObj(v))
-    .map(([name, v]) =>
-      shape === 'opencode'
-        ? fromOpencode(name, v as Obj)
-        : shape === 'zed'
-          ? fromZed(name, v as Obj)
-          : fromStandard(name, v as Obj, shape === 'gemini'),
-    );
+    .map(([name, v]) => {
+      const s =
+        spec.shape === 'opencode'
+          ? fromOpencode(name, v as Obj)
+          : spec.shape === 'zed'
+            ? fromZed(name, v as Obj)
+            : fromStandard(name, v as Obj, spec.shape === 'gemini');
+      const include = filter?.include ? strings((v as Obj)[filter.include]) : undefined;
+      const exclude = filter?.exclude ? strings((v as Obj)[filter.exclude]) : undefined;
+      return {
+        ...s,
+        tool: spec.tool,
+        configPath,
+        scope: spec.scope,
+        ...(include ? { includeTools: include } : {}),
+        ...(exclude ? { excludeTools: exclude } : {}),
+        ...(spec.note ? { note: spec.note } : {}),
+        ...(local ? { local: true } : {}),
+      };
+    });
 }
 
 /** Minimal TOML reader for Codex `[mcp_servers.<name>]` tables: strings, string arrays and inline tables. */
@@ -221,9 +378,12 @@ export interface ParsedMcpConfig {
 /**
  * Parses the MCP configs among `files`. Project files use repo-relative paths; user files are passed
  * with a `~/` prefix. `projectRoot` (absolute) selects the per-project entry in ~/.claude.json.
+ * A server name an agent finds in several of its configs is marked `overriddenBy` on all but one copy.
  */
 export function parseMcpConfigs(files: RepoFile[], projectRoot?: string): ParsedMcpConfig {
   const servers: McpServer[] = [];
+  /** Position of each server's config in MCP_CONFIGS (the local entry of ~/.claude.json right after its file). */
+  const order: number[] = [];
   const problems: ParsedMcpConfig['problems'] = [];
   for (const f of files) {
     const user = f.path.startsWith('~/');
@@ -244,12 +404,49 @@ export function parseMcpConfigs(files: RepoFile[], projectRoot?: string): Parsed
           ? [data]
           : spec.shape === 'claude-json'
             ? [data.mcpServers, projectEntry(data, projectRoot)?.mcpServers]
-            : [data[spec.key]];
-      for (const c of containers)
-        for (const s of serversIn(c, spec.shape)) servers.push({ ...s, tool: spec.tool, configPath: f.path, scope: spec.scope });
+            : [spec.bare && !isObj(data[spec.key]) ? bareServers(data) : data[spec.key]];
+      containers.forEach((c, i) => {
+        const found = serversIn(c, spec, f.path, i === 1);
+        servers.push(...found);
+        order.push(...found.map(() => MCP_CONFIGS.indexOf(spec) * 2 + i));
+      });
     }
   }
-  return { servers, problems };
+  return { servers: resolveOverrides(servers, order), problems };
+}
+
+/** Where a server comes from, as written in PRECEDENCE. */
+const source = (s: McpServer): string => (s.local ? `${s.configPath}#local` : s.configPath);
+
+/** Keeps one definition per agent and server name; the others are marked as overridden by the config that wins. */
+function resolveOverrides(servers: McpServer[], order: number[]): McpServer[] {
+  const out = [...servers];
+  const groups = new Map<string, number[]>();
+  servers.forEach((s, i) => {
+    const key = JSON.stringify([s.tool, s.name]);
+    groups.set(key, [...(groups.get(key) ?? []), i]);
+  });
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const precedence = PRECEDENCE[servers[group[0]!]!.tool];
+    const rank = (s: McpServer) => {
+      const r = precedence?.order.findIndex((e) => [e].flat().some((x) => x === source(s) || x === s.scope)) ?? -1;
+      return r < 0 ? Infinity : r;
+    };
+    const [win, ...rest] = [...group].sort((a, b) => rank(servers[a]!) - rank(servers[b]!) || order[a]! - order[b]!);
+    const winner = servers[win!]!;
+    for (const i of rest) {
+      const s = servers[i]!;
+      const documented = !precedence?.assumed && rank(winner) < rank(s) && rank(s) < Infinity;
+      out[i] = { ...s, overriddenBy: winner.local ? `${winner.configPath} (local)` : winner.configPath, ...(documented ? {} : { overrideAssumed: true }) };
+    }
+  }
+  return out;
+}
+
+/** A bare top-level server map: the entries that name a command or URL (Copilot CLI skips invalid entries). */
+function bareServers(data: Obj): Obj {
+  return Object.fromEntries(Object.entries(data).filter(([, v]) => isObj(v) && (typeof v.command === 'string' || typeof v.url === 'string')));
 }
 
 /** The `projects["<abs path>"]` entry of ~/.claude.json for this repository, matched case- and slash-insensitively. */
@@ -265,23 +462,67 @@ export function serverKey(s: McpServer): string {
   return JSON.stringify([s.transport, s.command ?? '', s.args ?? [], s.url ?? '', s.cwd ?? '']);
 }
 
+/** The tools that reach the model after the config's allow and deny lists (TOOL_FILTERS). */
+export function filterTools(s: McpServer, tools: McpToolDef[]): McpToolDef[] {
+  const include = s.includeTools ?? [];
+  const limited = include.length ? !include.includes('*') : s.includeTools !== undefined && TOOL_FILTERS[s.tool]?.emptyAllowsNone === true;
+  const allow = limited ? new Set(include) : undefined;
+  const deny = new Set(s.excludeTools);
+  return tools.filter((t) => (!allow || allow.has(t.name)) && !deny.has(t.name));
+}
+
 /**
- * Claude Code defers MCP tool definitions by default (tool search): only tool names are in context
- * until a tool is used. A server with `alwaysLoad: true` is exempt.
+ * Claude Code defers MCP tool definitions by default (tool search): only the tool name is in context until the
+ * tool is used. A tool whose `_meta["anthropic/alwaysLoad"]` is true loads upfront unless the server's config sets
+ * `alwaysLoad: false`; `alwaysLoad: true` in the config loads every tool of the server upfront.
  */
-export function defersTools(s: McpServer): boolean {
-  return s.tool === 'claude-code' && !s.alwaysLoad;
+export function defersTool(s: McpServer, t: McpToolDef): boolean {
+  if (s.tool !== 'claude-code' || s.alwaysLoad === true) return false;
+  return s.alwaysLoad === false || t._meta?.['anthropic/alwaysLoad'] !== true;
 }
 
 export const DEFERRED_NOTE =
-  'Claude Code defers MCP tool definitions by default (tool search): only tool names load every turn; full definitions load when a tool is used. Set ENABLE_TOOL_SEARCH=false or alwaysLoad: true to load them upfront.';
+  'Claude Code defers MCP tool definitions by default (tool search): only tool names and server instructions load every turn; full definitions load when a tool is used. Tools marked _meta["anthropic/alwaysLoad"] and servers with alwaysLoad: true load upfront, and ENABLE_TOOL_SEARCH=false loads every tool upfront.';
+
+/**
+ * Agents whose docs say a server's `instructions` (from initialize) reach the model, with the cut in characters.
+ * Claude Code loads them at session start and cuts them at 4,096; Gemini CLI appends them to the system
+ * instructions; Codex uses them as guidance alongside the tools; Kilo Code adds them to the model context.
+ * No cut is documented for the last three.
+ */
+const INSTRUCTIONS_CUT: Partial<Record<ToolId, number>> = {
+  'claude-code': 4096,
+  'gemini-cli': Infinity,
+  codex: Infinity,
+  'kilo-code': Infinity,
+};
+
+export const INSTRUCTIONS_NOTE =
+  'MCP server instructions are counted for Claude Code (cut at 4,096 characters), Gemini CLI, Codex and Kilo Code, whose docs say they reach the model.';
+
+/** The part of a server's instructions this agent puts in context; '' when its docs do not say it sends them. */
+export function instructionsText(s: McpServer, instructions: string | undefined): string {
+  const cut = INSTRUCTIONS_CUT[s.tool];
+  return cut === undefined || !instructions ? '' : instructions.slice(0, cut);
+}
+
+/**
+ * Characters of a tool description the agent keeps: Claude Code cuts the description of a tool that loads upfront
+ * at 4,096 and of one it loads through tool search at 16,384. No other agent documents a cut.
+ */
+export function descriptionCut(s: McpServer, deferred: boolean): number | undefined {
+  if (s.tool !== 'claude-code') return undefined;
+  return deferred ? 16_384 : 4096;
+}
 
 /** Tool names only, as listed when definitions are deferred. */
 export function toolNamesText(tools: McpToolDef[]): string {
   return tools.map((t) => t.name).join('\n');
 }
 
-/** The text an agent receives for a server's tools, as one JSON document per tool. */
-export function toolDefinitionsText(tools: McpToolDef[]): string {
-  return tools.map((t) => JSON.stringify({ name: t.name, description: t.description ?? '', input_schema: t.inputSchema ?? {} })).join('\n');
+/** The text an agent receives for a server's tools, as one JSON document per tool; descriptions cut at `maxDescription`. */
+export function toolDefinitionsText(tools: McpToolDef[], maxDescription?: number): string {
+  return tools
+    .map((t) => JSON.stringify({ name: t.name, description: (t.description ?? '').slice(0, maxDescription), input_schema: t.inputSchema ?? {} }))
+    .join('\n');
 }

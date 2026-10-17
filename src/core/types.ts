@@ -14,7 +14,14 @@ export type ToolId =
   | 'aider'
   | 'goose'
   | 'amp'
-  | 'opencode';
+  | 'opencode'
+  | 'devin'
+  | 'warp'
+  | 'factory-droid'
+  | 'trae'
+  | 'augment'
+  | 'kilo-code'
+  | 'jules';
 
 /** A file as seen by the audit: repo-relative POSIX path plus its text. */
 export interface RepoFile {
