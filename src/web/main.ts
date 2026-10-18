@@ -83,7 +83,7 @@ async function loadSource(src: Source, isCurrent: () => boolean = () => true): P
     const text = texts[i];
     if (text != null) found.set(path, { path, text });
   });
-  await addImports(found, (p) => (src.paths.has(p) ? src.read(p) : null));
+  await addImports(found, (p) => (src.paths.has(p) ? src.read(p) : null), src.paths);
   if (!isCurrent()) return;
   for (const [p, f] of found) state.files.set(p, f);
   state.allPaths = new Set([...(state.allPaths ?? []), ...src.paths]);

@@ -73,6 +73,17 @@ describe('audit', () => {
     expect(agents).toEqual(['codex', 'goose', 'opencode']);
   });
 
+  it('does not split a row over files that load only when the user asks for them', async () => {
+    // Augment reads .claude/commands as /commands only; that costs nothing per turn.
+    const files = [
+      { path: 'CLAUDE.md', text: 'Use pnpm.' },
+      { path: '.claude/commands/deploy.md', text: '---\ndescription: Deploy\n---\nRun the deploy script.' },
+    ];
+    const report = await audit(files, { tools: ['cursor', 'augment'], models: pick('gpt-6.1-sol') });
+    expect(groupTools(report).map((g) => g.names)).toEqual([['Cursor', 'Augment Code']]);
+    expect(groupFiles(report).find((g) => g.file.path === '.claude/commands/deploy.md')!.tools).toEqual(['augment']);
+  });
+
   it('renders text, markdown and a badge', async () => {
     const report = await audit(MIXED, { models: pick('claude-sonnet-5.5', 'gpt-6.1-sol') });
     const text = renderText(report, '/repo');

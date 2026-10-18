@@ -31,12 +31,13 @@ function table(rows: string[][], indent = ''): string {
 /**
  * Agents that load exactly the same files with the same results share one row,
  * so a repository with only AGENTS.md does not print a dozen identical lines.
+ * Files that load only when the user asks (a /command) cost nothing per turn and do not split a row.
  */
 export function groupTools(report: Report): Array<{ names: string[]; tool: Report['tools'][number] }> {
   const groups = new Map<string, { names: string[]; tool: Report['tools'][number] }>();
   for (const t of report.tools) {
     const files = report.files
-      .filter((f) => f.tool === t.tool && f.mode !== 'ignored')
+      .filter((f) => f.tool === t.tool && f.mode !== 'ignored' && f.mode !== 'manual')
       .map((f) => [f.path, f.part, f.mode, f.o200k])
       .sort();
     const key = JSON.stringify([

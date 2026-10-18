@@ -271,6 +271,17 @@ describe('Kilo Code', () => {
     expect(find(u, 'kilo-code', '.kilo/skills/api/SKILL.md', 'description')!.mode).toBe('always');
     expect(find(u, 'kilo-code', '.kilo/commands/submit-pr.md')!.mode).toBe('manual');
   });
+
+  it('uses the .kilo, then .kilocode, .agents and .claude copy of a skill name', () => {
+    const skill = (path: string) => ({ path, text: '---\nname: deploy\ndescription: Deploy the app\n---\nSteps.' });
+    const u = classify([skill('.claude/skills/deploy/SKILL.md'), skill('.agents/skills/deploy/SKILL.md'), skill('.kilocode/skills/deploy/SKILL.md')], ['kilo-code']);
+    expect(find(u, 'kilo-code', '.kilocode/skills/deploy/SKILL.md', 'description')!.mode).toBe('always');
+    for (const p of ['.agents/skills/deploy/SKILL.md', '.claude/skills/deploy/SKILL.md'])
+      expect(find(u, 'kilo-code', p, 'description')!, p).toMatchObject({ mode: 'ignored', trigger: 'same skill name as .kilocode/skills/deploy/SKILL.md, which takes precedence' });
+    const kilo = classify([skill('.kilocode/skills/deploy/SKILL.md'), skill('.kilo/skills/other-folder/SKILL.md')], ['kilo-code']);
+    expect(find(kilo, 'kilo-code', '.kilo/skills/other-folder/SKILL.md', 'description')!.mode).toBe('always');
+    expect(find(kilo, 'kilo-code', '.kilocode/skills/deploy/SKILL.md', 'description')!.mode).toBe('ignored');
+  });
 });
 
 describe('Google Jules', () => {
@@ -364,6 +375,13 @@ describe('Devin Local / Devin CLI', () => {
       ['devin'],
     );
     for (const p of ['.devin/skills/review/SKILL.md', '.claude/skills/group/deploy/SKILL.md', '.github/skills/triage/SKILL.md', '.claude/commands/ship.md'])
+      expect(find(u, 'devin', p, 'description')!.mode, p).toBe('always');
+  });
+
+  it('lists every copy of a skill name, as Devin shows each with its location', () => {
+    const skill = (path: string) => ({ path, text: '---\nname: deploy\ndescription: Deploy the app\n---\nSteps.' });
+    const u = classify([skill('.devin/skills/deploy/SKILL.md'), skill('.agents/skills/deploy/SKILL.md'), skill('.claude/skills/deploy/SKILL.md')], ['devin']);
+    for (const p of ['.devin/skills/deploy/SKILL.md', '.agents/skills/deploy/SKILL.md', '.claude/skills/deploy/SKILL.md'])
       expect(find(u, 'devin', p, 'description')!.mode, p).toBe('always');
   });
 });

@@ -1,6 +1,10 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { classify } from '../src/core/classify.js';
-import { isInstructionFile } from '../src/core/files.js';
+import { addImports, isInstructionFile } from '../src/core/files.js';
+import { discover } from '../src/node/discover.js';
 import { find } from './helpers.js';
 
 describe('Cline', () => {
@@ -265,6 +269,43 @@ describe('Amp', () => {
     expect(find(u, 'amp', 'docs/ts.md')!.text).toBe('TypeScript rules.');
     expect(find(u, 'amp', 'docs/always.md')!.mode).toBe('always');
     expect(find(u, 'amp', 'pkg/AGENTS.md')!.mode).toBe('on-demand');
+  });
+
+  it('expands glob @-mentions relative to the mentioning file', () => {
+    const files = [
+      { path: 'AGENTS.md', text: 'See @docs/*.md and @.agent/**/*.md.' },
+      { path: 'docs/style.md', text: 'Style.' },
+      { path: 'docs/ts.md', text: '---\nglobs: ["**/*.ts"]\n---\nTypeScript rules.' },
+      { path: 'docs/deep/no.md', text: 'One star stays in its folder.' },
+      { path: '.agent/a.md', text: 'A.' },
+      { path: '.agent/x/y/b.md', text: 'B.' },
+      { path: 'pkg/AGENTS.md', text: 'Also @../docs/s*.md' },
+    ];
+    const u = classify(files, ['amp', 'claude-code']);
+    expect(find(u, 'amp', 'docs/style.md')).toMatchObject({ mode: 'always', importedFrom: 'AGENTS.md' });
+    expect(find(u, 'amp', 'docs/ts.md')!.mode).toBe('on-demand');
+    expect(find(u, 'amp', 'docs/deep/no.md')).toBeUndefined();
+    expect(find(u, 'amp', '.agent/a.md')!.mode).toBe('always');
+    expect(find(u, 'amp', '.agent/x/y/b.md')!.mode).toBe('always');
+    // Claude Code imports name single files; a glob is not expanded.
+    expect(find(u, 'claude-code', 'docs/style.md')).toBeUndefined();
+  });
+
+  it('discovers the files a glob mention matches', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'turntax-glob-'));
+    try {
+      mkdirSync(join(dir, 'docs/deep'), { recursive: true });
+      writeFileSync(join(dir, 'AGENTS.md'), 'See @docs/*.md\r\n');
+      writeFileSync(join(dir, 'docs/style.md'), 'Style.');
+      writeFileSync(join(dir, 'docs/deep/no.md'), 'Not matched.');
+      expect((await discover(dir)).map((f) => f.path)).toEqual(['AGENTS.md', 'docs/style.md']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    // Sources that list paths up front (git, the web page) pass them in.
+    const found = new Map([['AGENTS.md', { path: 'AGENTS.md', text: 'See @docs/*.md' }]]);
+    await addImports(found, (p) => (p === 'docs/a.md' ? 'A.' : null), ['docs/a.md', 'docs/b.txt', 'src/x.md']);
+    expect([...found.keys()]).toEqual(['AGENTS.md', 'docs/a.md']);
   });
 
   it('finds skills up to five folders below each skills root and uses the first of a name', () => {

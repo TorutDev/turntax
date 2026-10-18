@@ -1,4 +1,5 @@
 /** Which repository paths can hold agent instructions. Shared by the CLI and the web page. */
+import { globToRegExp } from './glob.js';
 import { configList, findImports, resolvePath } from './markdown.js';
 import type { RepoFile } from './types.js';
 
@@ -92,24 +93,33 @@ export function isSkippedDir(path: string): boolean {
   return SKIP_DIRS.has(name) || path === '.claude/worktrees' || path.endsWith('/.claude/worktrees');
 }
 
-/** Files a file pulls in: its @imports, or the read: list of .aider.conf.yml. */
-function references(f: RepoFile): string[] {
+/** Files a file pulls in: its @imports (a glob mention such as @docs/*.md matches `paths`), or the read: list of .aider.conf.yml. */
+function references(f: RepoFile, paths: string[]): string[] {
   if (f.path === '.aider.conf.yml') return configList(f, 'read');
-  return findImports(f.text)
-    .map((t) => resolvePath(f.path, t))
-    .filter((p): p is string => p !== null);
+  return findImports(f.text).flatMap((t) => {
+    const p = resolvePath(f.path, t);
+    if (p === null) return [];
+    if (!p.includes('*')) return [p];
+    const re = globToRegExp(p);
+    return paths.filter((x) => re.test(x));
+  });
 }
 
-/** Adds in-repo files reached through @imports or config read lists (up to five levels) to `found`. */
+/**
+ * Adds in-repo files reached through @imports or config read lists (up to five levels) to `found`.
+ * `paths` lists the repository's files, for glob mentions.
+ */
 export async function addImports(
   found: Map<string, RepoFile>,
   read: (path: string) => string | null | Promise<string | null>,
+  paths: Iterable<string> = [],
 ): Promise<void> {
+  const all = [...paths];
   let queue = [...found.values()];
   for (let depth = 0; depth < 5 && queue.length; depth++) {
     const next: RepoFile[] = [];
     for (const f of queue) {
-      for (const rel of references(f)) {
+      for (const rel of references(f, all)) {
         if (found.has(rel)) continue;
         const text = await read(rel);
         if (text === null) continue;
