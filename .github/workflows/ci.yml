@@ -23,7 +23,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      # Many tests copy fixtures into the temp folder. On Windows runners that folder is on C:, the OS disk,
+      # which is much slower than D: and can stall for seconds (actions/runner-images#8755).
       - run: npm test
+        env:
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
       - run: npm run build
       - run: npm run build:web
       - run: node dist/bin.js test/fixtures/mixed --json > /dev/null
