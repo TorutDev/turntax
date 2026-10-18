@@ -32,6 +32,11 @@ describe('findImports', () => {
     const text = 'See @docs/a.md and @./b.md.\nMail me@example.com\n`@not/this.md`\n```\n@nor/this.md\n```\n@~/home.md';
     expect(findImports(text)).toEqual(['docs/a.md', './b.md', '~/home.md']);
   });
+
+  it('keeps glob mentions whole', () => {
+    expect(findImports('See @docs/*.md, @.agent/**/*.md and @**/RULES.md.')).toEqual(['docs/*.md', '.agent/**/*.md', '**/RULES.md']);
+    expect(findImports('**See @AGENTS.md.** and @docs/rules.md** or @docs/**')).toEqual(['AGENTS.md', 'docs/rules.md', 'docs/**']);
+  });
 });
 
 describe('resolvePath', () => {

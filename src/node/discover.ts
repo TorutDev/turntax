@@ -19,6 +19,8 @@ function readText(abs: string): string | null {
 /** Finds agent instruction files under `root`, plus any in-repo files they @import. Read-only. */
 export async function discover(root: string): Promise<RepoFile[]> {
   const found = new Map<string, RepoFile>();
+  // Every file walked, for glob mentions such as @docs/*.md.
+  const all: string[] = [];
   const walk = (rel: string, depth: number) => {
     if (depth > MAX_DEPTH) return;
     let entries;
@@ -32,7 +34,9 @@ export async function discover(root: string): Promise<RepoFile[]> {
       if (e.isDirectory()) {
         if (isSkippedDir(path)) continue;
         walk(path, depth + 1);
-      } else if ((e.isFile() || e.isSymbolicLink()) && isInstructionFile(path)) {
+      } else if (e.isFile() || e.isSymbolicLink()) {
+        all.push(path);
+        if (!isInstructionFile(path)) continue;
         const text = readText(join(root, path));
         if (text !== null) found.set(path, { path, text });
       }
@@ -41,10 +45,14 @@ export async function discover(root: string): Promise<RepoFile[]> {
   walk('', 0);
 
   // Pull in @imported files (for example a CLAUDE.md that contains @docs/agents.md).
-  await addImports(found, (rel) => {
-    const abs = join(root, rel);
-    return existsSync(abs) && !lstatSync(abs).isDirectory() ? readText(abs) : null;
-  });
+  await addImports(
+    found,
+    (rel) => {
+      const abs = join(root, rel);
+      return existsSync(abs) && !lstatSync(abs).isDirectory() ? readText(abs) : null;
+    },
+    all,
+  );
   return [...found.values()].sort((a, b) => a.path.localeCompare(b.path));
 }
 

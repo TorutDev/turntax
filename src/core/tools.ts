@@ -42,6 +42,8 @@ export type FileRule =
       importDepth?: number;
       /** Imported files with `globs` frontmatter load only when a matching file is read (Amp). */
       importGlobs?: boolean;
+      /** @-mentions may be globs such as `@doc/*.md`, which pull in every matching file (Amp). */
+      globMentions?: boolean;
       /** Bytes read before the tool stops (content beyond is dropped). */
       maxBytes?: number;
       /** Only read when the condition holds for the repository. */
@@ -801,6 +803,7 @@ export const TOOLS: ToolSpec[] = [
         nestedTrigger: 'when Amp reads a file in',
         importDepth: 1,
         importGlobs: true,
+        globMentions: true,
         note: 'AGENT.md and CLAUDE.md are fallbacks for directories without AGENTS.md; their order between each other, and following @-mentions one level deep, are assumptions.',
       },
       // Amp uses the first skill with a given name; skills may sit up to five folders below each skills root.
@@ -809,7 +812,6 @@ export const TOOLS: ToolSpec[] = [
     limits: [],
     notes: [
       'User AGENTS.md files (~/.config/amp, ~/.config) and user skills are counted only with --include-user; system files (/etc/ampcode) are not counted.',
-      'Glob @-mentions such as @doc/*.md are not expanded.',
       'amp.skills.disableClaudeCodeSkills turns off the .claude/skills folders (read by default). Skill folders in subdirectories below the launch directory are not documented and not counted.',
     ],
   },
@@ -1153,8 +1155,9 @@ export const TOOLS: ToolSpec[] = [
       'https://kilo.ai/docs/getting-started/migrating',
       'https://kilo.ai/docs/code-with-ai/platforms/cloud-agent',
       'https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md',
+      'https://github.com/Kilo-Org/kilocode/blob/2a1903f29186e25adec0bace14f6ee589095f7eb/packages/opencode/src/skill/index.ts',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-10-18',
     rules: [
       {
         kind: 'precedence',
@@ -1186,12 +1189,14 @@ export const TOOLS: ToolSpec[] = [
         trigger: 'only in that Kilo mode (legacy)',
         note: "Kilo's user docs say mode rules load only in their mode; its GitHub migration doc says they load in every mode.",
       },
+      // Kilo keeps one skill per name; its source loads .claude, .agents, .kilocode, then .kilo, and the last one wins.
       ...['kilo', 'kilocode', 'agents', 'claude'].map(
         (dir): FileRule => ({
           kind: 'skill',
           pattern: new RegExp(`^\\.${dir}\\/skills\\/[^/]+\\/SKILL\\.md$`),
           rootPrefix: `.${dir}/skills/`,
           bodyTrigger: 'when the agent uses the skill',
+          dedupeByName: true,
         }),
       ),
       ...['kilo/agents', 'kilo/agent', 'kilocode/agents'].map(
@@ -1210,6 +1215,7 @@ export const TOOLS: ToolSpec[] = [
       'Files listed under instructions in kilo.json or kilo.jsonc are not counted.',
       'Nested CLAUDE.md and CONTEXT.md files are not documented and not counted.',
       'In VS Code, .claude/skills are read only with Claude Code Compatibility on; the CLI reads them by default and they are counted. The legacy .kilocode/skills folder is documented on the Cloud Agents page.',
+      "Of skills with the same name only one is used: .kilo, then .kilocode, .agents, .claude (from Kilo's source; the docs only say project skills win over global ones). The source also skips a SKILL.md without a name in its frontmatter; turntax still counts it.",
       'Custom agent descriptions are assumed to be listed for the Task tool (inferred).',
       'Kilo also reads ~/.claude/CLAUDE.md as a global fallback until Claude Code migration runs; turntax does not count it for Kilo.',
     ],
@@ -1244,8 +1250,9 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.devin.ai/cli/reference/configuration/read-config-from',
       'https://docs.devin.ai/cli/extensibility/skills/overview',
       'https://docs.devin.ai/desktop/devin-local',
+      'https://docs.devin.ai/cli/changelog/stable',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-10-18',
     rules: [
       {
         kind: 'hierarchical',
@@ -1328,6 +1335,7 @@ export const TOOLS: ToolSpec[] = [
       "Nested .devin/rules are listed as not read: the rules page says .devin folders are read at the workspace root and in each folder between it and the current directory. Nested .windsurf/rules are counted on demand, as the page's Windsurf section says they load when Devin accesses files there (its .devin section can be read as limiting them the same way).",
       'Nested .cursor/rules, global_rules.md and skill folders are not counted.',
       'A skill with triggers: [user] is still counted as listed for the agent.',
+      'Skills with the same name in several folders are all listed, each with a location prefix such as /agents:foo (changelog v3000.2.17). One skill folder reached through a symlink loads once (v3000.10.21); turntax counts each path.',
       'Global rules (~/.config/devin/AGENTS.md, ~/.devin/rules/) are outside the repository; --include-user counts them. Devin CLI also reads ~/.claude/CLAUDE.md, which --include-user counts too.',
     ],
   },

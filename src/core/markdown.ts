@@ -104,14 +104,15 @@ export function stripHtmlComments(text: string): string {
   return kept.join('\n');
 }
 
-/** Finds `@path` imports outside code spans and fenced blocks. */
+/** Finds `@path` imports outside code spans and fenced blocks. Glob mentions such as `@docs/*.md` are kept whole. */
 export function findImports(text: string): string[] {
   const found: string[] = [];
   for (const { line, inFence } of linesWithFences(text)) {
     if (inFence) continue;
     const noCode = line.replace(/`[^`]*`/g, '');
-    for (const m of noCode.matchAll(/(?:^|\s)@((?:~|\.{1,2})?\/?[\w.-][\w./-]*)/g)) {
-      const target = (m[1] as string).replace(/[.,;:)]+$/, '');
+    for (const m of noCode.matchAll(/(?:^|\s)@((?:~|\.{1,2})?\/?[\w.*-][\w./*-]*)/g)) {
+      // Trailing punctuation and emphasis (`**See @AGENTS.md.**`) are not part of the path.
+      const target = (m[1] as string).replace(/(\.[A-Za-z]\w*)[.,;:)*]+$/, '$1').replace(/[.,;:)]+$/, '');
       if (target.includes('/') || /\.\w+$/.test(target)) found.push(target);
     }
   }

@@ -34,7 +34,7 @@ export async function filesAtRef(root: string, ref: string): Promise<{ files: Re
     if (text !== null) found.set(p, { path: p, text });
   }
   const all = new Set(kept);
-  await addImports(found, (p) => (all.has(p) ? read(p) : null));
+  await addImports(found, (p) => (all.has(p) ? read(p) : null), all);
   const mcpConfigs = kept.filter(isMcpConfigFile).flatMap((p) => {
     const text = read(p);
     return text === null ? [] : [{ path: p, text }];

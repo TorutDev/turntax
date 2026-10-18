@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1 (2026-10-18)
+
+- Amp: glob @-mentions such as `@doc/*.md` or `@.agent/**/*.md` now pull in every matching file, as Amp's docs describe. Other agents still treat `@` imports as single files.
+- Kilo Code keeps one skill per name, in the order of its source: `.kilo`, then `.kilocode`, `.agents`, `.claude`. Devin lists every same-name copy, as its changelog says, and that is now noted.
+- Files that load only as a /command no longer split an agent into its own row; Augment Code, which reads `.claude/commands` that way, now shares the row of agents with the same per-turn cost.
+- Totals can change: Amp's rise where an instruction file mentions a glob, and Kilo Code's fall where a skill name sits in two folders. The largest per-turn total drives the badge and `--max-tokens`.
+
 ## 0.7.0 (2026-10-17)
 
 - Seven more agents, 23 in all: Warp, Factory Droid, TRAE, Augment Code, Kilo Code, Google Jules and Devin Local / Devin CLI, each from its official docs with sources, notes and documented limits. TRAE files behind settings switches with undocumented defaults are noted and not counted.

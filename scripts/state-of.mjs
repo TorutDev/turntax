@@ -274,7 +274,7 @@ async function scanRepo(item) {
     else found.set(path, { path, text: texts[i] });
   });
   const direct = new Set(found.keys());
-  await addImports(found, read);
+  await addImports(found, read, blobs.keys());
   const files = [...found.values()].sort((a, b) => a.path.localeCompare(b.path));
 
   const exists = (p) => existing.has(p);

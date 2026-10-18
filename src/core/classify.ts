@@ -1,3 +1,4 @@
+import { globToRegExp } from './glob.js';
 import { basename, configList, dirname, findImports, firstParagraph, parseFrontmatter, resolvePath, stripHtmlComments } from './markdown.js';
 import { TOOLS, type FileRule, type Frontmatter, type ToolSpec } from './tools.js';
 import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
@@ -274,27 +275,32 @@ function expandImports(
       parent.notes.push(`@${target} points outside the repository and is not counted.`);
       continue;
     }
-    if (seen.has(resolved)) continue;
-    const f = byPath.get(resolved);
-    if (!f) continue;
-    seen.add(resolved);
-    const notes: string[] = [];
-    let mode = parent.mode;
-    let trigger = parent.trigger;
-    let text = f.text;
-    if (rule.importGlobs) {
-      const { frontmatter, body } = parseFrontmatter(f.text);
-      if (frontmatter.globs !== undefined && String(frontmatter.globs) !== '') {
-        mode = 'on-demand';
-        trigger = `globs: ${Array.isArray(frontmatter.globs) ? frontmatter.globs.join(', ') : String(frontmatter.globs)}`;
-        text = body;
+    // A glob mention pulls in every matching file, but only for tools that expand globs.
+    const re = resolved.includes('*') ? globToRegExp(resolved) : null;
+    const targets = !re ? [resolved] : rule.globMentions ? [...byPath.keys()].filter((p) => re.test(p)).sort() : [];
+    for (const path of targets) {
+      if (seen.has(path)) continue;
+      const f = byPath.get(path);
+      if (!f) continue;
+      seen.add(path);
+      const notes: string[] = [];
+      let mode = parent.mode;
+      let trigger = parent.trigger;
+      let text = f.text;
+      if (rule.importGlobs) {
+        const { frontmatter, body } = parseFrontmatter(f.text);
+        if (frontmatter.globs !== undefined && String(frontmatter.globs) !== '') {
+          mode = 'on-demand';
+          trigger = `globs: ${Array.isArray(frontmatter.globs) ? frontmatter.globs.join(', ') : String(frontmatter.globs)}`;
+          text = body;
+        }
       }
+      const child = unit(tool, f.path, mode, trigger, transform(text, rule, notes), {
+        importedFrom: parent.path,
+        notes,
+      });
+      out.push(child, ...expandImports(tool, child, rule, byPath, depth - 1, seen));
     }
-    const child = unit(tool, f.path, mode, trigger, transform(text, rule, notes), {
-      importedFrom: parent.path,
-      notes,
-    });
-    out.push(child, ...expandImports(tool, child, rule, byPath, depth - 1, seen));
   }
   return out;
 }

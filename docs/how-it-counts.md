@@ -11,9 +11,9 @@ Skills and description-driven rules are split in two: the short description is a
 
 Rule folders inside a subdirectory (for example `packages/api/.claude/rules/` or `packages/api/.cursor/rules/`) are counted as on-demand: they apply only when the agent works in that folder. Skill folders inside a subdirectory are on-demand for agents that list them once they work there, and ignored for agents that look for them only from the launch directory up. Agents whose docs do not mention skill folders in subdirectories do not count them.
 
-When an agent reads two skills with the same name at the same level, for example `.agents/skills/deploy/` and `.claude/skills/deploy/` (often symlinked copies), only the one from the folder that takes precedence is counted; the other is ignored with "same skill name as ...". A skill's name is its `name` frontmatter, else its folder name. The order is the agent's documented precedence; where its docs are silent, the order shown below is an assumption. Agents that list both copies (OpenAI Codex, GitHub Copilot, Warp, which also lists each skill's path) count both.
+When an agent reads two skills with the same name at the same level, for example `.agents/skills/deploy/` and `.claude/skills/deploy/` (often symlinked copies), only the one from the folder that takes precedence is counted; the other is ignored with "same skill name as ...". A skill's name is its `name` frontmatter, else its folder name. The order is the agent's documented precedence; where its docs are silent, the order shown below is an assumption. Agents that list both copies (OpenAI Codex, GitHub Copilot, Devin Local / Devin CLI, and Warp, which also lists each skill's path) count both.
 
-The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-10-17.
+The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-10-17, Kilo Code and Devin again on 2026-10-18.
 
 ## Claude Code
 
@@ -206,10 +206,10 @@ Sources: [AGENTS.md](https://ampcode.com/docs/customize/agents-md), [skills](htt
 | --- | --- |
 | `AGENTS.md` at the root (or `AGENT.md` / `CLAUDE.md` when there is no `AGENTS.md`) | always |
 | The same files in a subdirectory | on-demand, when Amp reads a file there |
-| Files @-mentioned in them | always, or on-demand when they have `globs` frontmatter |
+| Files @-mentioned in them, globs such as `@doc/*.md` included | always, or on-demand when they have `globs` frontmatter |
 | `SKILL.md` up to five folders below `.agents/skills/` or `.claude/skills/` | name and description always; body when Amp loads the skill; the first skill of a name wins |
 
-Glob @-mentions such as `@doc/*.md` are not expanded. `amp.skills.disableClaudeCodeSkills` turns off the `.claude/skills` folders.
+A glob mention pulls in every matching file, relative to the file that mentions it. `amp.skills.disableClaudeCodeSkills` turns off the `.claude/skills` folders.
 
 ## OpenCode
 
@@ -285,7 +285,7 @@ Workspace guidelines and rules are limited to 49,512 characters together; `turnt
 
 ## Kilo Code
 
-Sources: [custom instructions](https://kilo.ai/docs/customize/custom-instructions), [AGENTS.md](https://kilo.ai/docs/customize/agents-md), [custom rules](https://kilo.ai/docs/customize/custom-rules), [skills](https://kilo.ai/docs/customize/skills), [workflows](https://kilo.ai/docs/customize/workflows), [subagents](https://kilo.ai/docs/customize/custom-subagents), [migrating](https://kilo.ai/docs/getting-started/migrating), [Cloud Agents](https://kilo.ai/docs/code-with-ai/platforms/cloud-agent), [rules migration (GitHub)](https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md)
+Sources: [custom instructions](https://kilo.ai/docs/customize/custom-instructions), [AGENTS.md](https://kilo.ai/docs/customize/agents-md), [custom rules](https://kilo.ai/docs/customize/custom-rules), [skills](https://kilo.ai/docs/customize/skills), [workflows](https://kilo.ai/docs/customize/workflows), [subagents](https://kilo.ai/docs/customize/custom-subagents), [migrating](https://kilo.ai/docs/getting-started/migrating), [Cloud Agents](https://kilo.ai/docs/code-with-ai/platforms/cloud-agent), [rules migration (GitHub)](https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md), [skill loading (GitHub)](https://github.com/Kilo-Org/kilocode/blob/2a1903f29186e25adec0bace14f6ee589095f7eb/packages/opencode/src/skill/index.ts)
 
 | File | Mode |
 | --- | --- |
@@ -293,7 +293,7 @@ Sources: [custom instructions](https://kilo.ai/docs/customize/custom-instruction
 | `AGENTS.md` in a subdirectory | on-demand, when the Read tool opens a file there |
 | `.kilo/rules/*.md`, `.kilocode/rules/*.md`, `.kilocoderules` | always |
 | `.kilo/rules-{mode}/*.md`, `.kilocode/rules-{mode}/*.md`, `.kilocoderules-{mode}` | on-demand: only in that mode |
-| `.kilo/skills/`, `.kilocode/skills/`, `.agents/skills/`, `.claude/skills/` + `*/SKILL.md` | name and description always; body when the agent uses the skill |
+| `.kilo/skills/`, `.kilocode/skills/`, `.agents/skills/`, `.claude/skills/` + `*/SKILL.md` | name and description always; body when the agent uses the skill; of skills with the same name, the first folder in this order wins (from the source) |
 | `.kilo/agents/*.md`, `.kilo/agent/*.md`, `.kilocode/agents/*.md` | description always (assumed, for the Task tool); body is the agent's own prompt |
 | `.kilo/commands/**/*.md` | manual |
 
@@ -311,7 +311,7 @@ Jules runs each task in a cloud VM. Setup scripts, MCP connections and memories 
 
 ## Devin Local / Devin CLI
 
-Sources: [rules](https://docs.devin.ai/cli/extensibility/rules), [configuration import](https://docs.devin.ai/cli/reference/configuration/read-config-from), [skills](https://docs.devin.ai/cli/extensibility/skills/overview), [Devin Local](https://docs.devin.ai/desktop/devin-local)
+Sources: [rules](https://docs.devin.ai/cli/extensibility/rules), [configuration import](https://docs.devin.ai/cli/reference/configuration/read-config-from), [skills](https://docs.devin.ai/cli/extensibility/skills/overview), [Devin Local](https://docs.devin.ai/desktop/devin-local), [changelog](https://docs.devin.ai/cli/changelog/stable)
 
 New Devin Desktop (Windsurf) conversations start on Devin Local, which follows the Devin CLI rules below; the Windsurf entry above covers the legacy Cascade agent.
 
@@ -324,7 +324,7 @@ New Devin Desktop (Windsurf) conversations start on Devin Local, which follows t
 | `.cursor/rules/*.mdc` and `.cursor/rules/*.md` | the same as Cursor: `alwaysApply: true` always; `globs` on-demand; `description` only: description always, body on-demand; neither: manual |
 | `.devin/skills/*/SKILL.md`, `.windsurf/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `.claude/skills/**/SKILL.md`, `.github/skills/**/SKILL.md`, `.claude/commands/**/*.md` | name and description always; body when the skill is invoked |
 
-Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default (`read_config_from`); turning one off is not modelled. Nested `.devin/rules` folders are not read when Devin is launched at the root (`.devin` folders are read at the root and in each folder between the root and the working directory); nested `.windsurf/rules` load on demand. Nested `.cursor/rules`, nested `global_rules.md` and nested skill folders are not counted, and a skill with `triggers: [user]` is still counted as listed. With `--include-user`, `~/.config/devin/` (`%APPDATA%\devin\` on Windows) rule files and skills, `~/.devin/rules/`, `~/.devin/global_rules.md`, `~/.agents/skills/`, `~/.codeium/windsurf/skills/`, `~/.copilot/skills/` and `~/.claude/CLAUDE.md` (which Devin CLI also reads) are counted.
+Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default (`read_config_from`); turning one off is not modelled. Nested `.devin/rules` folders are not read when Devin is launched at the root (`.devin` folders are read at the root and in each folder between the root and the working directory); nested `.windsurf/rules` load on demand. Nested `.cursor/rules`, nested `global_rules.md` and nested skill folders are not counted, and a skill with `triggers: [user]` is still counted as listed. Skills with the same name in several folders are all listed, each with a location prefix such as `/agents:foo`; a skill folder reached through a symlink loads once, but `turntax` counts each path. With `--include-user`, `~/.config/devin/` (`%APPDATA%\devin\` on Windows) rule files and skills, `~/.devin/rules/`, `~/.devin/global_rules.md`, `~/.agents/skills/`, `~/.codeium/windsurf/skills/`, `~/.copilot/skills/` and `~/.claude/CLAUDE.md` (which Devin CLI also reads) are counted.
 
 ## User-level files
 
