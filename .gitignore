@@ -3,6 +3,8 @@ dist/
 coverage/
 web/app.js
 *.tgz
+*.vsix
+vscode/.vscode-test/
 .env
 .env.*
 .notes/

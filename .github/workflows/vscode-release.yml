@@ -1,0 +1,44 @@
+name: VS Code extension release
+
+on:
+  push:
+    tags: ['vscode-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            vscode/package-lock.json
+      # The extension bundles the engine from src/.
+      - run: npm ci
+        working-directory: .
+      - run: npm ci
+      - name: Tag matches the extension version
+        if: github.ref_type == 'tag'
+        run: test "$GITHUB_REF_NAME" = "vscode-v$(node -p "require('./package.json').version")"
+      - run: npm run typecheck
+      - run: npx vsce package --no-dependencies --out turntax.vsix
+      - run: npx vsce publish --packagePath turntax.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      # Open VSX needs the publisher namespace once.
+      - run: curl -sf https://open-vsx.org/api/torut > /dev/null || npx ovsx create-namespace torut
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      - run: npx ovsx publish turntax.vsix
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}

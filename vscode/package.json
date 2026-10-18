@@ -1,0 +1,86 @@
+{
+  "name": "turntax",
+  "displayName": "turntax",
+  "description": "Per-turn token cost of AI coding-agent instruction files (AGENTS.md, CLAUDE.md, Cursor rules, Copilot instructions, skills) in the status bar, with findings and safe fixes.",
+  "version": "0.1.0",
+  "publisher": "torut",
+  "icon": "icon.png",
+  "license": "MIT",
+  "author": "TORUT LTD",
+  "homepage": "https://github.com/TorutDev/turntax/tree/main/vscode#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TorutDev/turntax.git",
+    "directory": "vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/TorutDev/turntax/issues"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "agents-md",
+    "claude-code",
+    "cursor",
+    "copilot",
+    "codex",
+    "gemini",
+    "tokens",
+    "context",
+    "instructions"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:turntax.showReport",
+    "onCommand:turntax.previewFixes",
+    "onCommand:turntax.refresh"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In Restricted Mode turntax shows the cost, findings and fix previews; applying fixes needs a trusted workspace."
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "turntax.showReport",
+        "title": "Show Report",
+        "category": "turntax"
+      },
+      {
+        "command": "turntax.previewFixes",
+        "title": "Preview Safe Fixes",
+        "category": "turntax"
+      },
+      {
+        "command": "turntax.refresh",
+        "title": "Refresh",
+        "category": "turntax"
+      }
+    ]
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "esbuild src/extension.ts --bundle --minify --platform=node --format=cjs --target=node20 --external:vscode --outfile=dist/extension.js",
+    "build:test": "esbuild test-integration/run.ts test-integration/suite.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --external:@vscode/test-electron --outdir=dist/test",
+    "test": "npm run build && npm run build:test && node dist/test/run.js",
+    "vscode:prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "@types/vscode": "1.95.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "ovsx": "1.2.0",
+    "typescript": "6.0.3"
+  }
+}

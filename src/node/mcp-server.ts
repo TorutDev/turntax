@@ -3,17 +3,13 @@ import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
 import { parseArgs } from 'node:util';
-import { audit } from '../core/audit.js';
 import { unifiedDiff } from '../core/fix.js';
-import { globMatcher } from '../core/glob.js';
-import { parseMcpConfigs } from '../core/mcp.js';
 import { DEFAULT_MODEL_IDS, MODELS } from '../core/prices.js';
 import { renderText } from '../core/render.js';
 import { TOOL_IDS } from '../core/tools.js';
 import type { ToolId } from '../core/types.js';
-import { loadConfig } from './config.js';
-import { discover, discoverMcpConfigs, existsIn, packageScripts } from './discover.js';
-import { fixLines, fixPlan } from './fix-plan.js';
+import { fixLines } from './fix-plan.js';
+import { auditWorkspace, planWorkspaceFixes } from './workspace.js';
 
 /**
  * `turntax mcp`: turntax as a Model Context Protocol server over stdio (newline-delimited JSON-RPC 2.0).
@@ -216,24 +212,13 @@ function ids(value: unknown, kind: string, known: string[]): string[] | undefine
 
 /** The report `turntax <root>` prints, set up as the CLI does without flags: config, ignored files, project MCP configs. */
 async function auditText({ root, tools, models }: ToolArgs): Promise<string> {
-  const config = loadConfig(root, undefined, MODELS);
-  const ignored = globMatcher(config.ignore ?? []);
-  const files = (await discover(root)).filter((f) => !ignored(f.path));
-  const mcp = parseMcpConfigs(discoverMcpConfigs(root), root);
-  const report = await audit(files, {
-    tools: tools ?? config.tools,
-    models: (models ?? config.models ?? DEFAULT_MODEL_IDS).flatMap((id) => MODELS.filter((m) => m.id === id)),
-    turns: config.turns ?? 100,
-    mcp: { servers: mcp.servers },
-    advice: { exists: existsIn(root), packageScripts: packageScripts(root), sectionTokens: config.sectionTokens ?? 600 },
-  });
-  return [...mcp.problems.map((p) => `turntax: ${p.path} ${p.message}`), renderText(report, root)].join('\n');
+  const { report, problems } = await auditWorkspace(root, { tools, models });
+  return [...problems.map((p) => `turntax: ${p.path} ${p.message}`), renderText(report, root)].join('\n');
 }
 
 /** The fix plan as `turntax --fix` prints it: fixes, skipped fixes, then the diff. */
 async function fixPreviewText({ root, tools }: ToolArgs): Promise<string> {
-  const config = loadConfig(root, undefined, MODELS);
-  const plan = fixPlan(root, await discover(root), tools ?? config.tools, globMatcher(config.ignore ?? []), config.sectionTokens);
+  const plan = await planWorkspaceFixes(root, tools);
   const lines = fixLines(plan);
   if (!plan.changes.length) return [...lines, 'Nothing to fix automatically.'].join('\n');
   const command = `npx turntax${tools ? ` --tools ${tools.join(',')}` : ''} --fix --write`;
