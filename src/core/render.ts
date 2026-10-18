@@ -288,7 +288,8 @@ function footer(report: Report): string {
   return lines.join('\n');
 }
 
-export function renderMarkdown(report: Report): string {
+/** `badge: false` leaves out the shields.io badge, for viewers that would fetch it (the VS Code preview). */
+export function renderMarkdown(report: Report, { badge = true }: { badge?: boolean } = {}): string {
   const out: string[] = ['# Agent context tax report', ''];
   if (report.diff) out.push(renderDiffMarkdown(report.diff), '');
   out.push(`Every agent re-sends its always-loaded instruction files with each turn. Costs are for ${report.turns} turns.`, '');
@@ -339,7 +340,7 @@ export function renderMarkdown(report: Report): string {
   if (report.mcp.some((m) => m.instructionsO200k)) out.push(`- ${INSTRUCTIONS_NOTE}`);
   for (const m of report.models)
     out.push(`- ${m.label}: $${m.inputPerMTok ?? 'n/a'} input / $${m.cachedInputPerMTok ?? 'n/a'} cached per 1M tokens ([source](${m.source}), checked ${m.checkedAt}).`);
-  out.push('', badgeMarkdown(report));
+  if (badge) out.push('', badgeMarkdown(report));
   return out.join('\n') + '\n';
 }
 
