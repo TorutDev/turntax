@@ -75,6 +75,8 @@ export async function run(): Promise<void> {
     await vscode.commands.executeCommand('turntax.showReport');
     const report = vscode.workspace.textDocuments.find((d) => d.uri.scheme === 'turntax-report');
     assert.match(report?.getText() ?? '', /^# Agent context tax report\n/);
+    // The preview loads remote images, so the report must not have any.
+    assert.doesNotMatch(report?.getText() ?? '', /!\[[^\]]*\]\(https?:/);
     const preview = (input: unknown) => input instanceof vscode.TabInputWebview && /markdown\.preview/.test(input.viewType);
     assert.equal(await tabsWith(preview, 1), 1, 'one Markdown preview is open');
   });

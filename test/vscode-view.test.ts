@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Report } from '../src/core/audit.js';
 import type { FixPlan } from '../src/core/fix.js';
-import { groupTools, headlineTokens } from '../src/core/render.js';
+import { groupTools, headlineTokens, renderMarkdown } from '../src/core/render.js';
 import { auditWorkspace, planWorkspaceFixes } from '../src/node/workspace.js';
-import { affectsAudit, diagnosticsFrom, diffTitle, fixSummary, isFixable, statusView } from '../vscode/src/view.js';
+import { affectsAudit, diagnosticsFrom, diffTitle, fixSummary, isFixable, nothingToFix, reportMarkdown, samePlan, statusView } from '../vscode/src/view.js';
 import { fixture, materialize } from './helpers.js';
 
 const mixed = await auditWorkspace(fixture('mixed'));
@@ -86,14 +86,34 @@ describe('VS Code diagnostics', () => {
 describe('VS Code refresh', () => {
   it('reacts to instruction files, MCP configs, the config and files the last report read', () => {
     const known = mixed.report.files.map((f) => f.path);
-    for (const path of ['CLAUDE.md', 'packages/web/AGENTS.md', '.cursor/rules/new.mdc', '.mcp.json', '.cursor/mcp.json', 'turntax.config.json', 'docs/extra.md', 'docs'])
+    for (const path of ['CLAUDE.md', 'packages/web/AGENTS.md', '.cursor/rules/new.mdc', '.mcp.json', '.cursor/mcp.json', 'turntax.config.json', 'package.json', 'docs/extra.md', 'docs'])
       expect(affectsAudit(path, known), path).toBe(true);
     for (const path of ['src/index.ts', 'README.md', 'node_modules/pkg/CLAUDE.md', '.claude/worktrees/agent-1/CLAUDE.md', 'packages/api/turntax.config.json'])
       expect(affectsAudit(path, known), path).toBe(false);
   });
 });
 
+describe('VS Code report', () => {
+  it('leaves out the remote badge, so the preview fetches nothing', () => {
+    expect(renderMarkdown(mixed.report)).toContain('https://img.shields.io/');
+    const md = reportMarkdown(mixed.report);
+    expect(md).not.toMatch(/!\[[^\]]*\]\(https?:/);
+    expect(md).toBe(renderMarkdown(mixed.report).replace(/\n\[!\[context tax[^\n]*\n$/, ''));
+  });
+});
+
 describe('VS Code fix preview', () => {
+  it('applies only a plan that is still the same, and says why nothing was fixed', async () => {
+    const plan = await planWorkspaceFixes(fixture('mixed'));
+    expect(samePlan(plan, await planWorkspaceFixes(fixture('mixed')))).toBe(true);
+    const changed = { ...plan, changes: plan.changes.map((c) => ({ ...c, before: c.before + 'edited' })) };
+    expect(samePlan(plan, changed)).toBe(false);
+    expect(nothingToFix({ fixes: [], skipped: [], changes: [] })).toBe('Nothing to fix automatically.');
+    const skipped = { kind: 'duplicate' as const, paths: ['AGENTS.md'], reason: 'AGENTS.md is a symlink.' };
+    expect(nothingToFix({ fixes: [], skipped: [skipped], changes: [] })).toBe('Nothing to fix automatically. Skipped: AGENTS.md is a symlink.');
+    expect(nothingToFix({ fixes: [], skipped: [skipped, skipped], changes: [] })).toMatch(/symlink\. \(\+1 more; run npx turntax --fix for all\)$/);
+  });
+
   it('plans the fixes as the MCP fix_preview does and summarises them', async () => {
     const plan = await planWorkspaceFixes(fixture('mixed'));
     expect(plan.changes.map((c) => [c.renamedFrom, c.path])).toEqual([['.cursor/rules/wrong.md', '.cursor/rules/wrong.mdc']]);

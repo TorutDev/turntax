@@ -1,5 +1,7 @@
 **
 !dist/extension.js
+!dist/worker.js
+!ThirdPartyNotices.txt
 !icon.png
 !README.md
 !CHANGELOG.md

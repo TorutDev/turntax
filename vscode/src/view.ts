@@ -4,7 +4,7 @@ import type { Report } from '../../src/core/audit.js';
 import { isInstructionFile, isSkippedDir } from '../../src/core/files.js';
 import type { FileChange, FixKind, FixPlan } from '../../src/core/fix.js';
 import { isMcpConfigFile } from '../../src/core/mcp.js';
-import { fmtTokens, groupTools, headlineTokens } from '../../src/core/render.js';
+import { fmtTokens, groupTools, headlineTokens, renderMarkdown } from '../../src/core/render.js';
 import { CONFIG_FILE } from '../../src/node/config.js';
 import type { WorkspaceAudit } from '../../src/node/workspace.js';
 
@@ -61,13 +61,27 @@ export const isFixable = (kind: string | undefined): boolean => kind !== undefin
 
 /**
  * True when a change to `path` (repository-relative) can change the report: instruction files, project
- * MCP configs, turntax.config.json, and files or folders the last report read (such as @imports).
+ * MCP configs, turntax.config.json, package.json (its scripts are checked), and files or folders the last
+ * report read (such as @imports).
  */
 export function affectsAudit(path: string, known: Iterable<string>): boolean {
   for (const k of known) if (k === path || k.startsWith(`${path}/`)) return true;
   const dirs = path.split('/').slice(0, -1);
   if (dirs.some((_, i) => isSkippedDir(dirs.slice(0, i + 1).join('/')))) return false;
-  return isInstructionFile(path) || isMcpConfigFile(path) || path === CONFIG_FILE;
+  return isInstructionFile(path) || isMcpConfigFile(path) || path === CONFIG_FILE || path === 'package.json';
+}
+
+/** The report for the Markdown preview, without the shields.io badge the preview would fetch. */
+export const reportMarkdown = (report: Report): string => renderMarkdown(report, { badge: false });
+
+/** True when a new plan would make exactly the previewed changes. */
+export const samePlan = (a: FixPlan, b: FixPlan): boolean => JSON.stringify(a.changes) === JSON.stringify(b.changes);
+
+/** "Nothing to fix automatically.", with the first reason a fix was skipped. */
+export function nothingToFix(plan: FixPlan): string {
+  const first = plan.skipped[0];
+  const more = plan.skipped.length > 1 ? ` (+${plan.skipped.length - 1} more; run npx turntax --fix for all)` : '';
+  return first ? `Nothing to fix automatically. Skipped: ${first.reason}${more}` : 'Nothing to fix automatically.';
 }
 
 /** "2 safe fixes (saves ~150 o200k tokens/turn)", as in the pull request comment. */

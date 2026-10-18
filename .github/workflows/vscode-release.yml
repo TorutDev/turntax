@@ -3,7 +3,6 @@ name: VS Code extension release
 on:
   push:
     tags: ['vscode-v*']
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,17 +27,31 @@ jobs:
         working-directory: .
       - run: npm ci
       - name: Tag matches the extension version
-        if: github.ref_type == 'tag'
         run: test "$GITHUB_REF_NAME" = "vscode-v$(node -p "require('./package.json').version")"
       - run: npm run typecheck
       - run: npx vsce package --no-dependencies --out turntax.vsix
-      - run: npx vsce publish --packagePath turntax.vsix
+      # For a manual upload at https://marketplace.visualstudio.com/manage when no VSCE_PAT is set.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: turntax-vsix
+          path: vscode/turntax.vsix
+      # Open VSX needs the publisher namespace once.
+      - name: Open VSX namespace
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' https://open-vsx.org/api/torut)
+          if [ "$status" = 404 ]; then npx ovsx create-namespace torut; elif [ "$status" != 200 ]; then echo "open-vsx.org returned $status" && exit 1; fi
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      - run: npx ovsx publish turntax.vsix --skip-duplicate
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      # Secrets cannot be tested in `if`; this step says whether one is set.
+      - id: marketplace
+        run: echo "token=$([ -n "$VSCE_PAT" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      # Open VSX needs the publisher namespace once.
-      - run: curl -sf https://open-vsx.org/api/torut > /dev/null || npx ovsx create-namespace torut
+      - name: VS Code Marketplace
+        if: steps.marketplace.outputs.token == 'yes'
+        run: npx vsce publish --packagePath turntax.vsix --skip-duplicate
         env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
-      - run: npx ovsx publish turntax.vsix
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}

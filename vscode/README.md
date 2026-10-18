@@ -8,15 +8,16 @@ It runs the same engine as the [turntax CLI](https://github.com/TorutDev/turntax
 
 - **Status bar**: the largest per-turn cost across the agents that read the folder, for example `330 tok/turn`. It is the number the CLI badge shows: repository instruction files that load every turn, in o200k tokens. Hover for each agent's number; click for the full report.
 - **Problems**: each finding on its file and line, with the estimated saving, such as lines loaded twice, sections that could load only in their folder, large procedures that could be an on-demand skill, misconfigured rules, references to files that no longer exist and contradictions.
-- **Safe fixes**: on findings the fixer handles, the quick fix *turntax: Preview safe fixes* (or the command *turntax: Preview Safe Fixes*) opens a diff for every file the fixes would change. Nothing is written until you choose **Apply**. Applying checks again that every file still has the content the plan was made from, and needs a trusted workspace.
+- **Safe fixes**: on findings the fixer handles, the quick fix *turntax: Preview safe fixes* (or the command *turntax: Preview Safe Fixes*) opens a diff for every file the fixes would change. Nothing is written until you choose **Apply**, which plans the fixes again, writes only if nothing changed since the preview, and needs a trusted workspace.
 
-The numbers update when an instruction file, a project MCP config or `turntax.config.json` changes.
+The numbers update when an instruction file, a project MCP config, `package.json` or `turntax.config.json` changes. The folder is read in a background thread, so a large folder does not slow the editor down; the first count can take a while there.
 
-Example tooltip for a repository with `CLAUDE.md`, `AGENTS.md`, Cursor rules and Copilot instructions:
+The first lines of the tooltip for a repository with `CLAUDE.md`, `AGENTS.md`, Cursor rules and Copilot instructions:
 
 ```text
 Claude Code: 272 tokens/turn
 OpenAI Codex: 63 tokens/turn
+Gemini CLI: 17 tokens/turn
 Cursor: 311 tokens/turn
 GitHub Copilot: 307 tokens/turn
 ...
@@ -41,7 +42,7 @@ None. A `turntax.config.json` in the folder (`tools`, `models`, `ignore`, `secti
 - MCP servers in project configs are listed in the report, but their tool definitions are not counted: that needs starting the servers (`npx turntax --mcp`).
 - User-level files in your home folder are not included (`npx turntax --include-user`).
 
-Nothing leaves your machine: the extension makes no network requests and has no telemetry.
+Nothing leaves your machine: the extension makes no network requests and has no telemetry. The report preview leaves out the shields.io badge the CLI adds, so the preview does not fetch it.
 
 ## More
 
@@ -60,4 +61,4 @@ npm test                         # downloads VS Code 1.95.0 into .vscode-test an
 npx vsce package --no-dependencies
 ```
 
-MIT License, TORUT LTD.
+MIT License, TORUT LTD. Bundled third-party licences are in ThirdPartyNotices.txt.

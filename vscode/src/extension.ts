@@ -1,10 +1,21 @@
-import { relative, sep } from 'node:path';
+import { join, relative, sep } from 'node:path';
+import { Worker } from 'node:worker_threads';
 import * as vscode from 'vscode';
 import type { FixPlan } from '../../src/core/fix.js';
-import { renderMarkdown } from '../../src/core/render.js';
 import { applyChanges } from '../../src/node/apply.js';
-import { auditWorkspace, planWorkspaceFixes, type WorkspaceAudit } from '../../src/node/workspace.js';
-import { affectsAudit, diagnosticsFrom, diffTitle, fixSummary, isFixable, statusView, type StatusView } from './view.js';
+import type { WorkspaceAudit } from '../../src/node/workspace.js';
+import {
+  affectsAudit,
+  diagnosticsFrom,
+  diffTitle,
+  fixSummary,
+  isFixable,
+  nothingToFix,
+  reportMarkdown,
+  samePlan,
+  statusView,
+  type StatusView,
+} from './view.js';
 
 const FIX_SCHEME = 'turntax-fix';
 const REPORT_URI = vscode.Uri.from({ scheme: 'turntax-report', path: '/turntax-report.md' });
@@ -47,6 +58,24 @@ class VirtualDocuments implements vscode.TextDocumentContentProvider {
   }
 }
 
+/**
+ * Runs an audit or a fix plan in a worker thread (dist/worker.js). `started` receives the worker so a newer
+ * job can stop it; a stopped worker rejects.
+ */
+function runJob<T>(kind: 'audit' | 'plan', root: string, started?: (w: Worker) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(join(__dirname, 'worker.js'), { workerData: { kind, root } });
+    started?.(worker);
+    worker.once('message', (m: { result?: T; error?: string }) => {
+      if (m.error === undefined) resolve(m.result as T);
+      else reject(new Error(m.error));
+      void worker.terminate();
+    });
+    worker.once('error', reject);
+    worker.once('exit', () => reject(new Error('The turntax worker stopped.')));
+  });
+}
+
 const sameFolder = (a: vscode.WorkspaceFolder | undefined, b: vscode.WorkspaceFolder | undefined) =>
   a !== undefined && b !== undefined && a.uri.toString() === b.uri.toString();
 
@@ -58,11 +87,14 @@ class Turntax implements vscode.Disposable {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private runs = 0;
   private previews = 0;
+  /** The audit in progress; a newer refresh stops it. */
+  private auditing: Worker | undefined;
 
   constructor(
     private readonly status: vscode.StatusBarItem,
     private readonly diagnostics: vscode.DiagnosticCollection,
-    private readonly docs: VirtualDocuments,
+    private readonly report: VirtualDocuments,
+    private readonly planned: VirtualDocuments,
   ) {}
 
   /** The folder of the active editor, else the folder audited last, else the first folder. */
@@ -84,11 +116,17 @@ class Turntax implements vscode.Disposable {
     const run = ++this.runs;
     const folder = this.pickFolder();
     this.folder = folder;
+    void this.auditing?.terminate();
     if (!folder) return this.show(undefined);
     const root = folder.uri.fsPath;
+    if (this.state?.root !== root) {
+      this.status.text = '$(sync~spin) turntax';
+      this.status.tooltip = `turntax: reading ${folder.name}`;
+      this.status.show();
+    }
     let state: TurntaxState;
     try {
-      state = { root, audit: await auditWorkspace(root) };
+      state = { root, audit: await runJob<WorkspaceAudit>('audit', root, (w) => (this.auditing = w)) };
     } catch (e) {
       state = { root, error: (e as Error).message };
     }
@@ -121,7 +159,7 @@ class Turntax implements vscode.Disposable {
     }
     for (const [path, list] of byPath) this.diagnostics.set(vscode.Uri.joinPath(folder.uri, path), list);
     // An open report preview follows the latest audit.
-    this.docs.set(REPORT_URI, renderMarkdown(state.audit.report));
+    this.report.set(REPORT_URI, reportMarkdown(state.audit.report));
   }
 
   /** True when a created, changed or deleted file can change the report of the current folder. */
@@ -143,7 +181,7 @@ class Turntax implements vscode.Disposable {
     if (!state) return void vscode.window.showInformationMessage('Open a folder to see its turntax report.');
     if (!state.audit) return void vscode.window.showErrorMessage(`turntax: ${state.error}`);
     if (!state.audit.report.tools.length) return void vscode.window.showInformationMessage('No agent instruction files found.');
-    this.docs.set(REPORT_URI, renderMarkdown(state.audit.report));
+    this.report.set(REPORT_URI, reportMarkdown(state.audit.report));
     // Opened first, so the Markdown extension finds it among the open documents instead of on disk.
     await vscode.workspace.openTextDocument(REPORT_URI);
     await vscode.commands.executeCommand('markdown.showPreview', REPORT_URI);
@@ -155,21 +193,24 @@ class Turntax implements vscode.Disposable {
     if (!folder) return void vscode.window.showInformationMessage('Open a folder to preview its fixes.');
     let plan: FixPlan;
     try {
-      plan = await planWorkspaceFixes(folder.uri.fsPath);
+      plan = await runJob<FixPlan>('plan', folder.uri.fsPath);
     } catch (e) {
       return void vscode.window.showErrorMessage(`turntax: ${(e as Error).message}`);
     }
     if (!plan.changes.length) {
-      void vscode.window.showInformationMessage('Nothing to fix automatically.');
+      void vscode.window.showInformationMessage(nothingToFix(plan));
       return plan;
     }
+    // The plan is made from the files on disk; unsaved edits would show as reverted in the diff.
+    const unsaved = this.unsaved(folder, plan);
+    if (unsaved) return void vscode.window.showWarningMessage(`Save or revert ${unsaved} before previewing fixes.`);
     const id = ++this.previews;
-    this.docs.clear(FIX_SCHEME);
+    this.planned.clear(FIX_SCHEME);
     for (const c of plan.changes) {
       const planned = vscode.Uri.from({ scheme: FIX_SCHEME, path: `/${c.path}`, query: String(id) });
-      this.docs.set(planned, c.after);
+      this.planned.set(planned, c.after);
       const current = c.before === null ? planned.with({ query: `${id}-empty` }) : vscode.Uri.joinPath(folder.uri, c.renamedFrom ?? c.path);
-      if (c.before === null) this.docs.set(current, '');
+      if (c.before === null) this.planned.set(current, '');
       await vscode.commands.executeCommand('vscode.diff', current, planned, diffTitle(c), { preview: false });
     }
     void this.offerApply(folder, plan);
@@ -185,10 +226,13 @@ class Turntax implements vscode.Disposable {
     );
     if (choice !== 'Apply') return;
     if (!vscode.workspace.isTrusted) return void vscode.window.showWarningMessage('Applying fixes needs a trusted workspace; nothing was written.');
-    const touched = new Set(plan.changes.flatMap((c) => [c.path, ...(c.renamedFrom ? [c.renamedFrom] : [])]));
-    const unsaved = vscode.workspace.textDocuments.find((d) => d.isDirty && d.uri.scheme === 'file' && touched.has(relPath(folder, d.uri)));
-    if (unsaved) return void vscode.window.showWarningMessage(`Save or revert ${relPath(folder, unsaved.uri)} first; nothing was written.`);
+    const unsaved = this.unsaved(folder, plan);
+    if (unsaved) return void vscode.window.showWarningMessage(`Save or revert ${unsaved} first; nothing was written.`);
     try {
+      // A fix can depend on files it does not change (a duplicate is removed because another file keeps it),
+      // so the plan is made again and applied only if nothing changed since the preview.
+      const fresh = await runJob<FixPlan>('plan', folder.uri.fsPath);
+      if (!samePlan(fresh, plan)) return void vscode.window.showWarningMessage('Files changed since the preview; preview the fixes again. Nothing was written.');
       applyChanges(folder.uri.fsPath, plan.changes);
     } catch (e) {
       return void vscode.window.showErrorMessage(`turntax: ${(e as Error).message}`);
@@ -197,8 +241,16 @@ class Turntax implements vscode.Disposable {
     await this.refresh();
   }
 
+  /** The first file the plan touches that has unsaved edits, if any. */
+  private unsaved(folder: vscode.WorkspaceFolder, plan: FixPlan): string | undefined {
+    const touched = new Set(plan.changes.flatMap((c) => [c.path, ...(c.renamedFrom ? [c.renamedFrom] : [])]));
+    const doc = vscode.workspace.textDocuments.find((d) => d.isDirty && d.uri.scheme === 'file' && touched.has(relPath(folder, d.uri)));
+    return doc && relPath(folder, doc.uri);
+  }
+
   dispose(): void {
     clearTimeout(this.timer);
+    void this.auditing?.terminate();
   }
 }
 
@@ -219,18 +271,21 @@ export function activate(context: vscode.ExtensionContext): TurntaxApi {
   status.name = 'turntax';
   status.command = 'turntax.showReport';
   const diagnostics = vscode.languages.createDiagnosticCollection('turntax');
-  const docs = new VirtualDocuments();
-  const turntax = new Turntax(status, diagnostics, docs);
+  // One provider per scheme: a provider's change events must only name its own scheme.
+  const report = new VirtualDocuments();
+  const planned = new VirtualDocuments();
+  const turntax = new Turntax(status, diagnostics, report, planned);
   const watcher = vscode.workspace.createFileSystemWatcher('**/*');
   const onFile = (uri: vscode.Uri) => turntax.affects(uri) && turntax.schedule();
   context.subscriptions.push(
     status,
     diagnostics,
-    docs,
+    report,
+    planned,
     turntax,
     watcher,
-    vscode.workspace.registerTextDocumentContentProvider(FIX_SCHEME, docs),
-    vscode.workspace.registerTextDocumentContentProvider(REPORT_URI.scheme, docs),
+    vscode.workspace.registerTextDocumentContentProvider(FIX_SCHEME, planned),
+    vscode.workspace.registerTextDocumentContentProvider(REPORT_URI.scheme, report),
     vscode.languages.registerCodeActionsProvider({ scheme: 'file' }, codeActions, { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }),
     vscode.commands.registerCommand('turntax.showReport', () => turntax.showReport()),
     vscode.commands.registerCommand('turntax.previewFixes', () => turntax.previewFixes()),

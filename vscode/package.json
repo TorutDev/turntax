@@ -69,7 +69,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "esbuild src/extension.ts --bundle --minify --platform=node --format=cjs --target=node20 --external:vscode --outfile=dist/extension.js",
+    "build": "esbuild src/extension.ts src/worker.ts --bundle --minify --platform=node --format=cjs --target=node20 --external:vscode --outdir=dist",
     "build:test": "esbuild test-integration/run.ts test-integration/suite.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --external:@vscode/test-electron --outdir=dist/test",
     "test": "npm run build && npm run build:test && node dist/test/run.js",
     "vscode:prepublish": "npm run build"
