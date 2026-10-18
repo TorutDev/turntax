@@ -56,3 +56,73 @@ jobs:
       - run: npm run build
       - run: npx vsce package --no-dependencies
       - run: xvfb-run -a npm test
+
+  # TEMPORARY diagnostic for the Windows timeouts; removed before merge.
+  temp-disk:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Fixture copy and git init, C: temp vs D: runner.temp
+        shell: bash
+        run: |
+          node - <<'EOF'
+          const { execFileSync } = require('node:child_process');
+          const { cpSync, mkdirSync, mkdtempSync, writeFileSync } = require('node:fs');
+          const { tmpdir } = require('node:os');
+          const { join } = require('node:path');
+          const bases = { 'C: os.tmpdir()': tmpdir(), 'D: runner.temp': process.env.RUNNER_TEMP };
+          console.log(bases);
+          const copy = Object.fromEntries(Object.keys(bases).map((k) => [k, []]));
+          const git = Object.fromEntries(Object.keys(bases).map((k) => [k, []]));
+          for (let i = 0; i < 300; i++)
+            for (const [k, base] of Object.entries(bases)) {
+              let t = performance.now();
+              const dir = mkdtempSync(join(base, 'turntax-mixed-'));
+              cpSync('test/fixtures/mixed', dir, { recursive: true });
+              mkdirSync(join(dir, '.claude'), { recursive: true });
+              writeFileSync(join(dir, '.mcp.json'), '{}');
+              copy[k].push(performance.now() - t);
+              if (i % 10 === 0) {
+                t = performance.now();
+                execFileSync('git', ['init', '-q'], { cwd: dir });
+                git[k].push(performance.now() - t);
+              }
+            }
+          const stats = (xs) => {
+            const s = [...xs].sort((a, b) => a - b);
+            const q = (p) => s[Math.min(s.length - 1, Math.floor(p * s.length))].toFixed(1);
+            return `n=${s.length} p50=${q(0.5)} p95=${q(0.95)} p99=${q(0.99)} max=${s.at(-1).toFixed(1)} ms`;
+          };
+          for (const k of Object.keys(bases)) console.log(`${k}  copy ${stats(copy[k])}  |  git init ${stats(git[k])}`);
+          EOF
+      - name: Test suite, C: temp vs D: runner.temp
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5; do
+            npx vitest run --reporter=json --outputFile=c-$i.json > /dev/null || true
+            TEMP="$RUNNER_TEMP" TMP="$RUNNER_TEMP" npx vitest run --reporter=json --outputFile=d-$i.json > /dev/null || true
+          done
+          node - <<'EOF'
+          const { readFileSync } = require('node:fs');
+          for (const side of ['c', 'd']) {
+            const rows = [];
+            for (let i = 1; i <= 5; i++) {
+              const r = JSON.parse(readFileSync(`${side}-${i}.json`, 'utf8'));
+              const files = r.testResults;
+              const wall = Math.max(...files.map((f) => f.endTime)) - r.startTime;
+              const tests = files.flatMap((f) => f.assertionResults.map((a) => ({ name: f.name.split(/[\\/]/).pop() + ' > ' + a.title, ms: a.duration ?? 0 })));
+              const top = tests.sort((a, b) => b.ms - a.ms).slice(0, 3).map((t) => `${t.ms.toFixed(0)}ms ${t.name.slice(0, 70)}`);
+              rows.push(`${side.toUpperCase()}: run ${i} wall=${(wall / 1000).toFixed(2)}s failed=${r.numFailedTests} slowest: ${top.join(' | ')}`);
+            }
+            console.log(rows.join('\n'));
+          }
+          EOF
