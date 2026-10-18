@@ -35,6 +35,7 @@ describe('findImports', () => {
 
   it('keeps glob mentions whole', () => {
     expect(findImports('See @docs/*.md, @.agent/**/*.md and @**/RULES.md.')).toEqual(['docs/*.md', '.agent/**/*.md', '**/RULES.md']);
+    expect(findImports('**See @AGENTS.md.** and @docs/rules.md** or @docs/**')).toEqual(['AGENTS.md', 'docs/rules.md', 'docs/**']);
   });
 });
 

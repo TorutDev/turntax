@@ -1,6 +1,7 @@
 /** Which repository paths can hold agent instructions. Shared by the CLI and the web page. */
 import { globToRegExp } from './glob.js';
-import { configList, findImports, resolvePath } from './markdown.js';
+import { basename, configList, findImports, resolvePath } from './markdown.js';
+import { TOOLS } from './tools.js';
 import type { RepoFile } from './types.js';
 
 export const SKIP_DIRS = new Set([
@@ -93,6 +94,11 @@ export function isSkippedDir(path: string): boolean {
   return SKIP_DIRS.has(name) || path === '.claude/worktrees' || path.endsWith('/.claude/worktrees');
 }
 
+/** Instruction files whose glob @-mentions an agent expands (Amp's); a glob anywhere else is not followed. */
+const GLOB_MENTION_NAMES = new Set(
+  TOOLS.flatMap((t) => t.rules.flatMap((r) => (r.kind === 'hierarchical' && r.globMentions ? r.names : []))),
+);
+
 /** Files a file pulls in: its @imports (a glob mention such as @docs/*.md matches `paths`), or the read: list of .aider.conf.yml. */
 function references(f: RepoFile, paths: string[]): string[] {
   if (f.path === '.aider.conf.yml') return configList(f, 'read');
@@ -100,6 +106,7 @@ function references(f: RepoFile, paths: string[]): string[] {
     const p = resolvePath(f.path, t);
     if (p === null) return [];
     if (!p.includes('*')) return [p];
+    if (!GLOB_MENTION_NAMES.has(basename(f.path))) return [];
     const re = globToRegExp(p);
     return paths.filter((x) => re.test(x));
   });
@@ -107,7 +114,7 @@ function references(f: RepoFile, paths: string[]): string[] {
 
 /**
  * Adds in-repo files reached through @imports or config read lists (up to five levels) to `found`.
- * `paths` lists the repository's files, for glob mentions.
+ * `paths` lists the repository's files, for glob mentions in the files found first (Amp follows mentions one level).
  */
 export async function addImports(
   found: Map<string, RepoFile>,
@@ -119,7 +126,7 @@ export async function addImports(
   for (let depth = 0; depth < 5 && queue.length; depth++) {
     const next: RepoFile[] = [];
     for (const f of queue) {
-      for (const rel of references(f, all)) {
+      for (const rel of references(f, depth === 0 ? all : [])) {
         if (found.has(rel)) continue;
         const text = await read(rel);
         if (text === null) continue;

@@ -247,7 +247,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function renderCards(report: Report): void {
   $('cards').replaceChildren(
-    // Agents that load exactly the same files share one card.
+    // Agents that load the same files share one card (files loaded only as a /command do not count).
     ...groupTools(report).map(({ names, tool: t }) =>
       el(
         'article',

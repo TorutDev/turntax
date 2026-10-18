@@ -279,7 +279,8 @@ describe('Amp', () => {
       { path: 'docs/deep/no.md', text: 'One star stays in its folder.' },
       { path: '.agent/a.md', text: 'A.' },
       { path: '.agent/x/y/b.md', text: 'B.' },
-      { path: 'pkg/AGENTS.md', text: 'Also @../docs/s*.md' },
+      { path: 'pkg/AGENTS.md', text: 'Also @../other/s*.md' },
+      { path: 'other/setup.md', text: 'Setup.' },
     ];
     const u = classify(files, ['amp', 'claude-code']);
     expect(find(u, 'amp', 'docs/style.md')).toMatchObject({ mode: 'always', importedFrom: 'AGENTS.md' });
@@ -287,6 +288,7 @@ describe('Amp', () => {
     expect(find(u, 'amp', 'docs/deep/no.md')).toBeUndefined();
     expect(find(u, 'amp', '.agent/a.md')!.mode).toBe('always');
     expect(find(u, 'amp', '.agent/x/y/b.md')!.mode).toBe('always');
+    expect(find(u, 'amp', 'other/setup.md')).toMatchObject({ mode: 'on-demand', importedFrom: 'pkg/AGENTS.md' });
     // Claude Code imports name single files; a glob is not expanded.
     expect(find(u, 'claude-code', 'docs/style.md')).toBeUndefined();
   });
@@ -302,10 +304,15 @@ describe('Amp', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-    // Sources that list paths up front (git, the web page) pass them in.
-    const found = new Map([['AGENTS.md', { path: 'AGENTS.md', text: 'See @docs/*.md' }]]);
-    await addImports(found, (p) => (p === 'docs/a.md' ? 'A.' : null), ['docs/a.md', 'docs/b.txt', 'src/x.md']);
-    expect([...found.keys()]).toEqual(['AGENTS.md', 'docs/a.md']);
+    // Sources that list paths up front (git, the web page) pass them in. Only Amp's own files expand globs,
+    // and only one level deep, as Amp follows mentions.
+    const found = new Map([
+      ['AGENTS.md', { path: 'AGENTS.md', text: 'See @docs/*.md' }],
+      ['.github/copilot-instructions.md', { path: '.github/copilot-instructions.md', text: 'See @src/*.md' }],
+    ]);
+    const texts: Record<string, string> = { 'docs/a.md': 'Then @more/*.md', 'more/m.md': 'M.', 'src/x.md': 'X.' };
+    await addImports(found, (p) => texts[p] ?? null, ['docs/a.md', 'docs/b.txt', 'more/m.md', 'src/x.md']);
+    expect([...found.keys()]).toEqual(['AGENTS.md', '.github/copilot-instructions.md', 'docs/a.md']);
   });
 
   it('finds skills up to five folders below each skills root and uses the first of a name', () => {

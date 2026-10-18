@@ -48,7 +48,7 @@ Each agent's documented loading rules decide what is sent on every turn, what lo
 
 Where an agent reads the same skill name from two folders, it is counted once, in the order the agent documents (or an assumed order, noted for that agent).
 
-Agents that load exactly the same files share one row in the report:
+Agents that load exactly the same files share one row in the report (files loaded only as a /command, which cost nothing per turn, do not split a row):
 
 ```text
 always  o200k/turn  on-demand  model                tokens/turn  counted by                   100 turns  cached   agents

@@ -1155,7 +1155,7 @@ export const TOOLS: ToolSpec[] = [
       'https://kilo.ai/docs/getting-started/migrating',
       'https://kilo.ai/docs/code-with-ai/platforms/cloud-agent',
       'https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md',
-      'https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/skill/index.ts',
+      'https://github.com/Kilo-Org/kilocode/blob/2a1903f29186e25adec0bace14f6ee589095f7eb/packages/opencode/src/skill/index.ts',
     ],
     checkedAt: '2026-10-18',
     rules: [
@@ -1335,7 +1335,7 @@ export const TOOLS: ToolSpec[] = [
       "Nested .devin/rules are listed as not read: the rules page says .devin folders are read at the workspace root and in each folder between it and the current directory. Nested .windsurf/rules are counted on demand, as the page's Windsurf section says they load when Devin accesses files there (its .devin section can be read as limiting them the same way).",
       'Nested .cursor/rules, global_rules.md and skill folders are not counted.',
       'A skill with triggers: [user] is still counted as listed for the agent.',
-      'Skills with the same name in several folders are all listed, each with a location prefix such as /agents:foo (changelog v3000.2.17). One skill folder reached through a symlink loads once; turntax counts each path.',
+      'Skills with the same name in several folders are all listed, each with a location prefix such as /agents:foo (changelog v3000.2.17). One skill folder reached through a symlink loads once (v3000.10.21); turntax counts each path.',
       'Global rules (~/.config/devin/AGENTS.md, ~/.devin/rules/) are outside the repository; --include-user counts them. Devin CLI also reads ~/.claude/CLAUDE.md, which --include-user counts too.',
     ],
   },

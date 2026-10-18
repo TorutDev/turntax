@@ -13,7 +13,7 @@ Rule folders inside a subdirectory (for example `packages/api/.claude/rules/` or
 
 When an agent reads two skills with the same name at the same level, for example `.agents/skills/deploy/` and `.claude/skills/deploy/` (often symlinked copies), only the one from the folder that takes precedence is counted; the other is ignored with "same skill name as ...". A skill's name is its `name` frontmatter, else its folder name. The order is the agent's documented precedence; where its docs are silent, the order shown below is an assumption. Agents that list both copies (OpenAI Codex, GitHub Copilot, Devin Local / Devin CLI, and Warp, which also lists each skill's path) count both.
 
-The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-10-17.
+The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-10-17, Kilo Code and Devin again on 2026-10-18.
 
 ## Claude Code
 
@@ -285,7 +285,7 @@ Workspace guidelines and rules are limited to 49,512 characters together; `turnt
 
 ## Kilo Code
 
-Sources: [custom instructions](https://kilo.ai/docs/customize/custom-instructions), [AGENTS.md](https://kilo.ai/docs/customize/agents-md), [custom rules](https://kilo.ai/docs/customize/custom-rules), [skills](https://kilo.ai/docs/customize/skills), [workflows](https://kilo.ai/docs/customize/workflows), [subagents](https://kilo.ai/docs/customize/custom-subagents), [migrating](https://kilo.ai/docs/getting-started/migrating), [Cloud Agents](https://kilo.ai/docs/code-with-ai/platforms/cloud-agent), [rules migration (GitHub)](https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md), [skill loading (GitHub)](https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/skill/index.ts)
+Sources: [custom instructions](https://kilo.ai/docs/customize/custom-instructions), [AGENTS.md](https://kilo.ai/docs/customize/agents-md), [custom rules](https://kilo.ai/docs/customize/custom-rules), [skills](https://kilo.ai/docs/customize/skills), [workflows](https://kilo.ai/docs/customize/workflows), [subagents](https://kilo.ai/docs/customize/custom-subagents), [migrating](https://kilo.ai/docs/getting-started/migrating), [Cloud Agents](https://kilo.ai/docs/code-with-ai/platforms/cloud-agent), [rules migration (GitHub)](https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md), [skill loading (GitHub)](https://github.com/Kilo-Org/kilocode/blob/2a1903f29186e25adec0bace14f6ee589095f7eb/packages/opencode/src/skill/index.ts)
 
 | File | Mode |
 | --- | --- |
