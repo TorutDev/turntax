@@ -71,8 +71,12 @@ export function affectsAudit(path: string, known: Iterable<string>): boolean {
   return isInstructionFile(path) || isMcpConfigFile(path) || path === CONFIG_FILE || path === 'package.json';
 }
 
-/** The report for the Markdown preview, without the shields.io badge the preview would fetch. */
-export const reportMarkdown = (report: Report): string => renderMarkdown(report, { badge: false });
+/**
+ * The report for the Markdown preview, which loads remote images: no shields.io badge, and text quoted from
+ * the repository (headings, lines, server names) cannot add an image or HTML either.
+ */
+export const reportMarkdown = (report: Report): string =>
+  renderMarkdown(report, { badge: false }).replace(/!\[/g, '!\\[').replace(/</g, '&lt;');
 
 /** True when a new plan would make exactly the previewed changes. */
 export const samePlan = (a: FixPlan, b: FixPlan): boolean => JSON.stringify(a.changes) === JSON.stringify(b.changes);

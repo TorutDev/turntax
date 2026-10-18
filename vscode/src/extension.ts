@@ -122,6 +122,8 @@ class Turntax implements vscode.Disposable {
     if (this.state?.root !== root) {
       this.status.text = '$(sync~spin) turntax';
       this.status.tooltip = `turntax: reading ${folder.name}`;
+      // A click would start the read over.
+      this.status.command = undefined;
       this.status.show();
     }
     let state: TurntaxState;
@@ -135,6 +137,7 @@ class Turntax implements vscode.Disposable {
 
   private show(state: TurntaxState | undefined, folder?: vscode.WorkspaceFolder): void {
     this.state = state;
+    this.status.command = 'turntax.showReport';
     this.diagnostics.clear();
     if (!state || !folder) return this.status.hide();
     if (!state.audit) {
@@ -250,6 +253,8 @@ class Turntax implements vscode.Disposable {
 
   dispose(): void {
     clearTimeout(this.timer);
+    // The stopped audit must not update the disposed status bar and diagnostics.
+    this.runs++;
     void this.auditing?.terminate();
   }
 }

@@ -42,7 +42,7 @@ None. A `turntax.config.json` in the folder (`tools`, `models`, `ignore`, `secti
 - MCP servers in project configs are listed in the report, but their tool definitions are not counted: that needs starting the servers (`npx turntax --mcp`).
 - User-level files in your home folder are not included (`npx turntax --include-user`).
 
-Nothing leaves your machine: the extension makes no network requests and has no telemetry. The report preview leaves out the shields.io badge the CLI adds, so the preview does not fetch it.
+Nothing leaves your machine: the extension makes no network requests and has no telemetry. The report preview has no images: it leaves out the shields.io badge the CLI adds, and images or HTML quoted from the repository are shown as text.
 
 ## More
 

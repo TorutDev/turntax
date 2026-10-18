@@ -100,6 +100,14 @@ describe('VS Code report', () => {
     expect(md).not.toMatch(/!\[[^\]]*\]\(https?:/);
     expect(md).toBe(renderMarkdown(mixed.report).replace(/\n\[!\[context tax[^\n]*\n$/, ''));
   });
+
+  it('keeps repository text from adding images or HTML', () => {
+    const quoted = 'Section "Release ![x](https://example.invalid/p.png) <img src=https://example.invalid/q.png>" loads every turn.';
+    const report = { ...mixed.report, advice: [{ ...mixed.report.advice[0]!, message: quoted }] };
+    const md = reportMarkdown(report);
+    expect(md).toContain('Release !\\[x](https://example.invalid/p.png) &lt;img src=');
+    expect(md).not.toMatch(/!\[[^\]]*\]\(https?:|<img/);
+  });
 });
 
 describe('VS Code fix preview', () => {
