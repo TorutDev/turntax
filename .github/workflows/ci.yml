@@ -71,7 +71,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Fixture copy and git init, C: temp vs D: runner.temp
+      - name: "Fixture copy and git init, C: temp vs D: runner.temp"
         shell: bash
         run: |
           node - <<'EOF'
@@ -104,7 +104,7 @@ jobs:
           };
           for (const k of Object.keys(bases)) console.log(`${k}  copy ${stats(copy[k])}  |  git init ${stats(git[k])}`);
           EOF
-      - name: Test suite, C: temp vs D: runner.temp
+      - name: "Test suite, C: temp vs D: runner.temp"
         shell: bash
         run: |
           for i in 1 2 3 4 5; do
