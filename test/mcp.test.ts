@@ -306,6 +306,17 @@ describe('MCP measurement', () => {
     expect(r.error).toMatch(/no answer within/);
   });
 
+  // On Windows the server runs under cmd.exe, and a process that exits right after measuring (a vitest worker)
+  // takes cmd.exe down with it but not the server: the tree must be gone before the measurement resolves.
+  it.runIf(process.platform === 'win32')('ends a server that ignores its closed stdin before resolving', async () => {
+    // Answers with its process id as the instructions and keeps running after stdin closes.
+    const script = `require('readline').createInterface({ input: process.stdin }).on('line', (l) => { const m = JSON.parse(l); if (m.id) console.log(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { instructions: String(process.pid), tools: [] } })); }); setInterval(() => {}, 1000)`;
+    const r = await measureServer(server({ command: 'node', args: ['-e', script] }), { root: MCP, timeoutMs: 10_000 });
+    const pid = Number(r.instructions);
+    expect(pid).toBeGreaterThan(0);
+    expect(() => process.kill(pid, 0)).toThrow();
+  });
+
   it('speaks streamable HTTP with SSE responses and a session id', async () => {
     const seen: Array<{ method: string; session?: string; auth?: string }> = [];
     const http = createServer((req, res) => {

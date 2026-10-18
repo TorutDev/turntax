@@ -145,12 +145,28 @@ function viaStdio(server: McpServer, root: string, timeoutMs: number, env: NodeJ
     child.removeAllListeners('exit');
     child.removeAllListeners('error');
     child.on('error', () => {});
-    // On Windows the server runs under cmd.exe; end the whole process tree, not just the shell.
-    if (windows && child.pid) spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
-    else child.kill();
     child.stdin.destroy();
     child.stdout.destroy();
     child.stderr.destroy();
+    // On Windows the server runs under cmd.exe; end the whole process tree, not just the shell. cmd.exe exits only
+    // after the server, so an exited shell needs no taskkill (and its process id may belong to another process now).
+    if (!windows || !child.pid) child.kill();
+    else if (child.exitCode === null) return killTree(child.pid);
+  });
+}
+
+/**
+ * Runs taskkill on a process tree and waits for it (at most a few seconds). Windows ends the children of a Node
+ * process when it exits, but not their children: exiting before taskkill finishes leaves the server running.
+ */
+function killTree(pid: number): Promise<void> {
+  return new Promise((done) => {
+    const end = () => {
+      clearTimeout(timer);
+      done();
+    };
+    const timer = setTimeout(end, 5000);
+    spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }).on('error', end).on('exit', end);
   });
 }
 
