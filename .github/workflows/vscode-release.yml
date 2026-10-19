@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  package:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -35,16 +35,6 @@ jobs:
         with:
           name: turntax-vsix
           path: vscode/turntax.vsix
-      # Open VSX needs the publisher namespace once.
-      - name: Open VSX namespace
-        run: |
-          status=$(curl -s -o /dev/null -w '%{http_code}' https://open-vsx.org/api/torut)
-          if [ "$status" = 404 ]; then npx ovsx create-namespace torut; elif [ "$status" != 200 ]; then echo "open-vsx.org returned $status" && exit 1; fi
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
-      - run: npx ovsx publish turntax.vsix --skip-duplicate
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
       # Secrets cannot be tested in `if`; this step says whether one is set.
       - id: marketplace
         run: echo "token=$([ -n "$VSCE_PAT" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
@@ -55,3 +45,23 @@ jobs:
         run: npx vsce publish --packagePath turntax.vsix --skip-duplicate
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+  # Open VSX trusted publishing: a short-lived OIDC token instead of a stored one. The registration on
+  # open-vsx.org names this repository and this workflow file. Only this job can request the token, and it
+  # installs nothing but the pinned ovsx, without install scripts.
+  open-vsx:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: turntax-vsix
+      - run: npx -y ovsx@1.2.0 publish turntax.vsix --trusted-publishing --skip-duplicate
+        env:
+          npm_config_ignore_scripts: 'true'
