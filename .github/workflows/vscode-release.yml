@@ -47,21 +47,29 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
   # Open VSX trusted publishing: a short-lived OIDC token instead of a stored one. The registration on
-  # open-vsx.org names this repository and this workflow file. Only this job can request the token, and it
-  # installs nothing but the pinned ovsx, without install scripts.
+  # open-vsx.org names this repository and this workflow file, with no environment. Only this job can
+  # request the token; it installs ovsx from vscode/package-lock.json without install scripts.
   open-vsx:
     needs: package
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+    defaults:
+      run:
+        working-directory: vscode
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            vscode/package.json
+            vscode/package-lock.json
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - uses: actions/download-artifact@v4
         with:
           name: turntax-vsix
-      - run: npx -y ovsx@1.2.0 publish turntax.vsix --trusted-publishing --skip-duplicate
-        env:
-          npm_config_ignore_scripts: 'true'
+      - run: npm ci --ignore-scripts
+      - run: npx ovsx publish ../turntax.vsix --trusted-publishing --skip-duplicate
