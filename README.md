@@ -283,6 +283,12 @@ This repository is also a Claude Code plugin marketplace. The plugin adds the se
 
 [`vscode/`](vscode) is a VS Code extension on the same engine: the largest per-turn cost of the open folder in the status bar, findings in the Problems panel, the report as a Markdown preview, and safe fixes shown as diffs and written only when you choose Apply. It is offline, and its only settings are the folder's `turntax.config.json`.
 
+Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=torut.turntax), or run:
+
+```bash
+code --install-extension torut.turntax
+```
+
 ## Privacy
 
 Offline by default: no network calls, no telemetry. File contents are sent only when you pass `--claude-api`, `--gemini-api` or `--translate`, and only to that vendor's API. Keys are read from environment variables and sent only in request headers.
