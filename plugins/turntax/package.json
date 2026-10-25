@@ -1,0 +1,9 @@
+{
+  "name": "turntax-claude-plugin",
+  "private": true,
+  "description": "Pins the turntax package that this plugin's MCP server runs (npx -y turntax@<version> mcp).",
+  "license": "MIT",
+  "dependencies": {
+    "turntax": "0.7.2"
+  }
+}
