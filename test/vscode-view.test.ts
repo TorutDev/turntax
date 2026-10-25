@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { Report } from '../src/core/audit.js';
 import type { FixPlan } from '../src/core/fix.js';
 import { groupTools, headlineTokens, renderMarkdown } from '../src/core/render.js';
+import type { ToolId } from '../src/core/types.js';
 import { auditWorkspace, planWorkspaceFixes } from '../src/node/workspace.js';
-import { affectsAudit, diagnosticsFrom, diffTitle, fixSummary, isFixable, nothingToFix, reportMarkdown, samePlan, statusView } from '../vscode/src/view.js';
+import { auditFolder, diagnosticsFrom, reportMarkdown, statusView } from '../vscode/src/engine.js';
+import { affectsAudit, codeLensView, diffTitle, fixSummary, isFixable, nothingToFix, samePlan, type LensRow } from '../vscode/src/view.js';
 import { fixture, materialize } from './helpers.js';
 
 const mixed = await auditWorkspace(fixture('mixed'));
+const mixedView = await auditFolder(fixture('mixed'));
 const advice = (kind: string) => mixed.report.advice.find((a) => a.kind === kind)!;
 
 describe('VS Code status bar', () => {
@@ -137,5 +140,85 @@ describe('VS Code fix preview', () => {
     expect(diffTitle({ path: 'AGENTS.md', before: 'a', after: 'b' })).toBe('AGENTS.md (turntax fix)');
     expect(diffTitle({ path: '.claude/skills/release/SKILL.md', before: null, after: 'b' })).toBe('.claude/skills/release/SKILL.md (new file, turntax fix)');
     expect(diffTitle({ path: 'x.mdc', before: 'a', after: 'a', renamedFrom: 'x.md' })).toBe('x.md → x.mdc (turntax fix)');
+  });
+});
+
+describe('VS Code worker', () => {
+  it('sends what the extension shows as plain data, without the per-model counts', async () => {
+    expect(structuredClone(mixedView)).toEqual(mixedView);
+    expect(mixedView).toMatchObject({
+      agents: mixed.report.tools.length,
+      status: statusView(mixed.report),
+      diagnostics: diagnosticsFrom(mixed),
+      markdown: reportMarkdown(mixed.report),
+      ignore: [],
+    });
+    expect(mixedView.files).toHaveLength(mixed.report.files.length);
+    expect(mixedView.files).toContainEqual({ tool: 'claude-code', path: 'docs/extra.md', part: 'full', mode: 'always', o200k: 42, importedFrom: 'CLAUDE.md' });
+    expect(mixedView.files.every((f) => Object.keys(f).every((k) => ['tool', 'path', 'part', 'mode', 'o200k', 'importedFrom'].includes(k)))).toBe(true);
+    const ignoring = await auditFolder(materialize('mixed', { 'turntax.config.json': JSON.stringify({ ignore: ['packages/**'] }) }));
+    expect(ignoring.ignore).toEqual(['packages/**']);
+    expect(ignoring.files.some((f) => f.path.startsWith('packages/'))).toBe(false);
+  });
+});
+
+describe('VS Code CodeLens', () => {
+  const lens = (path: string) => codeLensView(path, mixedView);
+  const row = (tool: ToolId, mode: LensRow['mode'], o200k: number, part: LensRow['part'] = 'full'): LensRow => ({ tool, path: 'AGENTS.md', part, mode, o200k });
+
+  it('counts the agents that load a file every turn, with the largest count, and lists them per mode', () => {
+    expect(lens('CLAUDE.md')).toEqual({
+      title: 'turntax: 219 tokens every turn in 6 agents · not read by 4',
+      tooltip: [
+        'Every turn: Cursor, GitHub Copilot, Factory Droid, Augment Code, Devin Local / Devin CLI (219 tokens); Claude Code (203 tokens)',
+        'Not read: Zed, Amp, OpenCode, Kilo Code',
+        'Counts are o200k_base estimates, made offline.',
+      ].join('\n'),
+    });
+    expect(lens('packages/api/CLAUDE.md')?.title).toBe('turntax: on demand in 6 agents · not read by 1');
+    expect(lens('.cursor/rules/wrong.md')?.title).toBe('turntax: when referenced in 1 agent · not read by 1');
+  });
+
+  it('counts each agent once, under the strongest mode, and names parts and imports', () => {
+    const skill = lens('.claude/skills/deploy/SKILL.md')!;
+    expect(skill.title).toBe('turntax: 26 tokens every turn in 11 agents');
+    const [always, onDemand] = skill.tooltip.split('\n');
+    expect(always).toMatch(/^Every turn: Warp \(26 tokens, description\); Claude Code, Cursor, [^;]+ \(14 tokens, description\)$/);
+    expect(onDemand).toMatch(/^On demand: Claude Code, [^;]*Warp[^;]* \(22 tokens, body\)$/);
+    expect(lens('docs/extra.md')?.tooltip.split('\n')[0]).toBe('Every turn: Claude Code (42 tokens, imported by CLAUDE.md)');
+
+    const rows = [
+      row('codex', 'ignored', 5),
+      row('cursor', 'manual', 5),
+      row('copilot', 'on-demand', 7),
+      row('cline', 'always', 100),
+      row('kiro', 'always', 272),
+      // Kiro reads a part, so it is not listed as not reading the file.
+      row('kiro', 'ignored', 9, 'body'),
+      row('zed', 'ignored', 5),
+    ];
+    expect(codeLensView('AGENTS.md', { files: rows, ignore: [] })).toEqual({
+      title: 'turntax: 272 tokens every turn in 2 agents · on demand in 1 · when referenced in 1 · not read by 2',
+      tooltip: [
+        'Every turn: Kiro (272 tokens); Cline (100 tokens)',
+        'On demand: GitHub Copilot (7 tokens)',
+        'When referenced: Cursor (5 tokens)',
+        'Not read: OpenAI Codex, Zed',
+        'Counts are o200k_base estimates, made offline.',
+      ].join('\n'),
+    });
+  });
+
+  it('says when no agent reads an instruction file, or when the config leaves it out', () => {
+    expect(codeLensView('AGENTS.md', { files: [row('zed', 'ignored', 17), row('amp', 'ignored', 17)], ignore: [] })).toEqual({
+      title: 'turntax: no agent reads this file',
+      tooltip: 'Not read: Zed, Amp',
+    });
+    expect(lens('.claude/rules/new.md')).toEqual({ title: 'turntax: no agent reads this file', tooltip: 'No agent in the report reads this file.' });
+    expect(codeLensView('packages/web/AGENTS.md', { files: [], ignore: ['packages/**'] })?.title).toBe('turntax: left out by turntax.config.json');
+  });
+
+  it('has no lens on other files', () => {
+    for (const path of ['src/index.ts', 'README.md', 'node_modules/pkg/CLAUDE.md', '.claude/worktrees/agent-1/CLAUDE.md']) expect(lens(path), path).toBeUndefined();
   });
 });

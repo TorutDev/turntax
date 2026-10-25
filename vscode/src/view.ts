@@ -1,29 +1,22 @@
-/** What the extension shows for a report, kept free of the vscode API so it can be unit tested. */
+/**
+ * What the extension's main thread shows, kept free of the vscode API so it can be unit tested. It must not
+ * load the engine (render.ts, fix.ts and audit.ts at runtime pull in the tokenizer): engine.ts makes the
+ * views in the worker, and this module only reads them.
+ */
 import type { AdviceKind } from '../../src/core/advice.js';
-import type { Report } from '../../src/core/audit.js';
+import type { FileRow } from '../../src/core/audit.js';
 import { isInstructionFile, isSkippedDir } from '../../src/core/files.js';
 import type { FileChange, FixKind, FixPlan } from '../../src/core/fix.js';
+import { fmtTokens } from '../../src/core/format.js';
+import { globMatcher } from '../../src/core/glob.js';
 import { isMcpConfigFile } from '../../src/core/mcp.js';
-import { fmtTokens, groupTools, headlineTokens, renderMarkdown } from '../../src/core/render.js';
+import { TOOLS } from '../../src/core/tools.js';
+import type { LoadMode, ToolId } from '../../src/core/types.js';
 import { CONFIG_FILE } from '../../src/node/config.js';
-import type { WorkspaceAudit } from '../../src/node/workspace.js';
 
 export interface StatusView {
   text: string;
   tooltip: string;
-}
-
-/** Status bar text (the CLI badge's number) and a tooltip line per agent group; undefined when no agent loads anything. */
-export function statusView(report: Report): StatusView | undefined {
-  if (!report.files.some((f) => f.mode !== 'ignored') && !report.tools.some((t) => t.mcpServers > 0)) return undefined;
-  const lines = groupTools(report).map(({ names, tool: t }) => {
-    const unmeasured = t.mcpServers && !t.mcpMeasured ? ` + ${t.mcpServers} MCP server${t.mcpServers === 1 ? '' : 's'} not measured` : '';
-    return `${names.join(', ')}: ${fmtTokens(t.perTurnO200k + t.mcpPerTurnO200k)} tokens/turn${unmeasured}`;
-  });
-  return {
-    text: `$(dashboard) ${fmtTokens(headlineTokens(report))} tok/turn`,
-    tooltip: [...lines, 'Counts are o200k_base estimates, made offline.'].join('\n'),
-  };
 }
 
 export interface DiagnosticData {
@@ -37,27 +30,34 @@ export interface DiagnosticData {
   message: string;
 }
 
-/**
- * One diagnostic per advice item on a repository file, placed as the GitHub Action annotations are
- * (`renderAnnotations`), plus one per MCP config that could not be parsed. User-level files are skipped.
- */
-export function diagnosticsFrom({ report, problems }: WorkspaceAudit): DiagnosticData[] {
-  const advice = report.advice.flatMap((a): DiagnosticData[] => {
-    const path = a.paths.find((p) => !p.startsWith('~'));
-    if (!path) return [];
-    const saving = a.savingTokens ? ` (saves ~${fmtTokens(a.savingTokens)} tokens/turn)` : '';
-    // `line` belongs to the first path.
-    const line = a.line && path === a.paths[0] ? a.line : 1;
-    return [{ path, line, severity: a.severity === 'low' ? 'information' : 'warning', kind: a.kind, message: a.message + saving }];
-  });
-  const unparsed = problems.map((p): DiagnosticData => ({ path: p.path, line: 1, severity: 'warning', message: p.message }));
-  return [...advice, ...unparsed];
+/** The parts of a report row the main thread keeps. */
+export type LensRow = Pick<FileRow, 'tool' | 'path' | 'part' | 'mode' | 'o200k' | 'importedFrom'>;
+
+/** An audit as the worker sends it: plain data, made by engine.ts. */
+export interface AuditView {
+  /** Agents in the report; 0 when no agent instruction files were found. */
+  agents: number;
+  /** Undefined when no agent loads anything. */
+  status?: StatusView;
+  diagnostics: DiagnosticData[];
+  /** The report for the Markdown preview. */
+  markdown: string;
+  /** Every report row: the files the report read, and how each agent loads them. */
+  files: LensRow[];
+  /** The `ignore` globs of turntax.config.json. */
+  ignore: string[];
 }
 
 /** The advice kinds `--fix` handles. A Record, so a new fix kind does not compile until it is listed here. */
 const FIXABLE: Record<FixKind, true> = { duplicate: true, 'scopable-section': true, 'oversized-section': true, misconfigured: true };
 
 export const isFixable = (kind: string | undefined): boolean => kind !== undefined && Object.hasOwn(FIXABLE, kind);
+
+/** True when a folder on `path` is one the audit never searches, such as node_modules. */
+function inSkippedDir(path: string): boolean {
+  const dirs = path.split('/').slice(0, -1);
+  return dirs.some((_, i) => isSkippedDir(dirs.slice(0, i + 1).join('/')));
+}
 
 /**
  * True when a change to `path` (repository-relative) can change the report: instruction files, project
@@ -66,17 +66,9 @@ export const isFixable = (kind: string | undefined): boolean => kind !== undefin
  */
 export function affectsAudit(path: string, known: Iterable<string>): boolean {
   for (const k of known) if (k === path || k.startsWith(`${path}/`)) return true;
-  const dirs = path.split('/').slice(0, -1);
-  if (dirs.some((_, i) => isSkippedDir(dirs.slice(0, i + 1).join('/')))) return false;
+  if (inSkippedDir(path)) return false;
   return isInstructionFile(path) || isMcpConfigFile(path) || path === CONFIG_FILE || path === 'package.json';
 }
-
-/**
- * The report for the Markdown preview, which loads remote images: no shields.io badge, and text quoted from
- * the repository (headings, lines, server names) cannot add an image or HTML either.
- */
-export const reportMarkdown = (report: Report): string =>
-  renderMarkdown(report, { badge: false }).replace(/!\[/g, '!\\[').replace(/</g, '&lt;');
 
 /** True when a new plan would make exactly the previewed changes. */
 export const samePlan = (a: FixPlan, b: FixPlan): boolean => JSON.stringify(a.changes) === JSON.stringify(b.changes);
@@ -98,4 +90,69 @@ export function fixSummary(plan: FixPlan): string {
 export function diffTitle(c: FileChange): string {
   if (c.renamedFrom) return `${c.renamedFrom} → ${c.path} (turntax fix)`;
   return c.before === null ? `${c.path} (new file, turntax fix)` : `${c.path} (turntax fix)`;
+}
+
+export interface LensView {
+  title: string;
+  tooltip: string;
+}
+
+const NOBODY = 'turntax: no agent reads this file';
+
+/** Strongest first. */
+const MODES: Array<{ mode: LoadMode; title: string; label: string }> = [
+  { mode: 'always', title: 'every turn in', label: 'Every turn' },
+  { mode: 'on-demand', title: 'on demand in', label: 'On demand' },
+  { mode: 'manual', title: 'when referenced in', label: 'When referenced' },
+  { mode: 'ignored', title: 'not read by', label: 'Not read' },
+];
+
+const rank = (mode: LoadMode) => MODES.findIndex((m) => m.mode === mode);
+const toolName = (id: ToolId) => TOOLS.find((t) => t.id === id)?.name ?? id;
+
+/** "Cursor, Devin (219 tokens); Claude Code (203 tokens)": the agents of `rows`, grouped by what they load, largest first. */
+function loads(rows: LensRow[]): string {
+  const groups = new Map<string, { o200k: number; names: Set<string> }>();
+  for (const r of rows) {
+    const extra = [...(r.part === 'full' ? [] : [r.part]), ...(r.importedFrom ? [`imported by ${r.importedFrom}`] : [])];
+    const detail = [`${fmtTokens(r.o200k)} tokens`, ...extra].join(', ');
+    const group = groups.get(detail) ?? groups.set(detail, { o200k: r.o200k, names: new Set() }).get(detail)!;
+    group.names.add(toolName(r.tool));
+  }
+  return [...groups]
+    .sort(([, a], [, b]) => b.o200k - a.o200k)
+    .map(([detail, g]) => `${[...g.names].join(', ')} (${detail})`)
+    .join('; ');
+}
+
+/**
+ * The CodeLens at the top of `path` (repository-relative): how the agents of the last audit load it, such as
+ * "turntax: 272 tokens every turn in 8 agents · on demand in 3 · not read by 2". Each agent counts once, under
+ * the strongest mode it loads any part of the file in; the count is the largest always-loaded row. The tooltip
+ * has a line per mode. Undefined for files that are neither in the report nor instruction files the audit reads.
+ */
+export function codeLensView(path: string, audit: Pick<AuditView, 'files' | 'ignore'>): LensView | undefined {
+  const rows = audit.files.filter((r) => r.path === path);
+  if (!rows.length) {
+    if (!isInstructionFile(path) || inSkippedDir(path)) return undefined;
+    if (globMatcher(audit.ignore)(path))
+      return { title: `turntax: left out by ${CONFIG_FILE}`, tooltip: `The "ignore" list in ${CONFIG_FILE} leaves this file out of the report.` };
+    return { title: NOBODY, tooltip: 'No agent in the report reads this file.' };
+  }
+  const strongest = new Map<ToolId, LoadMode>();
+  for (const r of rows) if (!strongest.has(r.tool) || rank(r.mode) < rank(strongest.get(r.tool)!)) strongest.set(r.tool, r.mode);
+  const tooltip = MODES.flatMap(({ mode, label }) => {
+    // An agent that reads a part of the file is not listed for the part it ignores.
+    const inMode = rows.filter((r) => (mode === 'ignored' ? strongest.get(r.tool) === 'ignored' : r.mode === mode));
+    if (!inMode.length) return [];
+    return [`${label}: ${mode === 'ignored' ? [...new Set(inMode.map((r) => toolName(r.tool)))].join(', ') : loads(inMode)}`];
+  });
+  const parts = MODES.map((m) => ({ ...m, n: [...strongest.values()].filter((s) => s === m.mode).length })).filter((p) => p.n > 0);
+  if (parts[0]!.mode === 'ignored') return { title: NOBODY, tooltip: tooltip.join('\n') };
+  const always = Math.max(...rows.filter((r) => r.mode === 'always').map((r) => r.o200k));
+  const summary = parts.map(({ mode, title, n }, i) => {
+    const tokens = mode === 'always' ? `${fmtTokens(always)} tokens ` : '';
+    return `${tokens}${title} ${n}${i === 0 ? (n === 1 ? ' agent' : ' agents') : ''}`;
+  });
+  return { title: `turntax: ${summary.join(' · ')}`, tooltip: [...tooltip, 'Counts are o200k_base estimates, made offline.'].join('\n') };
 }

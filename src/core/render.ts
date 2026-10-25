@@ -1,6 +1,7 @@
 import type { McpRow, Report, ToolSummary } from './audit.js';
 import type { ReportDiff } from './diff.js';
 import { unifiedDiff, type FixPlan } from './fix.js';
+import { fmtTokens } from './format.js';
 import { DEFERRED_NOTE, INSTRUCTIONS_NOTE } from './mcp.js';
 import type { CountMethod } from './types.js';
 
@@ -12,9 +13,7 @@ export const METHOD_LABEL: Record<CountMethod, string> = {
   'none-loaded': 'nothing always loaded',
 };
 
-export function fmtTokens(n: number): string {
-  return n.toLocaleString('en-US');
-}
+export { fmtTokens };
 
 export function fmtUsd(n: number | null): string {
   if (n === null) return 'n/a';

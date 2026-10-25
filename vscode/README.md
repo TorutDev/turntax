@@ -7,6 +7,7 @@ It runs the same engine as the [turntax CLI](https://github.com/TorutDev/turntax
 ## What it shows
 
 - **Status bar**: the largest per-turn cost across the agents that read the folder, for example `330 tok/turn`. It is the number the CLI badge shows: repository instruction files that load every turn, in o200k tokens. Hover for each agent's number; click for the full report.
+- **CodeLens**: at the top of each instruction file, and of each file one of them imports, how the agents load it, for example `turntax: 219 tokens every turn in 6 agents · not read by 4`. Each agent counts once, under the strongest way it loads the file (every turn, on demand, only when referenced, not read); the number is the largest every-turn count among them, in o200k tokens. Hover for the agents and their counts; click for the full report.
 - **Problems**: each finding on its file and line, with the estimated saving, such as lines loaded twice, sections that could load only in their folder, large procedures that could be an on-demand skill, misconfigured rules, references to files that no longer exist and contradictions.
 - **Safe fixes**: on findings the fixer handles, the quick fix *turntax: Preview safe fixes* (or the command *turntax: Preview Safe Fixes*) opens a diff for every file the fixes would change. Nothing is written until you choose **Apply**, which plans the fixes again, writes only if nothing changed since the preview, and needs a trusted workspace.
 
@@ -34,7 +35,11 @@ Counts are o200k_base estimates, made offline.
 
 ## Settings
 
-None. A `turntax.config.json` in the folder (`tools`, `models`, `ignore`, `sectionTokens`) applies as it does for the CLI.
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `turntax.codeLens` | `true` | Shows the CodeLens at the top of instruction files |
+
+A `turntax.config.json` in the folder (`tools`, `models`, `ignore`, `sectionTokens`) applies as it does for the CLI.
 
 ## How it counts
 
