@@ -29,7 +29,12 @@ async function main(): Promise<void> {
       launchArgs: [folder, '--disable-extensions', '--disable-workspace-trust'],
     });
   } finally {
-    rmSync(folder, { recursive: true, force: true, maxRetries: 5 });
+    // A folder VS Code still holds must not turn a passing run into a failure.
+    try {
+      rmSync(folder, { recursive: true, force: true, maxRetries: 5 });
+    } catch (e) {
+      console.warn(`Could not remove ${folder}: ${(e as Error).message}`);
+    }
   }
 }
 

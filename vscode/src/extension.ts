@@ -20,8 +20,8 @@ export interface TurntaxState {
 /** What activate() returns, for the integration test. */
 export interface TurntaxApi {
   readonly state: TurntaxState | undefined;
-  /** What Apply does after a preview: true when `plan` was written. */
-  apply(plan: FixPlan): Promise<boolean>;
+  /** What Apply does after a preview: true when `plan` was written. Only in the extension test host. */
+  apply?(plan: FixPlan): Promise<boolean>;
 }
 
 /** Read-only documents for the report and the planned file contents. */
@@ -79,6 +79,8 @@ class Turntax implements vscode.CodeLensProvider, vscode.Disposable {
   private previews = 0;
   /** The audit in progress; a newer refresh stops it. */
   private auditing: Worker | undefined;
+  /** Paths the last report read, for the file watcher. */
+  private known = new Set<string>();
   private readonly lensesChanged = new vscode.EventEmitter<void>();
   readonly onDidChangeCodeLenses = this.lensesChanged.event;
 
@@ -129,6 +131,7 @@ class Turntax implements vscode.CodeLensProvider, vscode.Disposable {
 
   private show(state: TurntaxState | undefined, folder?: vscode.WorkspaceFolder): void {
     this.state = state;
+    this.known = new Set(state?.audit?.files.map((f) => f.path));
     this.status.command = 'turntax.showReport';
     this.diagnostics.clear();
     this.lensesChanged.fire();
@@ -177,7 +180,7 @@ class Turntax implements vscode.CodeLensProvider, vscode.Disposable {
   affects(uri: vscode.Uri): boolean {
     const folder = this.folder;
     if (!folder || !sameFolder(vscode.workspace.getWorkspaceFolder(uri), folder)) return false;
-    return affectsAudit(relPath(folder, uri), new Set(this.state?.audit?.files.map((f) => f.path)));
+    return affectsAudit(relPath(folder, uri), this.known);
   }
 
   /** Called when the active editor changes: re-audits when it is in another folder. */
@@ -329,6 +332,7 @@ export function activate(context: vscode.ExtensionContext): TurntaxApi {
     get state() {
       return turntax.state;
     },
-    apply: (plan) => turntax.apply(plan),
+    // Only the integration test applies a plan without the Apply button.
+    ...(context.extensionMode === vscode.ExtensionMode.Test ? { apply: (plan: FixPlan) => turntax.apply(plan) } : {}),
   };
 }

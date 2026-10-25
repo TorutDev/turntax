@@ -65,8 +65,8 @@ function inSkippedDir(path: string): boolean {
  * report read (such as @imports).
  */
 export function affectsAudit(path: string, known: Iterable<string>): boolean {
-  for (const k of known) if (k === path || k.startsWith(`${path}/`)) return true;
   if (inSkippedDir(path)) return false;
+  for (const k of known) if (k === path || k.startsWith(`${path}/`)) return true;
   return isInstructionFile(path) || isMcpConfigFile(path) || path === CONFIG_FILE || path === 'package.json';
 }
 

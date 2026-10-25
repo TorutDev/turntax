@@ -135,7 +135,8 @@ export async function run(): Promise<void> {
       if (c.renamedFrom) delete expected[c.renamedFrom];
       expected[c.path] = c.after;
     }
-    assert.equal(await api!.apply(previewed), true, 'the plan was applied');
+    assert.ok(api?.apply, 'the test host exposes apply');
+    assert.equal(await api.apply(previewed), true, 'the plan was applied');
     assert.deepEqual(snapshot(root), expected);
     const audit = await until(() => {
       const audit = api?.state?.audit;
@@ -158,7 +159,7 @@ export async function run(): Promise<void> {
     assert.ok(!stale.changes.some((c) => c.path === 'AGENTS.md' || c.renamedFrom === 'AGENTS.md'), 'the plan does not change AGENTS.md');
     writeFileSync(join(root, 'AGENTS.md'), '# Agents\n\nNothing in common with CLAUDE.md.\n');
     const files = snapshot(root);
-    assert.equal(await api!.apply(stale), false, 'the stale plan was not applied');
+    assert.equal(await api!.apply!(stale), false, 'the stale plan was not applied');
     assert.deepEqual(snapshot(root), files);
   });
 

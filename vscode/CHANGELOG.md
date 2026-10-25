@@ -3,7 +3,7 @@
 ## 0.2.0
 
 - CodeLens at the top of each instruction file, and of each file one of them imports: how many o200k tokens it adds to every turn and in how many agents, and how many load it only on demand, only when referenced, or not at all. Hover for the agents; click for the report. The `turntax.codeLens` setting turns it off.
-- The tokenizer and the rest of the engine now load only in the background thread, which also makes the report and the diagnostics: `dist/extension.js` went from 2.8 MB to 67 kB, so the extension activates faster.
+- The tokenizer now loads only in the background thread, which also makes the report and the diagnostics: `dist/extension.js` went from 2.8 MB to 67 kB, so the extension activates faster.
 
 ## 0.1.0
 

@@ -281,7 +281,7 @@ This repository is also a Claude Code plugin marketplace. The plugin adds the se
 
 ## VS Code
 
-[`vscode/`](vscode) is a VS Code extension on the same engine: the largest per-turn cost of the open folder in the status bar, a line above each instruction file with its tokens per turn and the agents that load it, findings in the Problems panel, the report as a Markdown preview, and safe fixes shown as diffs and written only when you choose Apply. It is offline, and its only settings are the folder's `turntax.config.json`.
+[`vscode/`](vscode) is a VS Code extension on the same engine: the largest per-turn cost of the open folder in the status bar, a line above each instruction file with its tokens per turn and the agents that load it, findings in the Problems panel, the report as a Markdown preview, and safe fixes shown as diffs and written only when you choose Apply. It is offline and uses the folder's `turntax.config.json`; its one setting, `turntax.codeLens`, turns the line above each file off.
 
 Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=torut.turntax) or, for Cursor, Windsurf and VSCodium, [Open VSX](https://open-vsx.org/extension/torut/turntax), or run:
 
