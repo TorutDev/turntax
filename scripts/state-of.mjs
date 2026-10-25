@@ -38,6 +38,8 @@ const TEST_DIRS = new Set(['test', 'tests', '__tests__', 'fixtures', '__fixtures
 const MAX_BYTES = 2 * 1024 * 1024;
 const REPO_CONCURRENCY = 4;
 const FILE_CONCURRENCY = 8;
+/** Most imported files read per repository; a record notes `importsCut` when the cap cut off an import. */
+const MAX_IMPORTS = 200;
 /** Edition files are named after their month. */
 const EDITION_FILE = /^(\d{4}-\d{2})\.json$/;
 
@@ -274,7 +276,23 @@ async function scanRepo(item) {
     else found.set(path, { path, text: texts[i] });
   });
   const direct = new Set(found.keys());
-  await addImports(found, read, blobs.keys());
+  // Imports, glob mentions included, follow the same path rules as the candidates and read at most
+  // MAX_IMPORTS files, so one broad glob cannot turn a repository into thousands of fetches. Mentions of
+  // paths that are not in the tree (such as @types/node) cost nothing.
+  const importPaths = [...blobs.keys()].filter((p) => keepPath(p) && withinDepth(p) && !inTestData(p));
+  const importable = new Set(importPaths);
+  let importsLeft = MAX_IMPORTS;
+  let importsCut = false;
+  await addImports(
+    found,
+    (p) => {
+      if (!importable.has(p)) return null;
+      if (importsLeft-- > 0) return read(p);
+      importsCut = true;
+      return null;
+    },
+    importPaths,
+  );
   const files = [...found.values()].sort((a, b) => a.path.localeCompare(b.path));
 
   const exists = (p) => existing.has(p);
@@ -320,6 +338,7 @@ async function scanRepo(item) {
       })),
       ...(unreadable.length ? { unreadable } : {}),
       ...(tooLarge.length ? { tooLarge } : {}),
+      ...(importsCut ? { importsCut: true } : {}),
       agents,
       maxPerTurn: maxOf(agents),
       ...(links.size ? { maxPerTurnLinksOnce: maxOf(agentsLinksOnce) } : {}),

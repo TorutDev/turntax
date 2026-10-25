@@ -220,7 +220,7 @@
     <ul>
       <li>GitHub repository search <code id="m-query"></code>, sorted by stars (descending), on <span id="m-date"></span>. <span id="m-search"></span></li>
       <li>Repositories were taken in that order. A repository counts when its file tree has at least one agent instruction file that turntax recognises, outside dependency and build folders and outside test-data folders (<span id="m-excluded"></span>). <span id="m-scan"></span></li>
-      <li>Every file was read at the default branch's head commit, pinned by SHA (listed in the table and the dataset). Files that instruction files pull in with <code>@path</code> imports were read too. Symbolic links were followed one level.</li>
+      <li>Every file was read at the default branch's head commit, pinned by SHA (listed in the table and the dataset). Files that instruction files pull in with <code>@path</code> imports were read too; from the 2026-11 edition, Amp's glob mentions included, only outside test and example folders and at most 200 per repository. Symbolic links were followed one level.</li>
     </ul>
     <h3>Counting</h3>
     <ul>

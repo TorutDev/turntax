@@ -111,8 +111,11 @@ export function findImports(text: string): string[] {
     if (inFence) continue;
     const noCode = line.replace(/`[^`]*`/g, '');
     for (const m of noCode.matchAll(/(?:^|\s)@((?:~|\.{1,2})?\/?[\w.*-][\w./*-]*)/g)) {
-      // Trailing punctuation and emphasis (`**See @AGENTS.md.**`) are not part of the path.
-      const target = (m[1] as string).replace(/(\.[A-Za-z]\w*)[.,;:)*]+$/, '$1').replace(/[.,;:)]+$/, '');
+      // Trailing punctuation is not part of the path, nor is emphasis after a plain path's extension
+      // (`**See @AGENTS.md.**`); a glob keeps its stars (`@src/**/*.test.*`).
+      const raw = m[1] as string;
+      const plain = raw.replace(/(\.[A-Za-z]\w*)[.,;:)*]+$/, '$1');
+      const target = (plain.includes('*') ? raw : plain).replace(/[.,;:)]+$/, '');
       if (target.includes('/') || /\.\w+$/.test(target)) found.push(target);
     }
   }
