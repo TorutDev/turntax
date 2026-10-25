@@ -94,6 +94,13 @@ describe('VS Code refresh', () => {
     for (const path of ['src/index.ts', 'README.md', 'node_modules/pkg/CLAUDE.md', '.claude/worktrees/agent-1/CLAUDE.md', 'packages/api/turntax.config.json'])
       expect(affectsAudit(path, known), path).toBe(false);
   });
+
+  it('reacts to an imported file inside a folder the search skips', () => {
+    // CLAUDE.md can import @build/rules.md; build/ is not searched for instruction files.
+    const known = ['CLAUDE.md', 'build/rules.md'];
+    for (const path of ['build/rules.md', 'build']) expect(affectsAudit(path, known), path).toBe(true);
+    expect(affectsAudit('build/other.md', known)).toBe(false);
+  });
 });
 
 describe('VS Code report', () => {

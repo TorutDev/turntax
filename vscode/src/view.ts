@@ -65,8 +65,9 @@ function inSkippedDir(path: string): boolean {
  * report read (such as @imports).
  */
 export function affectsAudit(path: string, known: Iterable<string>): boolean {
-  if (inSkippedDir(path)) return false;
+  // Files the report read come first: an @import can point into a folder the search skips (build/, vendor/).
   for (const k of known) if (k === path || k.startsWith(`${path}/`)) return true;
+  if (inSkippedDir(path)) return false;
   return isInstructionFile(path) || isMcpConfigFile(path) || path === CONFIG_FILE || path === 'package.json';
 }
 
