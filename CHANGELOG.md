@@ -3,7 +3,7 @@
 ## 0.7.2 (2026-10-25)
 
 - Amp glob mentions that end in a star, such as `@src/**/*.test.*`, keep it; 0.7.1 dropped the final `.*` and missed those files. Emphasis after a plain path (`**See @AGENTS.md.**`) is still not part of the path.
-- The monthly State of report reads imported files, Amp's glob mentions included, only outside test and example folders and at most 200 per repository (`importsCut` in the dataset when the cap is reached).
+- The monthly State of report reads imported files, Amp's glob mentions included, only outside test and example folders and at most 200 per repository (`importsCut` in the dataset when the cap cut off an import).
 
 ## 0.7.1 (2026-10-18)
 

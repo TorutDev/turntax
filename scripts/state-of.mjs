@@ -38,7 +38,7 @@ const TEST_DIRS = new Set(['test', 'tests', '__tests__', 'fixtures', '__fixtures
 const MAX_BYTES = 2 * 1024 * 1024;
 const REPO_CONCURRENCY = 4;
 const FILE_CONCURRENCY = 8;
-/** Most imported files read per repository; a record notes `importsCut` when the cap was reached. */
+/** Most imported files read per repository; a record notes `importsCut` when the cap cut off an import. */
 const MAX_IMPORTS = 200;
 /** Edition files are named after their month. */
 const EDITION_FILE = /^(\d{4}-\d{2})\.json$/;
