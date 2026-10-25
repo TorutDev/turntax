@@ -9,7 +9,7 @@ Measures how many tokens your agent instruction files (CLAUDE.md, `.claude/rules
 
 ## What it runs and sends
 
-The server runs `npx -y turntax@0.7.1 mcp` on your machine. npx downloads the `turntax` package from npm on first use. The tools read instruction files and MCP configs in the folder you audit. They do not start the MCP servers they find, do not call any vendor API, and send nothing over the network.
+The server runs `npx -y turntax@0.7.2 mcp` on your machine. npx downloads the `turntax` package from npm on first use. The tools read instruction files and MCP configs in the folder you audit. They do not start the MCP servers they find, do not call any vendor API, and send nothing over the network.
 
 ## Install
 

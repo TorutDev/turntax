@@ -36,6 +36,8 @@ describe('findImports', () => {
   it('keeps glob mentions whole', () => {
     expect(findImports('See @docs/*.md, @.agent/**/*.md and @**/RULES.md.')).toEqual(['docs/*.md', '.agent/**/*.md', '**/RULES.md']);
     expect(findImports('**See @AGENTS.md.** and @docs/rules.md** or @docs/**')).toEqual(['AGENTS.md', 'docs/rules.md', 'docs/**']);
+    // A glob keeps its trailing stars; only a plain path loses emphasis after its extension.
+    expect(findImports('Tests: @src/**/*.test.* and @config/*.json*, done.')).toEqual(['src/**/*.test.*', 'config/*.json*']);
   });
 });
 
