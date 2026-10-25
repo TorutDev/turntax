@@ -277,13 +277,16 @@ async function scanRepo(item) {
   });
   const direct = new Set(found.keys());
   // Imports, glob mentions included, follow the same path rules as the candidates and read at most
-  // MAX_IMPORTS files, so one broad glob cannot turn a repository into thousands of fetches.
+  // MAX_IMPORTS files, so one broad glob cannot turn a repository into thousands of fetches. Mentions of
+  // paths that are not in the tree (such as @types/node) cost nothing.
   const importPaths = [...blobs.keys()].filter((p) => keepPath(p) && withinDepth(p) && !inTestData(p));
+  const importable = new Set(importPaths);
   let importsLeft = MAX_IMPORTS;
   let importsCut = false;
   await addImports(
     found,
     (p) => {
+      if (!importable.has(p)) return null;
       if (importsLeft-- > 0) return read(p);
       importsCut = true;
       return null;
