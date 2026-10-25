@@ -54,5 +54,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+      # The tokenizer belongs in dist/worker.js; the main thread must stay small to activate quickly.
+      - name: dist/extension.js is at most 500 kB
+        run: |
+          size=$(stat -c %s dist/extension.js)
+          echo "dist/extension.js: $size bytes"
+          test "$size" -le 500000
       - run: npx vsce package --no-dependencies
       - run: xvfb-run -a npm test
