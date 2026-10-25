@@ -8,6 +8,8 @@
   },
   "homepage": "https://github.com/TorutDev/turntax#readme",
   "repository": "https://github.com/TorutDev/turntax",
+  "supportUrl": "https://github.com/TorutDev/turntax/issues",
+  "privacyPolicyUrl": "https://github.com/TorutDev/turntax#privacy",
   "license": "MIT",
   "keywords": ["context", "tokens", "agents-md", "claude-md", "mcp", "cost"],
   "mcpServers": {
