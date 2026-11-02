@@ -54,7 +54,7 @@
     "cli"
   ],
   "dependencies": {
-    "gpt-tokenizer": "4.0.0"
+    "gpt-tokenizer": "4.1.0"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
