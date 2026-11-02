@@ -1,7 +1,7 @@
 turntax for VS Code bundles the following third-party software in dist/extension.js and dist/worker.js.
 
 ================================================================================
-gpt-tokenizer 4.0.0 (https://github.com/niieani/gpt-tokenizer)
+gpt-tokenizer 4.1.0 (https://github.com/niieani/gpt-tokenizer)
 ================================================================================
 
 MIT License
