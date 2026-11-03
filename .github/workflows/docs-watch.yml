@@ -40,8 +40,8 @@ jobs:
             echo "No earlier run; this one records the first snapshot."
             exit 0
           fi
-          expired=$(gh api "repos/$REPO/actions/runs/$run/artifacts" --jq '[.artifacts[] | select(.name == "docs-snapshot" and .expired)] | length')
-          if [ "$expired" -gt 0 ]; then
+          live=$(gh api "repos/$REPO/actions/runs/$run/artifacts" --jq '[.artifacts[] | select(.name == "docs-snapshot" and (.expired | not))] | length')
+          if [ "$live" -eq 0 ]; then
             echo "::warning::The snapshot of run $run has expired; this run records a new one and can report no changes."
             exit 0
           fi

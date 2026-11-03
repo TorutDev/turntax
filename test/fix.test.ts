@@ -192,10 +192,37 @@ describe('linking CLAUDE.md to AGENTS.md', () => {
     expect(after(plan, 'CLAUDE.md')).toBe(`@AGENTS.md\n\n${header}\n| npm run e2e | Runs the browser tests |\n`);
   });
 
+  it('keeps a table whole with rows long enough to count as prose', () => {
+    const table = '| Command with a long name | What the command is for |\n| --- | --- |\n| npm test --workspace=api | Runs the tests of the API |';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n${table}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${table}\n| npm run e2e | Browser |\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe(`@AGENTS.md\n\n${table}\n| npm run e2e | Browser |\n`);
+  });
+
+  it('leaves a table row alone when removing duplicates, too', () => {
+    const row = '| npm test --workspace=api | Runs the tests of the API |';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `| a | b |\n| --- | --- |\n${row}\n` },
+      { path: '.cursor/rules/always.mdc', text: `---\nalwaysApply: true\n---\n\n| c | d |\n| --- | --- |\n${row}\n` },
+    ]);
+    expect(plan.changes).toEqual([]);
+  });
+
+  it('does not bring back a heading from inside a comment', () => {
+    const comment = '<!--\n## Old notes\nA note for the maintainers about the old process.\n-->';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n${comment}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${comment}\n\nUse plan mode for changes in the billing code.\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n\nUse plan mode for changes in the billing code.\n');
+  });
+
   it('drops a byte order mark instead of leaving it under the import', () => {
     const plan = planFixes([
       { path: 'AGENTS.md', text: `${rules}\n` },
-      { path: 'CLAUDE.md', text: `﻿# Own title\n\n${rules}\n` },
+      { path: 'CLAUDE.md', text: `\uFEFF# Own title\n\n${rules}\n` },
     ]);
     expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n\n# Own title\n');
   });

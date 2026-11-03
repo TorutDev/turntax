@@ -88,7 +88,8 @@ function proseLines(text: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const { line, inFence } of linesWithFences(text)) {
     const key = lineKey(line);
-    if (!inFence && key.length >= 30 && !key.startsWith('#')) out.set(key, line);
+    // Table rows are not prose: without its header a row means nothing.
+    if (!inFence && key.length >= 30 && !key.startsWith('#') && !key.startsWith('|')) out.set(key, line);
   }
   return out;
 }
@@ -365,16 +366,18 @@ function coveredLines(text: string, covered: Set<string>): Set<number> {
   const all = linesWithFences(text);
   const start = text.split('\n').length - parseFrontmatter(text).body.split('\n').length;
   const drop = new Set<number>();
+  const inBlock = new Set<number>();
   for (const block of lineBlocks(all, start)) {
+    if (block.length > 1) block.forEach((i) => inBlock.add(i));
     const lines = block.map((i) => all[i]!.line).filter((l) => l.trim() !== '');
     if (lines.length && lines.every((l) => covered.has(lineKey(l)))) block.forEach((i) => drop.add(i));
   }
   // From the end: `open` means a kept line would otherwise join the section above it.
   let open = false;
   for (let i = all.length - 1; i >= start; i--) {
-    const { line, inFence } = all[i]!;
+    const { line } = all[i]!;
     if (line.trim() === '') continue;
-    if (!inFence && headingLevel(line)) {
+    if (!inBlock.has(i) && headingLevel(line)) {
       if (open) drop.delete(i);
       open = false;
     } else if (!drop.has(i)) open = true;
@@ -396,7 +399,7 @@ function linkClaudeToAgents(ws: Workspace, opts: FixOptions, readOnly: (path: st
     // A symlinked pair is linked already; duplicate removal says why it leaves the files alone.
     if (!agents || readOnly(path) || !reads(path).size) continue;
     // A byte order mark would land in the middle of the file, under the import.
-    const { text, eol } = lf(ws.files.get(path)!.text.replace(/^﻿/, ''));
+    const { text, eol } = lf(ws.files.get(path)!.text.replace(/^\uFEFF/, ''));
     const agentsText = lf(agents.text).text;
     const imports = (from: string, source: string, to: string) => findImports(source).some((t) => resolvePath(from, t) === to);
     if (imports(path, text, agentsPath) || imports(agentsPath, agentsText, path)) continue;
