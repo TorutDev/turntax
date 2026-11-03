@@ -202,7 +202,7 @@ The comparison covers repository instruction files (o200k), per agent and per fi
 
 ## GitHub Action
 
-The repository is also an Action; `npx turntax init` writes this workflow and a `turntax.config.json` for you. On pull requests it compares with the base branch, posts one comment (updated on every push), writes the report to the job summary and marks findings on the lines they are about in the pull request's changed files (GitHub shows up to 10 warnings and 10 notices per step):
+The repository is also an Action, [listed on the GitHub Marketplace](https://github.com/marketplace/actions/turntax); `npx turntax init` writes this workflow and a `turntax.config.json` for you. On pull requests it compares with the base branch, posts one comment (updated on every push), writes the report to the job summary and marks findings on the lines they are about in the pull request's changed files (GitHub shows up to 10 warnings and 10 notices per step):
 
 ```yaml
 name: turntax
