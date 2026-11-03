@@ -112,10 +112,12 @@ export function findImports(text: string): string[] {
     const noCode = line.replace(/`[^`]*`/g, '');
     for (const m of noCode.matchAll(/(?:^|\s)@((?:~|\.{1,2})?\/?[\w.*-][\w./*-]*)/g)) {
       // Trailing punctuation is not part of the path, nor is emphasis after a plain path's extension
-      // (`**See @AGENTS.md.**`); a glob keeps its stars (`@src/**/*.test.*`).
+      // (`**See @AGENTS.md.**`). A glob keeps its stars (`@src/**/*.test.*`, `@docs/**`) but not a bold closer
+      // after them (`**See @docs/*.md.**`).
       const raw = m[1] as string;
       const plain = raw.replace(/(\.[A-Za-z]\w*)[.,;:)*]+$/, '$1');
-      const target = (plain.includes('*') ? raw : plain).replace(/[.,;:)]+$/, '');
+      const glob = raw.replace(/(?<=[^/*])[.,;:)]*\*\*[.,;:)]*$/, '');
+      const target = (plain.includes('*') ? glob : plain).replace(/[.,;:)]+$/, '');
       if (target.includes('/') || /\.\w+$/.test(target)) found.push(target);
     }
   }

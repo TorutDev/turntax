@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Safe fixes can link a `CLAUDE.md` that repeats most of the `AGENTS.md` next to it with `@AGENTS.md`, as in turntax 0.8.0.
+- On a misconfigured finding, "Preview safe fixes" now appears only for `.md` files in `.cursor/rules`, the one misconfiguration a fix can change. It no longer appears on a Windsurf rule without a trigger, for example.
+- Amp glob mentions followed by a bold closer (`**See @docs/*.md.**`) now match the files, and gpt-tokenizer is 4.1.0.
+
 ## 0.2.0
 
 - CodeLens at the top of each instruction file, and of each file one of them imports: how many o200k tokens it adds to every turn and in how many agents, and how many load it only on demand, only when referenced, or not at all. Hover for the agents; click for the report. The `turntax.codeLens` setting turns it off.

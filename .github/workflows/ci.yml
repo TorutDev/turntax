@@ -34,6 +34,16 @@ jobs:
       - run: node dist/bin.js test/fixtures/mixed --json > /dev/null
         shell: bash
 
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Installs the hook the way pre-commit users get it (npm pack, which builds dist/) and runs it.
+      - run: pipx run pre-commit try-repo . turntax --all-files --verbose
+
   vscode:
     runs-on: ubuntu-latest
     defaults:

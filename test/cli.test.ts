@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { main } from '../src/cli.js';
 import { MODELS } from '../src/core/prices.js';
+import { TOOLS } from '../src/core/tools.js';
 import { fixture, homeFixture, materialize } from './helpers.js';
 
 function capture() {
@@ -107,6 +108,22 @@ describe('cli', () => {
     expect(err).toBe('turntax: prices for A, B were checked on 2026-01-01, over 90 days ago; check the sources or pass --prices.\n');
     expect(await run(['--list-models'], '2027-01-01T00:00:00Z')).toBe('');
     expect(await run(['--fix'], '2027-01-01T00:00:00Z')).not.toMatch(/prices/);
+  });
+
+  it('warns once on stderr when the rules of a reported agent were checked over 90 days ago', async () => {
+    const run = async (args: string[], now: string) => {
+      const io = capture();
+      await main([fixture('agents-only'), ...args], {}, new Date(now));
+      return io.err();
+    };
+    const checked = Date.parse(TOOLS.find((t) => t.id === 'codex')!.checkedAt);
+    const day = (n: number) => new Date(checked + n * 86_400_000).toISOString();
+    expect(await run(['--tools', 'codex'], day(90))).not.toMatch(/loading rules/);
+    const err = await run(['--tools', 'codex', '--json'], day(91));
+    expect(err).toMatch(/^turntax: loading rules for OpenAI Codex were checked on \d{4}-\d{2}-\d{2}, over 90 days ago; update turntax/m);
+    // Agents that read nothing here are not named, and a fix preview prints no report.
+    expect(err).not.toMatch(/Claude Code/);
+    expect(await run(['--tools', 'codex', '--fix'], day(91))).not.toMatch(/loading rules/);
   });
 
   it('measures a language multiplier from --english', async () => {

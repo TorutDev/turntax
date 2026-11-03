@@ -1,7 +1,7 @@
 import { sectionScope } from './advice.js';
 import { classify } from './classify.js';
-import { isInstructionFile } from './files.js';
-import { basename, findImports, linesWithFences, parseFrontmatter, splitSections } from './markdown.js';
+import { CURSOR_MD_RULE, isInstructionFile } from './files.js';
+import { basename, dirname, findImports, linesWithFences, parseFrontmatter, resolvePath, splitSections } from './markdown.js';
 import { countO200k } from './tokenize.js';
 import { TOOLS } from './tools.js';
 import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
@@ -197,6 +197,7 @@ export function planFixes(input: RepoFile[], opts: FixOptions = {}): FixPlan {
   // removed elsewhere on the strength of a copy that is moved later.
   moveScopableSections(ws, opts, readOnly, fixes, skipped);
   moveProcedureSections(ws, opts, readOnly, fixes, skipped);
+  linkClaudeToAgents(ws, opts, readOnly, fixes, skipped);
   removeDuplicates(ws, readOnly, fixes, skipped);
 
   const renamedTo = new Map([...renames].map(([from, to]) => [to, from]));
@@ -220,7 +221,7 @@ function renameCursorRules(
   skipped: SkippedFix[],
 ): void {
   for (const f of [...ws.files.values()]) {
-    if (!/^(?:.*\/)?\.cursor\/rules\/.+\.md$/.test(f.path)) continue;
+    if (!CURSOR_MD_RULE.test(f.path)) continue;
     const to = f.path.replace(/\.md$/, '.mdc');
     const blocked = readOnly(f.path) ?? (ws.files.has(to) ? `${to} already exists.` : readOnly(to));
     if (blocked) {
@@ -330,6 +331,98 @@ function removeDuplicates(ws: Workspace, readOnly: (path: string) => string | nu
         paths: [path, ...otherPaths],
         reason: `Kept ${kept} line(s) in ${path} that are also in ${otherPaths.join(', ')}: ${names(blockers)} would lose them.`,
       });
+  }
+}
+
+/** How much of the AGENTS.md next to it a CLAUDE.md must repeat before they are linked. */
+const LINK_OVERLAP = 0.8;
+const LINK_MIN_LINES = 3;
+
+/**
+ * Indexes of the body lines of the LF `text` that `covered` holds, as `lineKey` gives them. A fenced block goes only
+ * as a whole, and a heading only when nothing under it stays.
+ */
+function coveredLines(text: string, covered: Set<string>): Set<number> {
+  const all = linesWithFences(text);
+  const start = text.split('\n').length - parseFrontmatter(text).body.split('\n').length;
+  const has = (i: number) => covered.has(lineKey(all[i]!.line));
+  const drop = new Set<number>();
+  for (let i = start; i < all.length; i++) {
+    if (!all[i]!.inFence) {
+      if (has(i)) drop.add(i);
+      continue;
+    }
+    let end = i;
+    while (all[end + 1]?.inFence) end++;
+    const block = Array.from({ length: end - i + 1 }, (_, n) => i + n);
+    if (block.every((n) => has(n) || all[n]!.line.trim() === '')) block.forEach((n) => drop.add(n));
+    i = end;
+  }
+  // From the end: `open` means a kept line would otherwise join the section above it.
+  let open = false;
+  for (let i = all.length - 1; i >= start; i--) {
+    const { line, inFence } = all[i]!;
+    if (line.trim() === '') continue;
+    if (!inFence && headingLevel(line)) {
+      if (open) drop.delete(i);
+      open = false;
+    } else if (!drop.has(i)) open = true;
+  }
+  return drop;
+}
+
+/**
+ * A CLAUDE.md that repeats most of the AGENTS.md next to it keeps only its own lines and imports the rest, as Claude
+ * Code's docs suggest. Only this direction: most agents that read AGENTS.md do not expand @imports.
+ */
+function linkClaudeToAgents(ws: Workspace, opts: FixOptions, readOnly: (path: string) => string | null, fixes: Fix[], skipped: SkippedFix[]): void {
+  const reads = (path: string, mode?: LoadMode) =>
+    new Set(contentUnits(ws.units).filter((u) => u.path === path && (!mode || u.mode === mode)).map((u) => u.tool));
+  for (const path of [...ws.files.keys()].filter((p) => basename(p) === 'CLAUDE.md').sort()) {
+    const dir = dirname(path);
+    const agentsPath = dir ? `${dir}/AGENTS.md` : 'AGENTS.md';
+    const agents = ws.files.get(agentsPath);
+    // A symlinked pair is linked already; duplicate removal says why it leaves the files alone.
+    if (!agents || readOnly(path) || !reads(path).size) continue;
+    const { text, eol } = lf(ws.files.get(path)!.text);
+    const agentsText = lf(agents.text).text;
+    const imports = (from: string, source: string, to: string) => findImports(source).some((t) => resolvePath(from, t) === to);
+    if (imports(path, text, agentsPath) || imports(agentsPath, agentsText, path)) continue;
+    const theirs = [...proseLines(agentsText).keys()];
+    const ours = proseLines(text);
+    const shared = theirs.filter((k) => ours.has(k)).length;
+    if (shared < LINK_MIN_LINES || shared < theirs.length * LINK_OVERLAP) continue;
+
+    const lines = text.split('\n');
+    const drop = coveredLines(text, new Set(keysOf(agentsText)));
+    const removed = [...drop].map((i) => lines[i]!);
+    const kept = dropLines(lines, drop);
+    const start = lines.length - parseFrontmatter(text).body.split('\n').length;
+    const rest = kept.slice(start).join('\n').replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
+    const after = [...kept.slice(0, start), '@AGENTS.md', ...(rest ? ['', rest] : []), ''].join('\n');
+    const next = ws.trial(new Map([[path, after.replace(/\n/g, eol)]]));
+    const lost = ws.check(next, [], (r) => r);
+    if (lost.length) {
+      skipped.push({ kind: 'duplicate', paths: [path, agentsPath], reason: `Not linked to ${agentsPath}: ${names(lost)} would lose context.` });
+      continue;
+    }
+    const inAgents = reads(agentsPath, 'always');
+    const twice = [...reads(path, 'always')].filter((t) => inAgents.has(t));
+    const own = new Set(keysOf(text));
+    const onlyInAgents = [...new Set(keysOf(agentsText))].filter((k) => !own.has(k));
+    const gaining = [...next.loaded.keys()].filter((tool) => onlyInAgents.some((k) => next.loaded.get(tool)!.has(k) && !ws.state.loaded.get(tool)?.has(k)));
+    const dropped = opts.tools ? leftOut(ws.files, next.files, removed.join('\n'), opts.tools) : [];
+    ws.commit(next);
+    fixes.push({
+      kind: 'duplicate',
+      paths: [path, agentsPath],
+      message:
+        `Linked ${path} to ${agentsPath} with @AGENTS.md and removed the ${removed.length} line(s) it repeated, so the text is kept in one file.` +
+        (twice.length ? ` ${names(twice)} no longer read them twice.` : '') +
+        (gaining.length ? ` ${names(gaining)} now also read ${onlyInAgents.length} line(s) that were only in ${agentsPath}.` : '') +
+        (dropped.length ? ` Not kept for ${names(dropped)} (outside --tools).` : ''),
+      savingTokens: twice.length ? countO200k(removed.join('\n')) : 0,
+    });
   }
 }
 

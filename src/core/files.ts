@@ -27,6 +27,9 @@ export const SKIP_DIRS = new Set([
   '.cache',
 ]);
 
+/** `.md` files in `.cursor/rules`, which Cursor ignores; `--fix` renames them to `.mdc`. */
+export const CURSOR_MD_RULE = /(^|\/)\.cursor\/rules\/.+\.md$/;
+
 const NAMES = new Set([
   'CLAUDE.md',
   'CLAUDE.local.md',

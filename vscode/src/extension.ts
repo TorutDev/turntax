@@ -285,8 +285,8 @@ class Turntax implements vscode.CodeLensProvider, vscode.Disposable {
 
 /** "Preview safe fixes" on turntax diagnostics that --fix can handle. */
 const codeActions: vscode.CodeActionProvider = {
-  provideCodeActions(_document, _range, context) {
-    const ours = context.diagnostics.filter((d) => d.source === 'turntax' && isFixable(typeof d.code === 'string' ? d.code : undefined));
+  provideCodeActions(document, _range, context) {
+    const ours = context.diagnostics.filter((d) => d.source === 'turntax' && isFixable(typeof d.code === 'string' ? d.code : undefined, document.uri.path));
     if (!ours.length) return [];
     const action = new vscode.CodeAction('turntax: Preview safe fixes', vscode.CodeActionKind.QuickFix);
     action.command = { command: 'turntax.previewFixes', title: 'turntax: Preview safe fixes' };

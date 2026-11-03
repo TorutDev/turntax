@@ -5,7 +5,7 @@
  */
 import type { AdviceKind } from '../../src/core/advice.js';
 import type { FileRow } from '../../src/core/audit.js';
-import { isInstructionFile, isSkippedDir } from '../../src/core/files.js';
+import { CURSOR_MD_RULE, isInstructionFile, isSkippedDir } from '../../src/core/files.js';
 import type { FileChange, FixKind, FixPlan } from '../../src/core/fix.js';
 import { fmtTokens } from '../../src/core/format.js';
 import { globMatcher } from '../../src/core/glob.js';
@@ -51,7 +51,9 @@ export interface AuditView {
 /** The advice kinds `--fix` handles. A Record, so a new fix kind does not compile until it is listed here. */
 const FIXABLE: Record<FixKind, true> = { duplicate: true, 'scopable-section': true, 'oversized-section': true, misconfigured: true };
 
-export const isFixable = (kind: string | undefined): boolean => kind !== undefined && Object.hasOwn(FIXABLE, kind);
+/** True when `--fix` can act on a finding of this kind in `path`; the only misconfiguration it fixes is a Cursor rule's name. */
+export const isFixable = (kind: string | undefined, path: string): boolean =>
+  kind !== undefined && Object.hasOwn(FIXABLE, kind) && (kind !== 'misconfigured' || CURSOR_MD_RULE.test(path));
 
 /** True when a folder on `path` is one the audit never searches, such as node_modules. */
 function inSkippedDir(path: string): boolean {

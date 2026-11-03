@@ -79,10 +79,17 @@ describe('VS Code diagnostics', () => {
   });
 
   it('offers the fix preview only for advice that --fix handles', () => {
-    expect(['duplicate', 'scopable-section', 'oversized-section', 'misconfigured'].every(isFixable)).toBe(true);
-    expect(isFixable('stale-reference')).toBe(false);
-    expect(isFixable('toString')).toBe(false);
-    expect(isFixable(undefined)).toBe(false);
+    expect(['duplicate', 'scopable-section', 'oversized-section'].every((kind) => isFixable(kind, 'CLAUDE.md'))).toBe(true);
+    expect(isFixable('stale-reference', 'CLAUDE.md')).toBe(false);
+    expect(isFixable('toString', 'CLAUDE.md')).toBe(false);
+    expect(isFixable(undefined, 'CLAUDE.md')).toBe(false);
+  });
+
+  it('offers a quick fix for a misconfigured file only when --fix can rename it', () => {
+    expect(isFixable('misconfigured', '/d:/repo/.cursor/rules/wrong.md')).toBe(true);
+    expect(isFixable('misconfigured', '.cursor/rules/wrong.md')).toBe(true);
+    expect(isFixable('misconfigured', '.windsurf/rules/no-trigger.md')).toBe(false);
+    expect(isFixable('misconfigured', '.augment/rules/unknown-type.md')).toBe(false);
   });
 });
 
