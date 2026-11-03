@@ -18,6 +18,11 @@ describe('pageLines', () => {
     expect(pageLines(html)).toEqual(['Rules', "Read AGENTS.md & nested files' rules.", 'One', 'Two']);
   });
 
+  it('keeps callouts in an aside, and an element whose name only starts like a removed one', () => {
+    const html = '<main><aside><p>Nested files load first.</p></aside><nav-link>Skills</nav-link><p>Rest</p></main>';
+    expect(pageLines(html)).toEqual(['Nested files load first.', 'Skills', 'Rest']);
+  });
+
   it('reads plain text as lines', () => {
     expect(pageLines('# Title\n\n  a   b \n<not a tag>\n', 'text/plain')).toEqual(['# Title', 'a b', '<not a tag>']);
   });
@@ -53,6 +58,8 @@ describe('compare', () => {
     expect(relevant.changes[0]).toMatchObject({ added: ['AGENTS.md is now read in every folder'], removed: ['b'], relevant: true });
     const other = compare([page], [ok(['a', 'Join our community'])], before(['a', 'Pricing']));
     expect(other.changes[0]).toMatchObject({ relevant: false });
+    const nested = compare([page], [ok(['a', 'Nested copies now win over the parent copy'])], before(['a']));
+    expect(nested.changes[0]).toMatchObject({ relevant: true });
   });
 
   it('reports a page that now redirects elsewhere', () => {
@@ -74,6 +81,20 @@ describe('compare', () => {
     expect(outage.snapshot[page.url].lines).toEqual(['a']);
     const back = compare([page], [ok(['a', 'new rules'])], outage.snapshot);
     expect(back.changes[0]).toMatchObject({ added: ['new rules'] });
+    expect(back.snapshot[page.url].misses).toBeUndefined();
+  });
+
+  it('reports once a page that used to work and stays unreadable, not one that never worked', () => {
+    const down = { status: 'unreadable', detail: 'HTTP 403' };
+    const first = compare([page], [down], before(['a']));
+    expect(first.changes).toEqual([]);
+    const second = compare([page], [down], first.snapshot);
+    expect(second.changes[0]).toMatchObject({ stuck: '2 runs in a row, last HTTP 403', relevant: true });
+    expect(issueReport(second.changes, '2026-11-03')).toContain('now cannot be compared (2 runs in a row, last HTTP 403)');
+    const third = compare([page], [down], second.snapshot);
+    expect(third.changes).toEqual([]);
+    expect(third.unreadable).toHaveLength(1);
+    expect(compare([page], [down], {}).changes).toEqual([]);
   });
 
   it('reports a page that is gone', () => {

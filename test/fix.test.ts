@@ -159,7 +159,79 @@ describe('linking CLAUDE.md to AGENTS.md', () => {
       { path: 'CLAUDE.md', text: both },
     ]);
     expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n');
-    expect(link(plan)!.message).toMatch(/Claude Code now also read 1 line\(s\) that were only in AGENTS\.md\./);
+    expect(link(plan)!.message).toMatch(/Claude Code now also reads 1 line\(s\) every turn \(~\d+ o200k tokens\)\.$/);
+  });
+
+  it('counts a line an agent read on demand and now reads every turn', () => {
+    const plan = planFixes(
+      [
+        { path: 'AGENTS.md', text: `${rules}\n- Keep the public API stable across every minor release.\n- One more shared line about naming things well.\n` },
+        { path: 'CLAUDE.md', text: `${rules}\n- One more shared line about naming things well.\n` },
+        { path: 'pkg/CLAUDE.md', text: '- Keep the public API stable across every minor release.\n' },
+      ],
+      { tools: ['claude-code'] },
+    );
+    expect(link(plan)!.message).toMatch(/Claude Code now also reads 1 line\(s\) every turn/);
+  });
+
+  it('keeps a multi-line comment whole, so its text cannot go live', () => {
+    const comment = '<!--\nA private note for the maintainers about the rules.\n-->';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n<!--\nSomething else entirely is in this comment here.\n-->\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${comment}\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe(`@AGENTS.md\n\n${comment}\n`);
+  });
+
+  it('keeps a table whole when a row of it is its own', () => {
+    const header = '| Command | Purpose |\n| --- | --- |\n| npm test | Runs the tests |';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n${header}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${header}\n| npm run e2e | Runs the browser tests |\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe(`@AGENTS.md\n\n${header}\n| npm run e2e | Runs the browser tests |\n`);
+  });
+
+  it('drops a byte order mark instead of leaving it under the import', () => {
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n` },
+      { path: 'CLAUDE.md', text: `﻿# Own title\n\n${rules}\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n\n# Own title\n');
+  });
+
+  it('links before it moves, so a moved section does not come back through the import', () => {
+    const body = `${rules}\n\n${API_SECTION}`;
+    const plan = planFixes(
+      [
+        { path: 'AGENTS.md', text: body },
+        { path: 'CLAUDE.md', text: body },
+      ],
+      { tools: ['claude-code', 'codex'], exists: () => true },
+    );
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n');
+    // Nothing claims a saving for text that Claude Code still reads every turn.
+    expect(plan.fixes.map((f) => f.kind)).toEqual(['duplicate']);
+    expect(plan.changes.map((c) => c.path)).toEqual(['CLAUDE.md']);
+    expect(plan.skipped.find((s) => s.kind === 'scopable-section')!.reason).toMatch(/no target keeps every agent's context/);
+  });
+
+  it('counts every line of AGENTS.md, not only long ones', () => {
+    const short = Array.from({ length: 20 }, (_, i) => `- Rule ${i}`).join('\n');
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n${short}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n` },
+    ]);
+    expect(link(plan)).toBeUndefined();
+  });
+
+  it('does not link when AGENTS.md imports a file CLAUDE.md does not', () => {
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n- First shared line about the release process here.\n- Second shared line about the release process here.\nSee @docs/big.md\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n- First shared line about the release process here.\n- Second shared line about the release process here.\n` },
+      { path: 'docs/big.md', text: 'A long document that only the AGENTS.md readers get today.\n' },
+    ]);
+    expect(link(plan)).toBeUndefined();
   });
 
   it('leaves files alone when most of AGENTS.md is not in CLAUDE.md, or they share too little', () => {

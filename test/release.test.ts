@@ -10,6 +10,7 @@ describe('version pins', () => {
     ['.pre-commit-hooks.yaml', `npx --yes turntax@${version}`],
     ['plugins/turntax/.claude-plugin/plugin.json', `"turntax@${version}"`],
     ['plugins/turntax/.claude-plugin/plugin.json', `"version": "${version}"`],
+    ['plugins/turntax/package.json', `"turntax": "${version}"`],
     ['.claude-plugin/marketplace.json', `"version": "${version}"`],
     ['server.json', `"version": "${version}"`],
     ['README.md', `uses: TorutDev/turntax@v${version}`],

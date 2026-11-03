@@ -193,11 +193,13 @@ export function planFixes(input: RepoFile[], opts: FixOptions = {}): FixPlan {
   const skipped: SkippedFix[] = [];
 
   if (!opts.tools || opts.tools.includes('cursor')) renameCursorRules(ws, readOnly, renames, fixes, skipped);
+  // The link runs before the moves: a section moved out of CLAUDE.md alone would come back every turn through the
+  // import, and the move's saving would be false. The check keeps a later move from taking what the import reads.
+  linkClaudeToAgents(ws, opts, readOnly, fixes, skipped);
   // Moves run before duplicate removal: a move may relax how often lines load, so a line must not be
   // removed elsewhere on the strength of a copy that is moved later.
   moveScopableSections(ws, opts, readOnly, fixes, skipped);
   moveProcedureSections(ws, opts, readOnly, fixes, skipped);
-  linkClaudeToAgents(ws, opts, readOnly, fixes, skipped);
   removeDuplicates(ws, readOnly, fixes, skipped);
 
   const renamedTo = new Map([...renames].map(([from, to]) => [to, from]));
@@ -334,29 +336,38 @@ function removeDuplicates(ws: Workspace, readOnly: (path: string) => string | nu
   }
 }
 
-/** How much of the AGENTS.md next to it a CLAUDE.md must repeat before they are linked. */
+/** How much of the AGENTS.md next to it a CLAUDE.md must repeat before they are linked: a share of its lines, and full sentences. */
 const LINK_OVERLAP = 0.8;
 const LINK_MIN_LINES = 3;
+const LINK_IMPORT = '@AGENTS.md';
+
+/** Line indexes from `start` that go or stay together: a fenced block, a multi-line HTML comment, a table; other lines alone. */
+function lineBlocks(all: ReturnType<typeof linesWithFences>, start: number): number[][] {
+  const isRow = (i: number) => !all[i]!.inFence && /^\s*\|/.test(all[i]!.line);
+  const blocks: number[][] = [];
+  for (let i = start; i < all.length; i++) {
+    const { line, inFence } = all[i]!;
+    let end = i;
+    if (inFence) while (all[end + 1]?.inFence) end++;
+    else if (isRow(i)) while (end + 1 < all.length && isRow(end + 1)) end++;
+    else if (/^\s*<!--/.test(line)) while (end + 1 < all.length && !all[end]!.line.includes('-->')) end++;
+    blocks.push(Array.from({ length: end - i + 1 }, (_, n) => i + n));
+    i = end;
+  }
+  return blocks;
+}
 
 /**
- * Indexes of the body lines of the LF `text` that `covered` holds, as `lineKey` gives them. A fenced block goes only
- * as a whole, and a heading only when nothing under it stays.
+ * Indexes of the body lines of the LF `text` that `covered` holds, as `lineKey` gives them. A block goes only as a
+ * whole, so a comment's text cannot go live, and a heading only when nothing under it stays.
  */
 function coveredLines(text: string, covered: Set<string>): Set<number> {
   const all = linesWithFences(text);
   const start = text.split('\n').length - parseFrontmatter(text).body.split('\n').length;
-  const has = (i: number) => covered.has(lineKey(all[i]!.line));
   const drop = new Set<number>();
-  for (let i = start; i < all.length; i++) {
-    if (!all[i]!.inFence) {
-      if (has(i)) drop.add(i);
-      continue;
-    }
-    let end = i;
-    while (all[end + 1]?.inFence) end++;
-    const block = Array.from({ length: end - i + 1 }, (_, n) => i + n);
-    if (block.every((n) => has(n) || all[n]!.line.trim() === '')) block.forEach((n) => drop.add(n));
-    i = end;
+  for (const block of lineBlocks(all, start)) {
+    const lines = block.map((i) => all[i]!.line).filter((l) => l.trim() !== '');
+    if (lines.length && lines.every((l) => covered.has(lineKey(l)))) block.forEach((i) => drop.add(i));
   }
   // From the end: `open` means a kept line would otherwise join the section above it.
   let open = false;
@@ -384,22 +395,27 @@ function linkClaudeToAgents(ws: Workspace, opts: FixOptions, readOnly: (path: st
     const agents = ws.files.get(agentsPath);
     // A symlinked pair is linked already; duplicate removal says why it leaves the files alone.
     if (!agents || readOnly(path) || !reads(path).size) continue;
-    const { text, eol } = lf(ws.files.get(path)!.text);
+    // A byte order mark would land in the middle of the file, under the import.
+    const { text, eol } = lf(ws.files.get(path)!.text.replace(/^﻿/, ''));
     const agentsText = lf(agents.text).text;
     const imports = (from: string, source: string, to: string) => findImports(source).some((t) => resolvePath(from, t) === to);
     if (imports(path, text, agentsPath) || imports(agentsPath, agentsText, path)) continue;
-    const theirs = [...proseLines(agentsText).keys()];
-    const ours = proseLines(text);
-    const shared = theirs.filter((k) => ours.has(k)).length;
-    if (shared < LINK_MIN_LINES || shared < theirs.length * LINK_OVERLAP) continue;
+    const own = new Set(keysOf(text));
+    const theirs = new Set(keysOf(agentsText));
+    const shared = [...theirs].filter((k) => own.has(k)).length;
+    const sharedProse = [...proseLines(agentsText).keys()].filter((k) => own.has(k)).length;
+    if (sharedProse < LINK_MIN_LINES || shared < theirs.size * LINK_OVERLAP) continue;
+    // An import only AGENTS.md has would bring its whole file to the agents that read only CLAUDE.md.
+    const ownImports = new Set(findImports(text));
+    if (findImports(agentsText).some((t) => !ownImports.has(t))) continue;
 
     const lines = text.split('\n');
-    const drop = coveredLines(text, new Set(keysOf(agentsText)));
+    const drop = coveredLines(text, theirs);
     const removed = [...drop].map((i) => lines[i]!);
     const kept = dropLines(lines, drop);
     const start = lines.length - parseFrontmatter(text).body.split('\n').length;
     const rest = kept.slice(start).join('\n').replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
-    const after = [...kept.slice(0, start), '@AGENTS.md', ...(rest ? ['', rest] : []), ''].join('\n');
+    const after = [...kept.slice(0, start), LINK_IMPORT, ...(rest ? ['', rest] : []), ''].join('\n');
     const next = ws.trial(new Map([[path, after.replace(/\n/g, eol)]]));
     const lost = ws.check(next, [], (r) => r);
     if (lost.length) {
@@ -408,9 +424,11 @@ function linkClaudeToAgents(ws: Workspace, opts: FixOptions, readOnly: (path: st
     }
     const inAgents = reads(agentsPath, 'always');
     const twice = [...reads(path, 'always')].filter((t) => inAgents.has(t));
-    const own = new Set(keysOf(text));
-    const onlyInAgents = [...new Set(keysOf(agentsText))].filter((k) => !own.has(k));
-    const gaining = [...next.loaded.keys()].filter((tool) => onlyInAgents.some((k) => next.loaded.get(tool)!.has(k) && !ws.state.loaded.get(tool)?.has(k)));
+    // Lines an agent now reads every turn and did not before, per agent; the import line itself costs next to nothing.
+    const gains = [...next.loaded].flatMap(([tool, read]) => {
+      const added = [...read].filter(([k, rank]) => k !== LINK_IMPORT && rank === RANK.always && (ws.state.loaded.get(tool)?.get(k) ?? 0) < rank).map(([k]) => k);
+      return added.length ? [`${toolName(tool)} now also reads ${added.length} line(s) every turn (~${countO200k(added.join('\n'))} o200k tokens).`] : [];
+    });
     const dropped = opts.tools ? leftOut(ws.files, next.files, removed.join('\n'), opts.tools) : [];
     ws.commit(next);
     fixes.push({
@@ -419,7 +437,7 @@ function linkClaudeToAgents(ws: Workspace, opts: FixOptions, readOnly: (path: st
       message:
         `Linked ${path} to ${agentsPath} with @AGENTS.md and removed the ${removed.length} line(s) it repeated, so the text is kept in one file.` +
         (twice.length ? ` ${names(twice)} no longer read them twice.` : '') +
-        (gaining.length ? ` ${names(gaining)} now also read ${onlyInAgents.length} line(s) that were only in ${agentsPath}.` : '') +
+        (gains.length ? ` ${gains.join(' ')}` : '') +
         (dropped.length ? ` Not kept for ${names(dropped)} (outside --tools).` : ''),
       savingTokens: twice.length ? countO200k(removed.join('\n')) : 0,
     });

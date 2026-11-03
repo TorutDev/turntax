@@ -2,10 +2,10 @@
 
 ## 0.8.0 (2026-11-03)
 
-- `--fix` links a `CLAUDE.md` that repeats most of the `AGENTS.md` next to it: at least 80% of the `AGENTS.md` lines and at least 3 lines. It keeps only the `CLAUDE.md` lines of its own and imports the rest with `@AGENTS.md`, if every agent still reads every line. Agents that read both files stop paying for the copy, and the summary names any agent that gains lines found only in `AGENTS.md`. This shows in `--fix`, `--write`, the pull request comment, the web page, the MCP `fix_preview` tool and the VS Code extension.
+- `--fix` links a `CLAUDE.md` that repeats most of the `AGENTS.md` next to it: at least 80% of its lines, at least 3 of them full sentences, and every file it imports. It keeps only the `CLAUDE.md` lines of its own and imports the rest with `@AGENTS.md`, if every agent still reads every line. Agents that read both files stop paying for the copy, and the summary says how much any agent now reads on top. This shows in `--fix`, `--write`, the pull request comment, the web page, the MCP `fix_preview` tool and the VS Code extension.
 - A notice when the loading rules of a reported agent were checked more than 90 days ago, as prices already had.
 - The repository is a [pre-commit](https://pre-commit.com) hook: `id: turntax` fails a commit when an agent goes over `--max-tokens` or `maxTokens`. It needs Node.js 22 or later on the `PATH`.
-- A weekly workflow compares the source pages of the loading rules with the week before and opens an issue when lines about loading change, a page moves or a page is gone. Pages that only render with JavaScript (TRAE's docs) are not covered.
+- A weekly workflow compares the source pages of the loading rules with the week before and opens an issue when lines about loading change, a page moves, a page is gone or a page stays unreadable. Pages that only render with JavaScript (TRAE's docs) are not covered.
 - Amp glob mentions followed by a bold closer, such as `**See @docs/*.md.**`, now match the files; the closing stars were kept as part of the pattern.
 - gpt-tokenizer 4.1.0: counts change only for a U+FEFF inside the text, which now matches tiktoken. 727 real instruction files (1.14 million tokens) counted the same.
 

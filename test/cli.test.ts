@@ -122,7 +122,9 @@ describe('cli', () => {
     const err = await run(['--tools', 'codex', '--json'], day(91));
     expect(err).toMatch(/^turntax: loading rules for OpenAI Codex were checked on \d{4}-\d{2}-\d{2}, over 90 days ago; update turntax/m);
     // Agents that read nothing here are not named, and a fix preview prints no report.
-    expect(err).not.toMatch(/Claude Code/);
+    const all = await run([], day(91));
+    expect(all).toMatch(/loading rules for .*OpenAI Codex/);
+    expect(all).not.toMatch(/Aider/);
     expect(await run(['--tools', 'codex', '--fix'], day(91))).not.toMatch(/loading rules/);
   });
 

@@ -8,7 +8,7 @@
  *
  * Run `npm run build` first. Sets the `changed` step output when the report should reach an issue.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -26,7 +26,10 @@ const QUOTED_CHARS = 160;
 const MAX_ISSUE_CHARS = 60_000;
 
 /** Lines that can bear on what an agent loads and when. Pages with other changes are listed only in the job summary. */
-const RELEVANT = /\.mdc?\b|\.json\b|\.ya?ml\b|\brules?\b|\bskills?\b|\bimports?\b|\binstructions?\b|\bload|\bread|\balways\b|\bcontext\b|\bfrontmatter\b|\bmcp\b|\blimit|\bcharacters?\b|\bprecedence\b|\bfallback\b/i;
+const RELEVANT = /\.mdc?\b|\.json\b|\.ya?ml\b|\brules?\b|\bskills?\b|\bimports?\b|\binstructions?\b|\bload|\bread|\balways\b|\bcontext\b|\bfrontmatter\b|\bmcp\b|\blimit|\bcharacters?\b|\bprecedence\b|\bpriority\b|\bfallback\b|\boverrid|\bnested\b|\bfolders?\b|\bsub-?folders?\b|\b(?:sub)?director(?:y|ies)\b|\bparent\b|\bhierarch/i;
+
+/** Runs in a row that a page that used to work must fail before the issue asks a person to look at it. */
+const MISSES_TO_REPORT = 2;
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'", '#x27': "'" };
 
@@ -34,7 +37,7 @@ const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', 
 function htmlText(html) {
   return html
     .replace(/<!--[\s\S]*?-->/g, '\n')
-    .replace(/<(script|style|svg|noscript|template|head|nav|footer|aside)\b[\s\S]*?<\/\1\s*>/gi, '\n')
+    .replace(/<(script|style|svg|noscript|template|head|nav|footer)(?=[\s/>])[\s\S]*?<\/\1\s*>/gi, '\n')
     .replace(/<\/?(?:address|article|blockquote|br|dd|details|div|dl|dt|figcaption|figure|h[1-6]|header|hr|li|main|ol|p|pre|section|summary|table|tbody|td|th|thead|tr|ul)\b[^>]*>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&(#?\w+);/g, (all, name) => ENTITIES[name] ?? all);
@@ -89,8 +92,9 @@ async function mapLimited(items, limit, fn) {
 }
 
 /**
- * What changed since `previous` (url -> { lines, finalUrl }). A page read for the first time is only recorded, and an
- * unreadable page keeps its last text, so a change made during an outage still shows up later.
+ * What changed since `previous` (url -> { lines, finalUrl, misses }). A page read for the first time is only recorded.
+ * An unreadable page keeps its last text, so a change made during an outage still shows up later, and is reported
+ * once if it stays unreadable; `misses` counts the runs in a row.
  */
 export function compare(pages, results, previous) {
   const snapshot = {};
@@ -101,9 +105,13 @@ export function compare(pages, results, previous) {
     const result = results[i];
     const before = previous[page.url];
     if (result.status !== 'ok') {
-      if (before) snapshot[page.url] = before;
+      const misses = (before?.misses ?? 0) + 1;
+      if (before) snapshot[page.url] = { ...before, misses };
       if (result.status === 'gone') changes.push({ ...page, gone: result.detail, added: [], removed: [], relevant: true });
-      else unreadable.push({ ...page, detail: result.detail });
+      else {
+        unreadable.push({ ...page, detail: result.detail });
+        if (before && misses === MISSES_TO_REPORT) changes.push({ ...page, stuck: `${misses} runs in a row, last ${result.detail}`, added: [], removed: [], relevant: true });
+      }
       return;
     }
     snapshot[page.url] = { finalUrl: result.finalUrl, lines: result.lines };
@@ -128,6 +136,7 @@ const quote = (line, limit) => (limit !== Infinity && line.length > QUOTED_CHARS
 function pageSection(change, limit) {
   const head = `### ${change.url}\n\nCited for ${change.agents.join(', ')}.`;
   if (change.gone) return `${head} The page is gone (${change.gone}); the link needs updating.`;
+  if (change.stuck) return `${head} It used to be readable and now cannot be compared (${change.stuck}), so changes to it go unseen; check it by hand.`;
   const parts = [head];
   if (change.movedTo) parts.push(`It now redirects to ${change.movedTo}.`);
   const lines = [...change.removed.map((l) => `- ${l}`), ...change.added.map((l) => `+ ${l}`)];
@@ -172,11 +181,12 @@ async function main() {
   const { TOOLS } = await import('../dist/core/tools.js');
   const pages = watchedPages(TOOLS);
   const results = await mapLimited(pages, CONCURRENCY, (p) => fetchPage(p.url));
-  const snapshotFile = values.previous && join(values.previous, 'snapshot.json');
-  const previous = snapshotFile && existsSync(snapshotFile) ? JSON.parse(readFileSync(snapshotFile, 'utf8')) : {};
+  // Without --previous every page is new. A folder without a snapshot must not look like that: it would hide changes.
+  const previous = values.previous ? JSON.parse(readFileSync(join(values.previous, 'snapshot.json'), 'utf8')) : {};
   const found = compare(pages, results, previous);
   const date = new Date().toISOString().slice(0, 10);
   const summary = fullReport(found, pages.length, date);
+  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
 
   // Failing keeps this run's snapshot from replacing the last good one.
   if (found.unreadable.length > pages.length * MAX_UNREADABLE_SHARE) {
@@ -188,7 +198,6 @@ async function main() {
   writeFileSync(join(values.out, 'report.md'), fullReport(found, pages.length, date, Infinity));
   const issue = issueReport(found.changes, date);
   if (issue && values.report) writeFileSync(values.report, `${issue}\n`);
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `changed=${issue ? 'true' : 'false'}\n`);
   process.stdout.write(`${summary.split('\n').slice(0, 3).join('\n')}\n`);
 }

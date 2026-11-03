@@ -11,7 +11,7 @@ Agents change how they load instruction files, and vendors change prices.
 
 A change needs a link to the vendor's official page that shows the new behaviour or price. Third-party blog posts are not enough. Update `checkedAt`, add or adjust a test, and mention the source in the pull request.
 
-Each week [`docs-watch.yml`](.github/workflows/docs-watch.yml) compares the source pages of the loading rules with the week before and opens an issue labelled `docs-watch` when lines about loading changed. A changed page does not mean a rule is wrong; check it against the rule, then update the rule and `checkedAt` if the behaviour changed. Pages that only render with JavaScript (TRAE's docs) cannot be compared this way and are listed as unreadable in the job summary, so they still need a check by hand. The CLI warns when a reported agent's `checkedAt` is more than 90 days old.
+Each week [`docs-watch.yml`](.github/workflows/docs-watch.yml) compares the source pages of the loading rules with the week before and opens an issue labelled `docs-watch` when lines about loading changed, a page moved or is gone, or a page that used to be readable fails two runs in a row. A changed page does not mean a rule is wrong; check it against the rule, then update the rule and `checkedAt` if the behaviour changed. Pages that have only ever rendered with JavaScript (TRAE's docs) cannot be compared this way and are listed as unreadable in the job summary, so they still need a check by hand. The CLI warns when a reported agent's `checkedAt` is more than 90 days old.
 
 Two rules are not negotiable:
 
