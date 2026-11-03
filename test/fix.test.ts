@@ -96,6 +96,221 @@ describe('planFixes on the mixed fixture', () => {
   });
 });
 
+describe('linking CLAUDE.md to AGENTS.md', () => {
+  const rules = SHARED.map((l) => `- ${l}`).join('\n');
+  const link = (plan: ReturnType<typeof planFixes>) => plan.fixes.find((f) => f.message.startsWith('Linked'));
+
+  it('keeps only the lines of its own and imports the rest', () => {
+    const files: RepoFile[] = [
+      { path: 'AGENTS.md', text: `# Rules\n\n${rules}\n` },
+      { path: 'CLAUDE.md', text: `# Rules\n\n${rules}\n\n## Claude Code\n\nUse plan mode for changes in the billing code.\n` },
+    ];
+    const plan = planFixes(files);
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n\n## Claude Code\n\nUse plan mode for changes in the billing code.\n');
+    expect(plan.changes.map((c) => c.path)).toEqual(['CLAUDE.md']);
+    const fix = link(plan)!;
+    expect(fix.kind).toBe('duplicate');
+    expect(fix.paths).toEqual(['CLAUDE.md', 'AGENTS.md']);
+    expect(fix.message).toMatch(/removed the 4 line\(s\) it repeated/);
+    // Agents that read both files stop paying for the copy.
+    expect(fix.message).toMatch(/GitHub Copilot.* no longer read them twice/);
+    expect(fix.savingTokens).toBeGreaterThan(20);
+    // Claude Code keeps the text through the import, every turn.
+    const units = classify([files[0]!, { path: 'CLAUDE.md', text: after(plan, 'CLAUDE.md')! }], ['claude-code']);
+    const imported = units.find((u) => u.path === 'AGENTS.md')!;
+    expect(imported.mode).toBe('always');
+    expect(imported.text).toContain(SHARED[0]);
+  });
+
+  it('leaves just the import when the files say the same, with the line endings of the file', () => {
+    const text = `# Rules\r\n\r\n${SHARED.join('\r\n')}\r\n`;
+    const plan = planFixes([
+      { path: 'AGENTS.md', text },
+      { path: 'CLAUDE.md', text },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\r\n');
+  });
+
+  it('keeps the heading of a section that keeps a line, and a code block unless all of it is repeated', () => {
+    const shared = '```bash\nnpm test\n```';
+    const files: RepoFile[] = [
+      { path: 'AGENTS.md', text: `## Test\n\n${rules}\n\n${shared}\n\n## Lint\n\nnpm run lint\n` },
+      {
+        path: 'CLAUDE.md',
+        text: `## Test\n\n${rules}\nAlso run the slow suite before you touch billing.\n\n${shared}\n\n## Lint\n\n\`\`\`bash\nnpm run lint\nnpm run format\n\`\`\`\n`,
+      },
+    ];
+    const text = after(planFixes(files), 'CLAUDE.md')!;
+    expect(text).toBe('@AGENTS.md\n\n## Test\n\nAlso run the slow suite before you touch billing.\n\n## Lint\n\n```bash\nnpm run lint\nnpm run format\n```\n');
+  });
+
+  it('keeps frontmatter first and links a nested pair', () => {
+    const plan = planFixes([
+      { path: 'pkg/AGENTS.md', text: `${rules}\n` },
+      { path: 'pkg/CLAUDE.md', text: `---\nowner: api\n---\n\n${rules}\n` },
+    ]);
+    expect(after(plan, 'pkg/CLAUDE.md')).toBe('---\nowner: api\n---\n@AGENTS.md\n');
+  });
+
+  it('names the agents that gain lines found only in AGENTS.md', () => {
+    const both = `${rules}\n- Use the logger module instead of console output anywhere.\n`;
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${both}- Codex should prefer small commits with a clear subject.\n` },
+      { path: 'CLAUDE.md', text: both },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n');
+    expect(link(plan)!.message).toMatch(/Claude Code now also reads 1 line\(s\) every turn \(~\d+ o200k tokens\)\.$/);
+  });
+
+  it('counts a line an agent read on demand and now reads every turn', () => {
+    const plan = planFixes(
+      [
+        { path: 'AGENTS.md', text: `${rules}\n- Keep the public API stable across every minor release.\n- One more shared line about naming things well.\n` },
+        { path: 'CLAUDE.md', text: `${rules}\n- One more shared line about naming things well.\n` },
+        { path: 'pkg/CLAUDE.md', text: '- Keep the public API stable across every minor release.\n' },
+      ],
+      { tools: ['claude-code'] },
+    );
+    expect(link(plan)!.message).toMatch(/Claude Code now also reads 1 line\(s\) every turn/);
+  });
+
+  it('keeps a multi-line comment whole, so its text cannot go live', () => {
+    const comment = '<!--\nA private note for the maintainers about the rules.\n-->';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n<!--\nSomething else entirely is in this comment here.\n-->\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${comment}\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe(`@AGENTS.md\n\n${comment}\n`);
+  });
+
+  it('keeps a table whole when a row of it is its own', () => {
+    const header = '| Command | Purpose |\n| --- | --- |\n| npm test | Runs the tests |';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n${header}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${header}\n| npm run e2e | Runs the browser tests |\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe(`@AGENTS.md\n\n${header}\n| npm run e2e | Runs the browser tests |\n`);
+  });
+
+  it('keeps a table whole with rows long enough to count as prose', () => {
+    const table = '| Command with a long name | What the command is for |\n| --- | --- |\n| npm test --workspace=api | Runs the tests of the API |';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n${table}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${table}\n| npm run e2e | Browser |\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe(`@AGENTS.md\n\n${table}\n| npm run e2e | Browser |\n`);
+  });
+
+  it('leaves a table row alone when removing duplicates, too', () => {
+    const row = '| npm test --workspace=api | Runs the tests of the API |';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `| a | b |\n| --- | --- |\n${row}\n` },
+      { path: '.cursor/rules/always.mdc', text: `---\nalwaysApply: true\n---\n\n| c | d |\n| --- | --- |\n${row}\n` },
+    ]);
+    expect(plan.changes).toEqual([]);
+  });
+
+  it('does not bring back a heading from inside a comment', () => {
+    const comment = '<!--\n## Old notes\nA note for the maintainers about the old process.\n-->';
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n${comment}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${comment}\n\nUse plan mode for changes in the billing code.\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n\nUse plan mode for changes in the billing code.\n');
+  });
+
+  it('drops a byte order mark instead of leaving it under the import', () => {
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n` },
+      { path: 'CLAUDE.md', text: `\uFEFF# Own title\n\n${rules}\n` },
+    ]);
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n\n# Own title\n');
+  });
+
+  it('links before it moves, so a moved section does not come back through the import', () => {
+    const body = `${rules}\n\n${API_SECTION}`;
+    const plan = planFixes(
+      [
+        { path: 'AGENTS.md', text: body },
+        { path: 'CLAUDE.md', text: body },
+      ],
+      { tools: ['claude-code', 'codex'], exists: () => true },
+    );
+    expect(after(plan, 'CLAUDE.md')).toBe('@AGENTS.md\n');
+    // Nothing claims a saving for text that Claude Code still reads every turn.
+    expect(plan.fixes.map((f) => f.kind)).toEqual(['duplicate']);
+    expect(plan.changes.map((c) => c.path)).toEqual(['CLAUDE.md']);
+    expect(plan.skipped.find((s) => s.kind === 'scopable-section')!.reason).toMatch(/no target keeps every agent's context/);
+  });
+
+  it('counts every line of AGENTS.md, not only long ones', () => {
+    const short = Array.from({ length: 20 }, (_, i) => `- Rule ${i}`).join('\n');
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n${short}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n` },
+    ]);
+    expect(link(plan)).toBeUndefined();
+  });
+
+  it('does not link when AGENTS.md imports a file CLAUDE.md does not', () => {
+    const plan = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n- First shared line about the release process here.\n- Second shared line about the release process here.\nSee @docs/big.md\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n- First shared line about the release process here.\n- Second shared line about the release process here.\n` },
+      { path: 'docs/big.md', text: 'A long document that only the AGENTS.md readers get today.\n' },
+    ]);
+    expect(link(plan)).toBeUndefined();
+  });
+
+  it('leaves files alone when most of AGENTS.md is not in CLAUDE.md, or they share too little', () => {
+    const others = ['Prefer composition over inheritance in the service layer.', 'Document every public function with a short summary line.'];
+    const low = planFixes([
+      { path: 'AGENTS.md', text: `${[...SHARED, ...others].join('\n')}\n` },
+      { path: 'CLAUDE.md', text: `${SHARED.join('\n')}\n` },
+    ]);
+    expect(link(low)).toBeUndefined();
+    const few = planFixes([
+      { path: 'AGENTS.md', text: `${SHARED[0]}\n${SHARED[1]}\n` },
+      { path: 'CLAUDE.md', text: `${SHARED[0]}\n${SHARED[1]}\n` },
+    ]);
+    expect(link(few)).toBeUndefined();
+  });
+
+  it('does nothing for a pair that is linked already, by an import or a symlink', () => {
+    const text = `${rules}\n`;
+    expect(link(planFixes([{ path: 'AGENTS.md', text }, { path: 'CLAUDE.md', text: `@AGENTS.md\n\n${text}` }]))).toBeUndefined();
+    expect(link(planFixes([{ path: 'AGENTS.md', text: `@CLAUDE.md\n\n${text}` }, { path: 'CLAUDE.md', text }]))).toBeUndefined();
+    const plan = planFixes([{ path: 'AGENTS.md', text }, { path: 'CLAUDE.md', text }], { readOnly: () => true });
+    expect(link(plan)).toBeUndefined();
+    expect(plan.changes).toEqual([]);
+  });
+
+  it('skips CLAUDE.md when no agent in --tools reads it, and saves nothing when none reads both', () => {
+    const files: RepoFile[] = [
+      { path: 'AGENTS.md', text: `${rules}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n` },
+    ];
+    expect(link(planFixes(files, { tools: ['codex'] }))).toBeUndefined();
+    const claude = link(planFixes(files, { tools: ['claude-code'] }))!;
+    expect(claude.savingTokens).toBe(0);
+    expect(claude.message).not.toMatch(/read them twice/);
+  });
+
+  it('prints a diff that git apply accepts', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'turntax-link-'));
+    const files: RepoFile[] = [
+      { path: 'AGENTS.md', text: `# Rules\n\n${rules}\n` },
+      { path: 'CLAUDE.md', text: `# Rules\n\n${rules}\n\nUse plan mode for changes in the billing code.\n` },
+    ];
+    for (const f of files) writeFileSync(join(dir, f.path), f.text);
+    execFileSync('git', ['init', '-q'], { cwd: dir });
+    const plan = planFixes(files);
+    writeFileSync(join(dir, 'fix.patch'), unifiedDiff(plan.changes));
+    execFileSync('git', ['-c', 'core.autocrlf=false', 'apply', 'fix.patch'], { cwd: dir });
+    expect(readFileSync(join(dir, 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n\n# Rules\n\nUse plan mode for changes in the billing code.\n');
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
 describe('duplicate lines', () => {
   it('removes lines from a file when every agent reading it gets them every turn elsewhere', () => {
     const files: RepoFile[] = [

@@ -1,0 +1,75 @@
+name: Docs watch
+
+on:
+  schedule:
+    # 07:00 UTC every Monday.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Read the last run's snapshot.
+  actions: read
+  # Open or update the docs-watch issue.
+  issues: write
+
+concurrency:
+  group: docs-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Get the last snapshot
+        id: last
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          run=$(gh run list --repo "$REPO" --workflow docs-watch.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run" ]; then
+            echo "No earlier run; this one records the first snapshot."
+            exit 0
+          fi
+          live=$(gh api "repos/$REPO/actions/runs/$run/artifacts" --jq '[.artifacts[] | select(.name == "docs-snapshot" and (.expired | not))] | length')
+          if [ "$live" -eq 0 ]; then
+            echo "::warning::The snapshot of run $run has expired; this run records a new one and can report no changes."
+            exit 0
+          fi
+          # A failed download fails the run, so the next one compares with the same snapshot and nothing is lost.
+          gh run download "$run" --repo "$REPO" --name docs-snapshot --dir "$RUNNER_TEMP/previous"
+          echo "dir=$RUNNER_TEMP/previous" >> "$GITHUB_OUTPUT"
+      - name: Compare with it
+        id: compare
+        env:
+          PREVIOUS: ${{ steps.last.outputs.dir }}
+        run: node scripts/docs-watch.mjs ${PREVIOUS:+--previous "$PREVIOUS"} --out "$RUNNER_TEMP/current" --report "$RUNNER_TEMP/report.md"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docs-snapshot
+          path: ${{ runner.temp }}/current
+          retention-days: 90
+          if-no-files-found: error
+      # Last: when this fails the run is not "success", so the next run compares with the older snapshot and reports again.
+      - name: Open or update the issue
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh label create docs-watch --repo "$REPO" --color c5def5 --description 'A page behind the loading rules changed' --force
+          number=$(gh issue list --repo "$REPO" --label docs-watch --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$REPO" --body-file "$RUNNER_TEMP/report.md"
+          else
+            gh issue create --repo "$REPO" --title 'Docs watch: pages behind the loading rules changed' --label docs-watch --body-file "$RUNNER_TEMP/report.md"
+          fi

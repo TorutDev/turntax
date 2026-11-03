@@ -116,7 +116,7 @@ npx turntax --fix --write    # apply them
 
 `--fix` handles four kinds of advice:
 
-- **duplicate**: removes lines from a file when every agent that reads the file also reads the same lines every turn from another file. Skill, command and subagent files are left whole.
+- **duplicate**: removes lines from a file when every agent that reads the file also reads the same lines every turn from another file. Skill, command and subagent files are left whole. A `CLAUDE.md` that repeats at least 80% of the lines of the `AGENTS.md` next to it, at least 3 of them full sentences, and every file it imports, keeps only its own lines and imports the rest with `@AGENTS.md`, as Claude Code's docs suggest; agents that read both stop paying for the copy, and the summary says how much any agent now reads on top.
 - **scopable-section**: moves a section into the folder it is about: the same file name there (`packages/api/CLAUDE.md`), a nested `AGENTS.md`, or a Claude Code rule with `paths:`. The folder the section is about must already exist, and sections with `@imports` or relative links stay put. A section moves together with its subsections.
 - **oversized-section**: moves a large procedure (a section of at least `--section-tokens`, 600 by default, whose heading names a release, deploy, setup or similar procedure, or that is mostly numbered steps; each subsection must pass too) into a new skill, `.claude/skills/<name>/SKILL.md` for Claude Code or `.agents/skills/<name>/SKILL.md` for Codex, and leaves the heading with a one-line pointer. Only the skill's name and description load every turn. Many agents now read one or both folders, but not all of them do (Zed reads only `.agents/skills`, for example), so by default this fix is often refused; `--tools` limits the check to the agents you use.
 - **misconfigured**: renames `.md` files in `.cursor/rules` to `.mdc`.
@@ -215,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TorutDev/turntax@v0.7.2
+      - uses: TorutDev/turntax@v0.8.0
         with:
           max-increase: 500      # optional: fail when an agent grows by more than 500 tokens per turn
           # max-tokens: 8000     # optional: absolute budget
@@ -224,6 +224,19 @@ jobs:
 ```
 
 The comment opens with a table of the change per agent and per file. When `--fix` has safe fixes, it says how many and how many tokens they save, with the diff folded; the full report is folded below. A `turntax.config.json` in the repository is read as well. Pull requests from forks get a read-only token, so the comment step is skipped there; the job summary still has the report.
+
+## pre-commit
+
+The repository is also a [pre-commit](https://pre-commit.com) hook, which fails a commit when an agent goes over a budget. Set the budget with `args`, or with `maxTokens` in `turntax.config.json`; without one the hook always passes. It runs `npx turntax@<version>`, so it needs Node.js 22 or later on your `PATH`, and it does not run on pre-commit.ci, which has no system hooks.
+
+```yaml
+repos:
+  - repo: https://github.com/TorutDev/turntax
+    rev: v0.8.0
+    hooks:
+      - id: turntax
+        args: [--max-tokens, '8000']
+```
 
 ## Options
 

@@ -2,7 +2,7 @@
   "name": "turntax",
   "displayName": "turntax",
   "description": "Per-turn token cost of AI coding-agent instruction files (AGENTS.md, CLAUDE.md, Cursor rules, Copilot instructions, skills) in the status bar, with findings and safe fixes.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "torut",
   "icon": "icon.png",
   "license": "MIT",

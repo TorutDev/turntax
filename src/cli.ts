@@ -11,7 +11,7 @@ import { globMatcher } from './core/glob.js';
 import { parseMcpConfigs, serverKey, type McpServer } from './core/mcp.js';
 import { DEFAULT_MODEL_IDS, MODELS, validateModels } from './core/prices.js';
 import { badgeMarkdown, headlineTokens, renderAnnotations, renderMarkdown, renderPrComment, renderText } from './core/render.js';
-import { TOOL_IDS } from './core/tools.js';
+import { TOOL_IDS, TOOLS } from './core/tools.js';
 import type { ModelInfo, RepoFile, ToolId } from './core/types.js';
 import { applyChanges } from './node/apply.js';
 import { runInit } from './node/init.js';
@@ -64,8 +64,9 @@ Options:
                           (needs --claude-api; sends those files to api.anthropic.com)
   --prices <file.json>    Use your own price table (same shape as --list-models --json)
   --section-tokens <n>    Flag always-loaded sections at or above n o200k tokens (default: 600)
-  --fix                   Print a diff of the safe fixes: duplicate lines, sections that can load only in
-                          their folder, large procedure sections moved into a skill, misnamed Cursor rules.
+  --fix                   Print a diff of the safe fixes: duplicate lines, a CLAUDE.md that repeats AGENTS.md
+                          linked with @AGENTS.md, sections that can load only in their folder, large procedure
+                          sections moved into a skill, misnamed Cursor rules.
                           Every agent keeps reading the moved text; --tools limits the agents whose
                           context is kept
   --write                 With --fix, apply the changes to the files
@@ -284,6 +285,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
         sectionTokens,
       },
     });
+    staleRules(new Set(report.tools.map((t) => t.tool)), now);
 
     if (o.baseline) {
       let data: unknown;
@@ -393,14 +395,29 @@ function pathPrefix(dir: string | undefined): string {
   return p === './' ? '' : p;
 }
 
+/** True when `checkedAt` is more than 90 days before `now`. */
+function isStale(checkedAt: string, now: Date): boolean {
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return today - Date.parse(checkedAt) > 90 * 86_400_000;
+}
+
+const checkedDates = (items: Array<{ checkedAt: string }>) => [...new Set(items.map((i) => i.checkedAt))].sort().join(', ');
+
 /** One notice when a selected model's price was checked more than 90 days before `now`. */
 function stalePrices(models: ModelInfo[], now: Date): void {
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const stale = models.filter((m) => today - Date.parse(m.checkedAt) > 90 * 86_400_000);
+  const stale = models.filter((m) => isStale(m.checkedAt, now));
   if (!stale.length) return;
-  const dates = [...new Set(stale.map((m) => m.checkedAt))].sort();
   notice(
-    `prices for ${stale.map((m) => m.label).join(', ')} were checked on ${dates.join(', ')}, over 90 days ago; check the sources or pass --prices.`,
+    `prices for ${stale.map((m) => m.label).join(', ')} were checked on ${checkedDates(stale)}, over 90 days ago; check the sources or pass --prices.`,
+  );
+}
+
+/** One notice when the loading rules of a reported agent were checked more than 90 days before `now`. */
+function staleRules(reported: Set<ToolId>, now: Date): void {
+  const stale = TOOLS.filter((t) => reported.has(t.id) && isStale(t.checkedAt, now));
+  if (!stale.length) return;
+  notice(
+    `loading rules for ${stale.map((t) => t.name).join(', ')} were checked on ${checkedDates(stale)}, over 90 days ago; update turntax, as these agents may have changed what they load.`,
   );
 }
 

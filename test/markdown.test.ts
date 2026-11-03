@@ -38,6 +38,8 @@ describe('findImports', () => {
     expect(findImports('**See @AGENTS.md.** and @docs/rules.md** or @docs/**')).toEqual(['AGENTS.md', 'docs/rules.md', 'docs/**']);
     // A glob keeps its trailing stars; only a plain path loses emphasis after its extension.
     expect(findImports('Tests: @src/**/*.test.* and @config/*.json*, done.')).toEqual(['src/**/*.test.*', 'config/*.json*']);
+    // A bold closer after a glob is emphasis, with its sentence's punctuation on either side.
+    expect(findImports('**See @docs/*.md.** and **@x** then **see @rules/*.md**. Also @docs/**.')).toEqual(['docs/*.md', 'rules/*.md', 'docs/**']);
   });
 });
 
