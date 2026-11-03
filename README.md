@@ -227,7 +227,7 @@ The comment opens with a table of the change per agent and per file. When `--fix
 
 ## pre-commit
 
-The repository is also a [pre-commit](https://pre-commit.com) hook, which fails a commit when an agent goes over a budget. Set the budget with `args`, or with `maxTokens` in `turntax.config.json`; without one the hook always passes.
+The repository is also a [pre-commit](https://pre-commit.com) hook, which fails a commit when an agent goes over a budget. Set the budget with `args`, or with `maxTokens` in `turntax.config.json`; without one the hook always passes. It runs `npx turntax@<version>`, so it needs Node.js 22 or later on your `PATH`, and it does not run on pre-commit.ci, which has no system hooks.
 
 ```yaml
 repos:
