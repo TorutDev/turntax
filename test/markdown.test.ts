@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findImports, parseFrontmatter, resolvePath, splitSections, stripHtmlComments } from '../src/core/markdown.js';
+import { findImports, parseFrontmatter, resolvePath, splitSections, stripHtmlComments, tableLines } from '../src/core/markdown.js';
 
 describe('parseFrontmatter', () => {
   it('reads scalars, booleans, inline lists and block lists', () => {
@@ -50,6 +50,28 @@ describe('resolvePath', () => {
     expect(resolvePath('CLAUDE.md', '../outside.md')).toBeNull();
     expect(resolvePath('CLAUDE.md', '~/x.md')).toBeNull();
     expect(resolvePath('CLAUDE.md', '/etc/x.md')).toBeNull();
+  });
+});
+
+describe('tableLines', () => {
+  it('finds tables with and without leading pipes, but not in code, rules or prose with a pipe', () => {
+    const text = [
+      'Intro with a | pipe in prose.', // 0
+      '', // 1
+      'a | b', // 2
+      '--- | :---:', // 3
+      'one | two', // 4
+      '', // 5
+      '| x | y |', // 6
+      '|---|---|', // 7
+      '```', // 8
+      'c | d', // 9
+      '--- | ---', // 10
+      '```', // 11
+      '---', // 12
+      'Not a | table', // 13
+    ].join('\n');
+    expect([...tableLines(text)].sort((x, y) => x - y)).toEqual([2, 3, 4, 6, 7]);
   });
 });
 

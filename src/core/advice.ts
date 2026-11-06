@@ -1,4 +1,4 @@
-import { dirname, linesWithFences, resolvePath, splitSections } from './markdown.js';
+import { dirname, linesWithFences, resolvePath, splitSections, tableLines } from './markdown.js';
 import { countO200k } from './tokenize.js';
 import { TOOLS } from './tools.js';
 import type { LoadedUnit, RepoFile, ToolId } from './types.js';
@@ -176,8 +176,10 @@ function sizeLimits(units: LoadedUnit[], files: RepoFile[]): Advice[] {
 /** Lowercased, whitespace-collapsed instruction lines long enough to be meaningful. */
 function normalizedLines(text: string): Map<string, string> {
   const out = new Map<string, string>();
-  for (const { line, inFence } of linesWithFences(text)) {
-    if (inFence) continue;
+  // Table rows are left out, as --fix leaves them: a row means nothing without its header.
+  const tables = tableLines(text);
+  for (const [i, { line, inFence }] of linesWithFences(text).entries()) {
+    if (inFence || tables.has(i)) continue;
     const norm = line
       .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
       .replace(/[*_`]/g, '')

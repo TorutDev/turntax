@@ -34,6 +34,15 @@ describe('duplicates', () => {
     expect(a.savingTokens).toBe(0);
     expect(a.severity).toBe('low');
   });
+
+  it('leaves out table rows, as --fix does', () => {
+    const table = '| Command with a long name | What the command is for |\n| --- | --- |\n| npm test --workspace=api | Runs the tests of the API |\n| npm run lint --workspace=api | Checks the code style of the API |\n| npm run e2e --workspace=web | Runs the browser tests of the web app |';
+    const files = [
+      { path: 'CLAUDE.md', text: `${table}\n` },
+      { path: 'GEMINI.md', text: `${table}\n` },
+    ];
+    expect(buildAdvice(classify(files, ['claude-code', 'gemini-cli']), files).filter((x) => x.kind === 'duplicate')).toEqual([]);
+  });
 });
 
 describe('contradictions', () => {
