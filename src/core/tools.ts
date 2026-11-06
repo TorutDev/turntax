@@ -270,7 +270,7 @@ export const TOOLS: ToolSpec[] = [
         source: 'https://code.claude.com/docs/en/memory',
       },
       {
-        pattern: /^CLAUDE(\.local)?\.md$/,
+        pattern: /^(?:~\/)?(?:\.claude\/)?CLAUDE(\.local)?\.md$/,
         unit: 'bytes',
         max: 4 * 1024 * 1024,
         severity: 'limit',
@@ -278,7 +278,8 @@ export const TOOLS: ToolSpec[] = [
         source: 'https://code.claude.com/docs/en/memory',
       },
       {
-        pattern: /^(?!\.claude\/).+\/(CLAUDE(\.local)?\.md|\.claude\/rules\/.+\.md)$/,
+        // Not the launch-time files at the root or in your home folder (~/), which load whole.
+        pattern: /^(?!\.claude\/|~\/).+\/(CLAUDE(\.local)?\.md|\.claude\/rules\/.+\.md)$/,
         unit: 'chars',
         max: 40000,
         severity: 'limit',

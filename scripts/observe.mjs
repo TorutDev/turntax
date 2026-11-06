@@ -22,8 +22,15 @@ const ASK = [
 ].join(' ');
 const ASK_AFTER_READ = `Use your file reading tool once to read pkg/note.txt. Then, with no other tool use, output every distinct string that starts with CANARY- that is now in your context, exactly as written, one per line, and nothing else.`;
 
-const tag = randomBytes(2).toString('hex').toUpperCase();
-const m = (name) => `CANARY-${name}-${tag}`;
+/** Marker token -> marker name. Each marker gets its own random part, so an agent cannot guess one from another. */
+const MARKERS = new Map();
+const m = (name) => {
+  const token = `CANARY-${name}-${randomBytes(3).toString('hex').toUpperCase()}`;
+  MARKERS.set(token, name);
+  return token;
+};
+/** The names of the markers in `text`; anything that only looks like one is ignored. */
+const markersIn = (text) => [...new Set([...text.matchAll(/CANARY-[A-Z0-9-]+-[0-9A-F]{6}/g)].map((x) => MARKERS.get(x[0])).filter(Boolean))].sort();
 
 /** Codex reads at most 32 KiB of AGENTS.md; the tail marker sits past it. */
 const filler = Array.from({ length: 1400 }, (_, i) => `Filler line ${i} for the size test; ignore it.`).join('\n');
@@ -74,7 +81,7 @@ const SCENARIOS = [
     tool: 'codex',
     title: 'Codex, started at the root',
     files: {
-      'AGENTS.md': `${m('CX-ROOT-HEAD')}\n\n${filler}\n${m('CX-ROOT-TAIL')}\n`,
+      'AGENTS.md': `${m('CX-ROOT')}\n`,
       'pkg/AGENTS.md': `${m('CX-NESTED')}\n`,
       'pkg/note.txt': 'A note.\n',
       'CLAUDE.md': `${m('CX-CLAUDE')}\n`,
@@ -91,6 +98,13 @@ const SCENARIOS = [
     expect: (start) => [...start, 'CX-NESTED'],
   },
   {
+    id: 'codex-size',
+    tool: 'codex',
+    title: 'Codex, an AGENTS.md over 32 KiB',
+    // A fixture of its own: the budget covers all files together, so above it would also keep pkg/AGENTS.md out.
+    files: { 'AGENTS.md': `${m('CX-SIZE-HEAD')}\n\n${filler}\n${m('CX-SIZE-TAIL')}\n` },
+  },
+  {
     id: 'codex-override',
     tool: 'codex',
     title: 'Codex, AGENTS.override.md next to AGENTS.md',
@@ -98,15 +112,14 @@ const SCENARIOS = [
   },
 ];
 
-/** Marker names (without the run tag) in the parts of the files that turntax says load every turn. */
+/** Marker names in the parts of the files that turntax says load every turn. */
 function expectedAtStart(tool, files) {
   const units = classify(
     Object.entries(files).map(([path, text]) => ({ path, text })),
     [tool],
   );
   const seen = new Set();
-  for (const u of units)
-    if (u.mode === 'always') for (const x of u.text.matchAll(/CANARY-([A-Z0-9-]+)-[0-9A-F]{4}/g)) seen.add(x[1]);
+  for (const u of units) if (u.mode === 'always') for (const name of markersIn(u.text)) seen.add(name);
   return [...seen].sort();
 }
 
@@ -130,6 +143,7 @@ function ask(tool, cwd, prompt, toolsAllowed) {
     // Default settings: AGENTS.md is read by a built-in plugin that --setting-sources without "user" turns off.
     const args = ['-p', '--output-format', 'json', '--no-session-persistence'];
     const r = run('claude', args, cwd, prompt);
+    if (r.status !== 0 || !r.stdout.trim()) throw new Error(`claude exited with ${r.status}: ${r.stderr.trim().slice(0, 300)}`);
     const out = JSON.parse(r.stdout);
     // A failed run (an expired login, a usage limit) must not read as "no marker loaded".
     if (out.is_error) throw new Error(`claude: ${out.result}`);
@@ -140,8 +154,11 @@ function ask(tool, cwd, prompt, toolsAllowed) {
   const failed = events.find((e) => e.type === 'turn.failed' || e.type === 'error');
   if (failed) throw new Error(`codex: ${failed.error?.message ?? failed.message}`);
   const items = events.filter((e) => e.type === 'item.completed').map((e) => e.item);
+  const messages = items.filter((i) => i.type === 'agent_message');
+  // Through the shell on Windows a missing or crashed codex sets no error, only an exit code and no answer.
+  if (r.status !== 0 || !messages.length) throw new Error(`codex exited with ${r.status} and no answer: ${r.stderr.trim().slice(0, 300)}`);
   return {
-    text: items.filter((i) => i.type === 'agent_message').map((i) => i.text).join('\n'),
+    text: messages.map((i) => i.text).join('\n'),
     usedTools: items.some((i) => i.type === 'command_execution' || i.type === 'mcp_tool_call'),
   };
 }
@@ -165,8 +182,8 @@ try {
     const start = expectedAtStart(s.tool, files);
     const expected = s.expect ? s.expect(start).sort() : start;
     const answer = ask(s.tool, join(dir, s.cwd ?? ''), s.ask ?? ASK, Boolean(s.ask));
-    const observed = [...new Set([...answer.text.matchAll(new RegExp(`CANARY-([A-Z0-9-]+)-${tag}`, 'g'))].map((x) => x[1]))].sort();
-    const all = [...new Set([...Object.values(files).join('\n').matchAll(/CANARY-([A-Z0-9-]+)-[0-9A-F]{4}/g)].map((x) => x[1]))].sort();
+    const observed = markersIn(answer.text);
+    const all = markersIn(Object.values(files).join('\n'));
     const rows = all.map((name) => ({ name, expected: expected.includes(name), observed: observed.includes(name) }));
     byId.set(s.id, { files, dir });
     results.push({ id: s.id, tool: s.tool, title: s.title, usedTools: answer.usedTools, rows });

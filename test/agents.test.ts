@@ -381,14 +381,17 @@ describe('Claude Code size limits', () => {
       expect(over40k(p, 40001).length, p).toBe(1);
     expect(over40k('pkg/CLAUDE.md', 40000)).toEqual([]);
     for (const p of ['CLAUDE.md', '.claude/CLAUDE.md', '.claude/rules/big.md']) expect(over40k(p, 40001), p).toEqual([]);
+    // User files (--include-user) load whole at launch too.
+    const limit = getTool('claude-code').limits.find((l) => l.max === 40000)!;
+    for (const p of ['~/.claude/CLAUDE.md', '~/.claude/rules/big.md']) expect(limit.pattern.test(p), p).toBe(false);
   });
 
-  it('limits a root CLAUDE.md to 4 MiB and no other file', () => {
+  it('limits a CLAUDE.md read at launch to 4 MiB, and no nested file', () => {
     // Tokenising a 4 MiB file is too slow for a test, so the limit entry is checked directly.
     const limit = getTool('claude-code').limits.find((l) => l.unit === 'bytes')!;
     expect(limit).toMatchObject({ max: 4 * 1024 * 1024, severity: 'limit' });
-    for (const p of ['CLAUDE.md', 'CLAUDE.local.md']) expect(limit.pattern.test(p), p).toBe(true);
-    for (const p of ['pkg/CLAUDE.md', '.claude/CLAUDE.md']) expect(limit.pattern.test(p), p).toBe(false);
+    for (const p of ['CLAUDE.md', 'CLAUDE.local.md', '.claude/CLAUDE.md', '~/.claude/CLAUDE.md']) expect(limit.pattern.test(p), p).toBe(true);
+    for (const p of ['pkg/CLAUDE.md', 'pkg/.claude/CLAUDE.md']) expect(limit.pattern.test(p), p).toBe(false);
   });
 });
 

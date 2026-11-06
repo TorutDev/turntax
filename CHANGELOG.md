@@ -2,8 +2,8 @@
 
 ## 0.9.0 (2026-11-06)
 
-- Claude Code's rules were also checked against Claude Code 2.1.296 itself. In three setups, all 41 checks matched what turntax counts. `scripts/observe.mjs` runs the check, and [docs/how-it-counts.md](docs/how-it-counts.md) has the results.
-- Loading rules re-checked against every agent's docs on 2026-11-06. Counts change for Augment (`AGENTS.md` wins over `CLAUDE.md` in a folder, `.augment/rules` accepts `.mdc`, `.augment/SYSTEM.md` and `APPEND_SYSTEM.md` are always loaded), Devin (custom subagents in `.devin/agents` and `.agents/agents`) and Claude Code (size limits: 4 MiB for a root `CLAUDE.md`, 40,000 characters for nested files and rules).
+- Claude Code's rules were also checked against Claude Code 2.1.296 itself. In three setups, the model reported all 41 checks as turntax counts them. `scripts/observe.mjs` runs the check, and [docs/how-it-counts.md](docs/how-it-counts.md) has the results.
+- Loading rules re-checked against every agent's docs on 2026-11-06. Counts change for Augment (`AGENTS.md` wins over `CLAUDE.md` in a folder, `.augment/rules` accepts `.mdc`, `.augment/SYSTEM.md` and `APPEND_SYSTEM.md` are always loaded), Devin (custom subagents in `.devin/agents` and `.agents/agents`) Claude Code findings now cover its size limits: 4 MiB for a `CLAUDE.md` read at launch, and 40,000 characters for a `CLAUDE.md` or rule in a subfolder.
 - Windsurf Cascade's docs now redirect to Devin Local, so its rules stay at the last documented behaviour (2026-10-17).
 - Duplicate advice and `--fix` leave table rows alone, including tables without leading pipes, so a fix can no longer leave a row without its header.
 - The State page says when two editions were counted with different turntax versions.

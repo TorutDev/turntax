@@ -50,7 +50,7 @@ Sources: [memory](https://code.claude.com/docs/en/memory), [skills](https://code
 
 Claude Code caps the skill listing at 1% of the context window and drops the descriptions of the least-used skills past it; that cap is not applied. Skills with `paths` frontmatter are counted like other skills, since how they are listed is not documented. Claude Code warns at startup when the subagent descriptions together pass 15,000 tokens.
 
-Claude Code skips a `CLAUDE.md` over 4 MiB at launch and loads none of it, and from 2.1.309 gives a `CLAUDE.md` or rule in a subdirectory only its first 40,000 characters on a 200K context window (more on a 1M window); `turntax` flags both. Path-scoped rules at the root are covered by the 40,000 limit in the docs but cannot be told apart by path, so they are not checked. A subdirectory's `AGENTS.md` loads only when that subdirectory has none of `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md`.
+Claude Code skips a `CLAUDE.md` over 4 MiB at launch and loads none of it, and from 2.1.309 gives a `CLAUDE.md` or rule in a subdirectory only its first 40,000 characters on a 200K context window (more on a 1M window). `turntax` flags a `CLAUDE.md` or `CLAUDE.local.md` over 4 MiB at the root, in `.claude/` or in your home folder, and a `CLAUDE.md`, `CLAUDE.local.md` or `.claude/rules` file over 40,000 characters in a subfolder. The docs apply the 40,000 limit to path-scoped rules and to files imported by nested files too; turntax does not check those. A subdirectory's `AGENTS.md` loads only when that subdirectory has none of `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md`.
 
 ## OpenAI Codex
 
