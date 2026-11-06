@@ -202,7 +202,7 @@ export const TOOLS: ToolSpec[] = [
       'https://code.claude.com/docs/en/skills',
       'https://code.claude.com/docs/en/sub-agents',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -221,7 +221,7 @@ export const TOOLS: ToolSpec[] = [
         nestedTrigger: 'when Claude reads a file in',
         importDepth: 4,
         condition: 'claude-reads-agents-md',
-        note: 'Read only because no CLAUDE.md or CLAUDE.local.md exists at the root (default setting).',
+        note: "Read only because no CLAUDE.md or CLAUDE.local.md exists at the root (default setting). A subdirectory's AGENTS.md loads only when that subdirectory has none of CLAUDE.md, .claude/CLAUDE.md or CLAUDE.local.md.",
       },
       {
         kind: 'frontmatter',
@@ -269,13 +269,32 @@ export const TOOLS: ToolSpec[] = [
         text: 'Claude Code docs recommend keeping each CLAUDE.md under 200 lines.',
         source: 'https://code.claude.com/docs/en/memory',
       },
+      {
+        pattern: /^(?:~\/)?(?:\.claude\/)?CLAUDE(\.local)?\.md$/,
+        unit: 'bytes',
+        max: 4 * 1024 * 1024,
+        severity: 'limit',
+        text: 'Claude Code skips a CLAUDE.md over 4 MiB at launch and loads none of it.',
+        source: 'https://code.claude.com/docs/en/memory',
+      },
+      {
+        // Not the launch-time files at the root or in your home folder (~/), which load whole.
+        pattern: /^(?!\.claude\/|~\/).+\/(CLAUDE(\.local)?\.md|\.claude\/rules\/.+\.md)$/,
+        unit: 'chars',
+        max: 40000,
+        severity: 'limit',
+        text: 'From Claude Code 2.1.309 a CLAUDE.md or rule in a subdirectory gets only its first 40,000 characters on a 200K context window (more on a 1M window); Claude can read the rest with the Read tool.',
+        source: 'https://code.claude.com/docs/en/memory',
+      },
     ],
     notes: [
       'User files (~/.claude/CLAUDE.md, rules, skills, commands, agents) are counted only with --include-user; managed policy and auto-memory files are not counted.',
       'With the "claude-md-and-agents-md" setting Claude Code reads AGENTS.md as well; the default reads it only when no CLAUDE.md exists.',
       'The skill listing is capped at 1% of the context window (skillListingBudgetFraction); past it, descriptions of the least-used skills are dropped. The cap is not applied here.',
+      'The 1,536-character description cap is configurable with skillListingMaxDescChars, and skillOverrides can list a skill by name only; neither is modelled.',
       'Skills with paths frontmatter load automatically only for matching files; how they are listed is not documented, so they are counted like other skills.',
       'Claude Code warns at startup when the combined subagent descriptions pass 15,000 tokens.',
+      'The 40,000-character limit also covers path-scoped rules at the root, but those cannot be told apart by path, so they are not checked.',
     ],
   },
   {
@@ -286,7 +305,7 @@ export const TOOLS: ToolSpec[] = [
       'https://learn.chatgpt.com/docs/agent-configuration/agents-md',
       'https://learn.chatgpt.com/docs/build-skills',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -313,13 +332,15 @@ export const TOOLS: ToolSpec[] = [
         unit: 'bytes',
         max: 32 * 1024,
         severity: 'truncate',
-        text: 'Codex stops reading project docs at project_doc_max_bytes (default 32 KiB); the rest is dropped.',
+        text: 'Codex stops reading project docs once their combined size reaches project_doc_max_bytes (default 32 KiB); the rest is dropped.',
         source: 'https://learn.chatgpt.com/docs/agent-configuration/agents-md',
       },
     ],
     notes: [
       'Global ~/.codex/AGENTS.md and ~/.agents/skills are counted only with --include-user; /etc/codex/skills is not counted.',
-      "The skill list (name, description and path of each skill) uses at most 2% of the context window, or 8,000 characters when it is unknown (skills.max_context_tokens); Codex shortens descriptions first. The cap is not applied here.",
+      "The skill list (name, description and path of each skill) uses at most 2% of the context window, or 8,000 characters when it is unknown (skills.max_context_tokens); Codex shortens descriptions first. The cap is not applied here. The budget is configurable up to 10,000 tokens, and some skills may be omitted when it is exceeded.",
+      'The 32 KiB budget is combined across all AGENTS files Codex reads; turntax checks each file on its own.',
+      'project_doc_fallback_filenames can add more file names; they are not counted.',
       '.codex/skills is not a documented Codex location.',
     ],
   },
@@ -332,7 +353,7 @@ export const TOOLS: ToolSpec[] = [
       'https://geminicli.com/docs/reference/memport/',
       'https://geminicli.com/docs/cli/skills/',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -347,9 +368,9 @@ export const TOOLS: ToolSpec[] = [
     limits: [],
     notes: [
       'Only GEMINI.md is read by default; context.fileName can add AGENTS.md (not modelled).',
-      'Skills are on by default (skills.enabled). Skill folders in subdirectories are not documented and not counted.',
+      'Skills are on by default. Skill folders in subdirectories are not documented and not counted.',
       'Global ~/.gemini/GEMINI.md and user skills are counted only with --include-user.',
-      'Antigravity CLI replaced Gemini CLI for unpaid and Google One users on 2026-06-18.',
+      'Antigravity CLI replaced Gemini CLI for unpaid and Google One users on 2026-06-18. Gemini CLI is not optimized for Gemini 4 Argon; Google points to Antigravity for it.',
     ],
   },
   {
@@ -357,7 +378,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'Cursor',
     families: [],
     sources: ['https://cursor.com/docs/rules', 'https://cursor.com/help/customization/rules', 'https://cursor.com/docs/skills'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'frontmatter',
@@ -407,7 +428,8 @@ export const TOOLS: ToolSpec[] = [
       },
     ],
     notes: [
-      'User and Team rules are configured in Cursor settings, not in the repository, and are not counted.',
+      'User and Team rules set in Cursor settings are not counted. Files in ~/.cursor/rules stay on the machine and are not counted either.',
+      'Only the root CLAUDE.md is documented; nested copies are assumed to work like AGENTS.md.',
       'Which skill folder wins when two hold a skill with the same name is not documented; .agents, .cursor, .claude, .codex is assumed.',
       'Skill folders in project subdirectories are documented for .cursor/skills and .agents/skills only; nested .claude/skills and .codex/skills are not counted.',
     ],
@@ -424,9 +446,9 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions',
       'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
       'https://docs.github.com/en/copilot/reference/custom-instructions-support',
-      'https://docs.github.com/en/copilot/concepts/agents/about-agent-skills',
+      'https://docs.github.com/en/copilot/concepts/customizations/agent-skills',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     // Modelled on the VS Code Local harness with default settings; the Copilot harness, Copilot CLI and cloud agent differ (see notes).
     rules: [
       { kind: 'root-file', path: '.github/copilot-instructions.md' },
@@ -474,7 +496,9 @@ export const TOOLS: ToolSpec[] = [
       'Modelled on the VS Code Local harness with its default settings (chat.useAgentsMdFile and chat.useClaudeMdFile on, chat.useNestedAgentsMdFiles off; VS Code documents these settings for the Local harness only); VS Code does not expand @imports.',
       "The Copilot harness in VS Code shares a runtime with Copilot CLI and is assumed to read the same files. Copilot CLI reads AGENTS.md, CLAUDE.md, .claude/CLAUDE.md and GEMINI.md together from the repository root, the working directory and the folders between, plus nested copies in the folders of files it works on, and expands @path references in copilot-instructions.md, AGENTS.md and CLAUDE.md. GEMINI.md is read only there, so it is not counted.",
       'Copilot cloud agent uses the nearest AGENTS.md, or a single root CLAUDE.md or GEMINI.md instead.',
-      'Copilot code review also reads REVIEW.md and uses only skills in .github/skills.',
+      'Copilot code review also reads REVIEW.md.',
+      'VS Code now calls the Local harness a legacy editor harness and recommends the Copilot harness. That harness discovers nested AGENTS.md along the paths it works with, and its reference table does not list CLAUDE.md or .claude/rules. turntax still models the Local harness.',
+      'Copilot CLI also reads ~/.copilot/copilot-instructions.md, ~/.copilot/instructions/**/*.instructions.md and folders in COPILOT_CUSTOM_INSTRUCTIONS_DIRS; these are not counted.',
       'Same-name skills in different folders are not merged (VS Code shows both); both are counted.',
     ],
   },
@@ -546,6 +570,7 @@ export const TOOLS: ToolSpec[] = [
       },
     ],
     notes: [
+      'The cited Cascade pages now redirect to the Devin Local customizations page, and Devin Local disables "the legacy Cascade agent". These rules are the last documented Cascade behaviour (2026-10-17) and were not re-checked.',
       'Cascade is the legacy agent: new Devin Desktop conversations start on Devin Local, which follows the Devin CLI rules.',
       'Global rules (~/.codeium/windsurf/memories/global_rules.md) and global skills are counted only with --include-user.',
       'Which skill folder wins on a name clash is not documented; .devin, .windsurf, .agents is assumed. .claude/skills is read only with an opt-in setting whose default is not documented, so it is not counted.',
@@ -556,7 +581,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'Cline',
     families: [],
     sources: ['https://docs.cline.bot/customization/cline-rules', 'https://docs.cline.bot/customization/skills'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         // .clinerules/skills/ holds skills, not rules.
@@ -574,7 +599,7 @@ export const TOOLS: ToolSpec[] = [
     limits: [],
     notes: [
       'Each rule and skill can be toggled off in Cline; the audit assumes they are on (skills are on when discovered).',
-      'Cline also detects AGENTS.md, .cursorrules and .windsurfrules; whether they are on by default is not documented, so they are not counted.',
+      '.cursorrules is documented as "automatically detected", and AGENTS.md and ~/.agents/AGENTS.md are listed as the cross-tool standard. Whether AGENTS.md is on by default, and where it is read, is not documented, so it is not counted.',
       'A single .clinerules file (instead of a folder) is not documented and is not counted.',
       'Which project skill folder wins on a name clash is not documented; .cline/skills, .clinerules/skills, .claude/skills is assumed. A global skill wins over a project skill of the same name.',
     ],
@@ -584,7 +609,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'Roo Code',
     families: [],
     sources: ['https://roocodeinc.github.io/Roo-Code/features/custom-instructions', 'https://roocodeinc.github.io/Roo-Code/features/skills'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'precedence',
@@ -601,8 +626,8 @@ export const TOOLS: ToolSpec[] = [
         kind: 'hierarchical',
         names: ['AGENTS.md', 'AGENT.md'],
         onePerDirectory: true,
-        nested: 'skip',
-        nestedTrigger: '',
+        nested: 'ignored',
+        nestedTrigger: 'Roo Code reads AGENTS.md only from the workspace root.',
         note: 'Read by default; the roo-cline.useAgentRules setting turns it off.',
       },
       // .roo wins over .agents on a name clash; mode folders (skills-{mode}) apply only in that mode.
@@ -620,7 +645,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'Kiro',
     families: [],
     sources: ['https://kiro.dev/docs/steering/', 'https://kiro.dev/docs/skills/'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'frontmatter',
@@ -655,7 +680,8 @@ export const TOOLS: ToolSpec[] = [
     notes: [
       'fileMatch and manual modes need Kiro CLI V3; older versions skip those files.',
       'Global ~/.kiro/steering/ (including AGENTS.md there) and ~/.kiro/skills/ are counted only with --include-user.',
-      '#[[file:...]] and #[[folder:...]] references in steering files are not followed.',
+      '#[[file:...]] and #[[folder:...]] references in steering files are documented and resolve from the containing file; turntax does not expand them, so sizes are a lower bound.',
+      'Custom agents load steering and skills only when they are listed in resources; turntax models the default agent.',
     ],
   },
   {
@@ -663,7 +689,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'JetBrains Junie',
     families: [],
     sources: ['https://junie.jetbrains.com/docs/guidelines-and-memory.html', 'https://junie.jetbrains.com/docs/agent-skills.html'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'precedence',
@@ -680,6 +706,7 @@ export const TOOLS: ToolSpec[] = [
     notes: [
       'Global ~/.junie/AGENTS.md is combined with the project guidelines; it and user skills are counted only with --include-user.',
       '.agents/skills is read only in trusted projects. Which skill folder wins on a name clash is not documented; .junie/skills is assumed.',
+      'Skills from extensions, built-in skills and --skill-location folders are not counted.',
     ],
   },
   {
@@ -687,7 +714,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'Zed',
     families: [],
     sources: ['https://zed.dev/docs/ai/instructions', 'https://zed.dev/docs/ai/skills'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'precedence',
@@ -718,7 +745,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'Continue',
     families: [],
     sources: ['https://docs.continue.dev/customize/deep-dives/rules'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'frontmatter',
@@ -744,7 +771,7 @@ export const TOOLS: ToolSpec[] = [
     limits: [],
     notes: [
       'Rules in config.yaml or from the Continue hub are not counted.',
-      'regex frontmatter (a rule included when a file in context matches it) is not modelled.',
+      'A rule with regex but no globs is treated as always loaded; the docs do not say how regex combines.',
     ],
   },
   {
@@ -752,10 +779,10 @@ export const TOOLS: ToolSpec[] = [
     name: 'Aider',
     families: [],
     sources: ['https://aider.chat/docs/usage/conventions.html'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       { kind: 'config-list', configPath: '.aider.conf.yml', key: 'read', trigger: 'read: in .aider.conf.yml' },
-      { kind: 'pattern', pattern: /^CONVENTIONS\.md$/, mode: 'manual', trigger: 'only with --read, /read or read: in .aider.conf.yml' },
+      { kind: 'pattern', pattern: /^CONVENTIONS\.md$/, mode: 'manual', trigger: 'only when added to the chat (--read, /read or read: in .aider.conf.yml)' },
     ],
     limits: [],
     notes: ['Aider loads no instruction file by itself; files given with --read are sent with every request.'],
@@ -768,7 +795,7 @@ export const TOOLS: ToolSpec[] = [
       'https://goose-docs.ai/docs/guides/context-engineering/using-goosehints',
       'https://goose-docs.ai/docs/guides/context-engineering/using-skills',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -793,7 +820,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'Amp',
     families: [],
     sources: ['https://ampcode.com/docs/customize/agents-md', 'https://ampcode.com/docs/customize/skills'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -813,6 +840,8 @@ export const TOOLS: ToolSpec[] = [
     notes: [
       'User AGENTS.md files (~/.config/amp, ~/.config) and user skills are counted only with --include-user; system files (/etc/ampcode) are not counted.',
       'amp.skills.disableClaudeCodeSkills turns off the .claude/skills folders (read by default). Skill folders in subdirectories below the launch directory are not documented and not counted.',
+      'Skills from ~/.claude/plugins/cache/, amp.skills.path folders, plugin skills and hosted repositories are not counted.',
+      'AMP_IGNORE_GUIDANCE_FILES can skip guidance files at runtime.',
     ],
   },
   {
@@ -820,7 +849,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'OpenCode',
     families: [],
     sources: ['https://opencode.ai/docs/rules/', 'https://opencode.ai/docs/skills/'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -842,7 +871,8 @@ export const TOOLS: ToolSpec[] = [
     limits: [],
     notes: [
       'Extra files listed under instructions in opencode.json are not counted.',
-      'Which skill folder wins on a name clash is not documented; .opencode, .claude, .agents is assumed. Skills hidden with metadata opencode/autoinvoke are counted like others.',
+      'Which skill folder wins on a name clash is not documented; .opencode, .claude, .agents is assumed. These rules follow the OpenCode 1 docs. In OpenCode 2, skills without a description, or with metadata.opencode/autoinvoke: false, are not listed, and skills may sit in nested grouping folders or as <name>.md. turntax does not model that yet.',
+      'OPENCODE_DISABLE_CLAUDE_CODE=1 turns off all .claude support, OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1 only ~/.claude/CLAUDE.md, and OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1 only .claude/skills; none is assumed to be set.',
     ],
   },
   {
@@ -854,7 +884,7 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.warp.dev/agents/capabilities/skills/',
       'https://docs.warp.dev/agents/cli/configuration/',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -879,6 +909,7 @@ export const TOOLS: ToolSpec[] = [
       'Only all-caps AGENTS.md and WARP.md are read; /init can link CLAUDE.md, .cursorrules and similar files to AGENTS.md, but Warp does not read them by name.',
       'Global Rules live in Warp Drive and are not counted; the Warp Agent CLI also reads ~/.agents/AGENTS.md, which --include-user counts.',
       'Project MCP configs (.warp/.mcp.json, .mcp.json and others) never start on their own, so their servers are not counted; ~/.warp/.mcp.json is.',
+      'The Warp Agent CLI keeps its own MCP config, ~/.warp_cli/.mcp.json on macOS, and reads no project MCP configs.',
     ],
   },
   {
@@ -892,14 +923,14 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.factory.com/harness/custom-slash-commands',
       'https://docs.factory.com/droid-cli/output-styles',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
         names: ['AGENTS.md', 'agents.md', 'Agents.md', 'CLAUDE.md', 'Claude.md'],
         sameLevelDirs: ['.factory', '.agents', '.agent'],
         nested: 'on-demand',
-        nestedTrigger: 'when Droid reads files in',
+        nestedTrigger: 'when Droid reads, edits, lists or searches files in',
         note: 'Every compatible file Droid finds is assumed to be read; the docs list the names but do not say that one wins.',
       },
       ...['DESIGN.md', 'Design.md', 'design.md'].map(
@@ -956,6 +987,8 @@ export const TOOLS: ToolSpec[] = [
       'The 80,000-character cap covers all guideline files loaded at startup together, and what happens past it is not documented; turntax checks each file on its own.',
       'A skill with disable-model-invocation: true is assumed to keep its description out of context (not documented); skills turned off with enabled: false or disabledSkills are still counted.',
       'Droid descriptions are assumed to be listed for the Task tool (inferred).',
+      'Shebang scripts in .factory/commands run as commands and are not counted.',
+      'Plugin, mission, automation and built-in skills are not counted.',
       '.claude/skills, .claude/agents and .claude/commands are only imported (copied) on request, not read in place.',
       'Personal files in ~/.factory/, ~/.agents/ and ~/.agent/ are outside the repository; --include-user counts them, assuming the same file names.',
       'When several skills share a name, Droid keeps one effective version (project skills rank above personal ones). Which of .factory/skills, .agents/skills and .agent/skills wins is not documented; that order is assumed. Same-name skills within one folder are both counted (Droid ignores one, which is not documented).',
@@ -971,7 +1004,7 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.trae.ai/ide/slash-commands?_lang=en',
       'https://docs.trae.ai/ide/subagents?_lang=en',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'frontmatter',
@@ -1028,6 +1061,7 @@ export const TOOLS: ToolSpec[] = [
       '.trae/agents is read only with "Enable Subagents Directory" switched on; the default is not documented, so subagents are listed as manual and not counted.',
       'AGENTS.md (root, and nested when files there are read or mentioned) and root CLAUDE.md / CLAUDE.local.md are read only with the "Include AGENTS.md in the context" and "Include CLAUDE.md in context" switches on; the defaults are not documented, so they are not counted.',
       'Global rules (~/.trae/user_rules) have no documented file format and are not counted.',
+      'The Agent window docs say to write a plain Markdown file in .trae/rules/, but do not say whether a rule without alwaysApply then loads every turn, so it is still not counted.',
       '.trae/mcp.json is read only with the Project MCP switch on; the default is not documented, so its servers are not counted.',
     ],
   },
@@ -1043,18 +1077,22 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.augmentcode.com/cli/custom-commands',
       'https://docs.augmentcode.com/cli/subagents',
     ],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
         names: ['AGENTS.md', 'CLAUDE.md'],
+        onePerDirectory: true,
         nested: 'on-demand',
         nestedTrigger: 'when Augment works on a file in',
+        note: 'AGENTS.md wins over CLAUDE.md in the same folder; this comes from the CLI rules page, and the IDE page does not say.',
       },
       { kind: 'root-file', path: '.augment-guidelines' },
+      { kind: 'root-file', path: '.augment/APPEND_SYSTEM.md', note: "Appended to Auggie's system prompt. From the Auggie CLI rules page; the IDE pages do not mention it." },
+      { kind: 'root-file', path: '.augment/SYSTEM.md', note: "Replaces Auggie's default system prompt. From the Auggie CLI rules page; the IDE pages do not mention it." },
       {
         kind: 'frontmatter',
-        pattern: /^\.augment\/rules\/.+\.md$/,
+        pattern: /^\.augment\/rules\/.+\.mdc?$/,
         rootPrefixes: ['.augment/rules/'],
         decide: (fm) => {
           const type = str(fm.type).trim();
@@ -1076,7 +1114,7 @@ export const TOOLS: ToolSpec[] = [
                 note: 'Description assumed to be in context so the agent can decide (inferred, not documented).',
               };
             case 'manual':
-              return { mode: 'manual', trigger: 'type: manual (@-mention in the IDE; the CLI skips it)' };
+              return { mode: 'manual', trigger: 'type: manual ($rule-name in the CLI, @-mention in the IDE)', note: 'The IDE guidelines page still says the CLI skips manual rules.' };
             default:
               return {
                 mode: 'always',
@@ -1089,7 +1127,7 @@ export const TOOLS: ToolSpec[] = [
       },
       {
         kind: 'ignored',
-        pattern: /^.+\/\.augment\/rules\/.+\.md$/,
+        pattern: /^.+\/\.augment\/rules\/.+\.mdc?$/,
         reason: 'Augment reads .augment/rules only at the workspace root; move the rule there or use an AGENTS.md in this folder.',
       },
       // On a name clash the documented precedence applies: .augment, then .claude, then .agents.
@@ -1117,7 +1155,7 @@ export const TOOLS: ToolSpec[] = [
     ],
     limits: [
       {
-        pattern: /^(\.augment-guidelines|\.augment\/rules\/.+\.md)$/,
+        pattern: /^(\.augment-guidelines|\.augment\/rules\/.+\.mdc?)$/,
         unit: 'chars',
         max: 49512,
         severity: 'limit',
@@ -1135,7 +1173,7 @@ export const TOOLS: ToolSpec[] = [
     ],
     notes: [
       'The 49,512-character limit covers .augment-guidelines and all workspace rules together; turntax checks each file on its own, so it can miss a combined overflow.',
-      'Subagent descriptions are assumed to be listed for the agent (inferred).',
+      'Subagent descriptions are assumed to be listed for the agent.',
       'In VS Code, skills are a beta with Auto, Manual and Disabled modes whose default is not documented; the CLI behaviour (description listed, body on activation) is counted.',
       'Of skills with the same name Augment uses the one from the highest-precedence folder: ~/.augment, .augment, ~/.claude, .claude, ~/.agents, .agents. Workspace copies are de-duplicated; a user skill hiding a workspace skill is not modelled.',
       'User rules (~/.augment/rules/) and ~/.augment/user-guidelines.md are always loaded; --include-user counts them.',
@@ -1157,7 +1195,7 @@ export const TOOLS: ToolSpec[] = [
       'https://github.com/Kilo-Org/kilocode/blob/main/packages/opencode/src/kilocode/docs/rules-migration.md',
       'https://github.com/Kilo-Org/kilocode/blob/2a1903f29186e25adec0bace14f6ee589095f7eb/packages/opencode/src/skill/index.ts',
     ],
-    checkedAt: '2026-10-18',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'precedence',
@@ -1165,7 +1203,7 @@ export const TOOLS: ToolSpec[] = [
           label: path,
           patterns: [new RegExp(`^${path.replace(/\./g, '\\.')}$`)],
         })),
-        note: 'Kilo reads the first of these root files it finds; AGENT.md is documented as an AGENTS.md fallback, and the order of CLAUDE.md and CONTEXT.md is assumed from the source.',
+        note: 'Kilo reads the first of these root files it finds. The CLAUDE.md before CONTEXT.md order now matches the docs and the source; CONTEXT.md is marked deprecated in the source, and AGENT.md is documented but was not found in instruction.ts on main.',
       },
       {
         kind: 'hierarchical',
@@ -1216,7 +1254,8 @@ export const TOOLS: ToolSpec[] = [
       'Nested CLAUDE.md and CONTEXT.md files are not documented and not counted.',
       'In VS Code, .claude/skills are read only with Claude Code Compatibility on; the CLI reads them by default and they are counted. The legacy .kilocode/skills folder is documented on the Cloud Agents page.',
       "Of skills with the same name only one is used: .kilo, then .kilocode, .agents, .claude (from Kilo's source; the docs only say project skills win over global ones). The source also skips a SKILL.md without a name in its frontmatter; turntax still counts it.",
-      'Custom agent descriptions are assumed to be listed for the Task tool (inferred).',
+      'Custom agent descriptions are listed for the Task tool.',
+      'Root files are also found in parent folders up to the worktree root; turntax assumes the launch directory is the repository root.',
       'Kilo also reads ~/.claude/CLAUDE.md as a global fallback until Claude Code migration runs; turntax does not count it for Kilo.',
     ],
   },
@@ -1225,7 +1264,7 @@ export const TOOLS: ToolSpec[] = [
     name: 'Google Jules',
     families: ['gemini'],
     sources: ['https://jules.google/docs/', 'https://jules.google/docs/environment/', 'https://jules.google/docs/changelog/'],
-    checkedAt: '2026-10-17',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -1237,6 +1276,7 @@ export const TOOLS: ToolSpec[] = [
     ],
     limits: [],
     notes: [
+      'Google announced on 2026-10-29 that Jules winds down on 2026-12-31 and is read-only after 2026-11-11.',
       'Jules runs each task in a cloud VM; setup scripts, MCP connections and memories are configured in the Jules web app and are not counted.',
       'When subdirectory AGENTS.md files load is not documented, so they are not counted.',
     ],
@@ -1249,10 +1289,11 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.devin.ai/cli/extensibility/rules',
       'https://docs.devin.ai/cli/reference/configuration/read-config-from',
       'https://docs.devin.ai/cli/extensibility/skills/overview',
+      'https://docs.devin.ai/cli/subagents',
       'https://docs.devin.ai/desktop/devin-local',
       'https://docs.devin.ai/cli/changelog/stable',
     ],
-    checkedAt: '2026-10-18',
+    checkedAt: '2026-11-06',
     rules: [
       {
         kind: 'hierarchical',
@@ -1327,13 +1368,23 @@ export const TOOLS: ToolSpec[] = [
         rootPrefix: '.claude/commands/',
         bodyTrigger: 'when the command is invoked',
       },
+      // Custom subagents; the description is "Shown to the agent when selecting a profile".
+      ...['devin', 'agents'].map(
+        (dir): FileRule => ({
+          kind: 'skill',
+          pattern: new RegExp(`^\\.${dir}\\/agents\\/(?:[^/]+\\.md|[^/]+\\/AGENT\\.md)$`),
+          rootPrefix: `.${dir}/agents/`,
+          bodyTrigger: "as the subagent's own prompt when it runs",
+        }),
+      ),
     ],
     limits: [],
     notes: [
       'New Devin Desktop (Windsurf) conversations start on Devin Local, which follows these Devin CLI rules; the Windsurf (Devin Desktop) entry covers the legacy Cascade agent.',
-      'Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default; turning one off with read_config_from is not modelled.',
+      'Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot (skills only) are on by default; turning one off with read_config_from is not modelled.',
       "Nested .devin/rules are listed as not read: the rules page says .devin folders are read at the workspace root and in each folder between it and the current directory. Nested .windsurf/rules are counted on demand, as the page's Windsurf section says they load when Devin accesses files there (its .devin section can be read as limiting them the same way).",
-      'Nested .cursor/rules, global_rules.md and skill folders are not counted.',
+      'Nested .cursor/rules, global_rules.md and skill folders are not counted. The read-config page also lists .windsurf/global_rules.md in subdirectories, which turntax does not count.',
+      'Rules shipped by installed plugins are not counted.',
       'A skill with triggers: [user] is still counted as listed for the agent.',
       'Skills with the same name in several folders are all listed, each with a location prefix such as /agents:foo (changelog v3000.2.17). One skill folder reached through a symlink loads once (v3000.10.21); turntax counts each path.',
       'Global rules (~/.config/devin/AGENTS.md, ~/.devin/rules/) are outside the repository; --include-user counts them. Devin CLI also reads ~/.claude/CLAUDE.md, which --include-user counts too.',

@@ -1,7 +1,7 @@
 import { sectionScope } from './advice.js';
 import { classify } from './classify.js';
 import { CURSOR_MD_RULE, isInstructionFile } from './files.js';
-import { basename, dirname, findImports, linesWithFences, parseFrontmatter, resolvePath, splitSections } from './markdown.js';
+import { basename, dirname, findImports, linesWithFences, parseFrontmatter, resolvePath, splitSections, tableLines } from './markdown.js';
 import { countO200k } from './tokenize.js';
 import { TOOLS } from './tools.js';
 import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
@@ -86,11 +86,12 @@ function lineKey(line: string): string {
 /** Prose lines long enough to be meaningful (outside fenced code, not headings), by key. */
 function proseLines(text: string): Map<string, string> {
   const out = new Map<string, string>();
-  for (const { line, inFence } of linesWithFences(text)) {
+  // Table rows are not prose: without its header a row means nothing.
+  const tables = tableLines(text);
+  linesWithFences(text).forEach(({ line, inFence }, i) => {
     const key = lineKey(line);
-    // Table rows are not prose: without its header a row means nothing.
-    if (!inFence && key.length >= 30 && !key.startsWith('#') && !key.startsWith('|')) out.set(key, line);
-  }
+    if (!inFence && !tables.has(i) && key.length >= 30 && !key.startsWith('#')) out.set(key, line);
+  });
   return out;
 }
 
@@ -343,8 +344,8 @@ const LINK_MIN_LINES = 3;
 const LINK_IMPORT = '@AGENTS.md';
 
 /** Line indexes from `start` that go or stay together: a fenced block, a multi-line HTML comment, a table; other lines alone. */
-function lineBlocks(all: ReturnType<typeof linesWithFences>, start: number): number[][] {
-  const isRow = (i: number) => !all[i]!.inFence && /^\s*\|/.test(all[i]!.line);
+function lineBlocks(all: ReturnType<typeof linesWithFences>, tables: Set<number>, start: number): number[][] {
+  const isRow = (i: number) => tables.has(i);
   const blocks: number[][] = [];
   for (let i = start; i < all.length; i++) {
     const { line, inFence } = all[i]!;
@@ -367,7 +368,7 @@ function coveredLines(text: string, covered: Set<string>): Set<number> {
   const start = text.split('\n').length - parseFrontmatter(text).body.split('\n').length;
   const drop = new Set<number>();
   const inBlock = new Set<number>();
-  for (const block of lineBlocks(all, start)) {
+  for (const block of lineBlocks(all, tableLines(text), start)) {
     if (block.length > 1) block.forEach((i) => inBlock.add(i));
     const lines = block.map((i) => all[i]!.line).filter((l) => l.trim() !== '');
     if (lines.length && lines.every((l) => covered.has(lineKey(l)))) block.forEach((i) => drop.add(i));

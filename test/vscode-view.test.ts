@@ -182,10 +182,10 @@ describe('VS Code CodeLens', () => {
 
   it('counts the agents that load a file every turn, with the largest count, and lists them per mode', () => {
     expect(lens('CLAUDE.md')).toEqual({
-      title: 'turntax: 219 tokens every turn in 6 agents · not read by 4',
+      title: 'turntax: 219 tokens every turn in 5 agents · not read by 5',
       tooltip: [
-        'Every turn: Cursor, GitHub Copilot, Factory Droid, Augment Code, Devin Local / Devin CLI (219 tokens); Claude Code (203 tokens)',
-        'Not read: Zed, Amp, OpenCode, Kilo Code',
+        'Every turn: Cursor, GitHub Copilot, Factory Droid, Devin Local / Devin CLI (219 tokens); Claude Code (203 tokens)',
+        'Not read: Zed, Amp, OpenCode, Augment Code, Kilo Code',
         'Counts are o200k_base estimates, made offline.',
       ].join('\n'),
     });
