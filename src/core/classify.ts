@@ -185,7 +185,9 @@ function applyHierarchical(
   files: RepoFile[],
   byPath: Map<string, RepoFile>,
 ): LoadedUnit[] {
-  const matches = files.filter((f) => rule.names.includes(basename(f.path)));
+  // A skill or subagent file of the tool (Devin's agents/<name>/AGENT.md) is not also an instruction file for it.
+  const ownSkill = (path: string) => tool.rules.some((r) => r.kind === 'skill' && r.pattern.test(path));
+  const matches = files.filter((f) => rule.names.includes(basename(f.path)) && !ownSkill(f.path));
   if (!matches.length) return [];
 
   let conditionFails: string | null = null;

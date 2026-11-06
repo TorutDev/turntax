@@ -71,7 +71,7 @@ describe('Factory Droid', () => {
       ['factory-droid'],
     );
     for (const p of ['AGENTS.md', 'CLAUDE.md', '.factory/AGENTS.md', 'DESIGN.md']) expect(find(u, 'factory-droid', p)!.mode, p).toBe('always');
-    expect(find(u, 'factory-droid', 'pkg/.agents/AGENTS.md')!.trigger).toBe('when Droid reads files in pkg/');
+    expect(find(u, 'factory-droid', 'pkg/.agents/AGENTS.md')!.trigger).toBe('when Droid reads, edits, lists or searches files in pkg/');
     expect(find(u, 'factory-droid', 'docs/DESIGN.md')).toBeUndefined();
   });
 
@@ -192,24 +192,59 @@ describe('Augment Code', () => {
     expect(odd.problem).toMatch(/Unknown rule type "sometimes"/);
   });
 
-  it('reads AGENTS.md and CLAUDE.md at every level but .augment/rules only at the root', () => {
+  it('reads AGENTS.md, or CLAUDE.md when there is none, at every level but .augment/rules only at the root', () => {
     const u = classify(
       [
         { path: 'AGENTS.md', text: 'Agents.' },
         { path: 'CLAUDE.md', text: 'Claude.' },
         { path: 'src/AGENTS.md', text: 'Nested agents.' },
         { path: 'src/CLAUDE.md', text: 'Nested claude.' },
+        { path: 'lib/CLAUDE.md', text: 'Only claude.' },
         { path: '.augment-guidelines', text: 'Guidelines.' },
         { path: 'src/.augment/rules/nested.md', text: 'Not read.' },
       ],
       ['augment'],
     );
-    for (const p of ['AGENTS.md', 'CLAUDE.md', '.augment-guidelines']) expect(find(u, 'augment', p)!.mode, p).toBe('always');
+    for (const p of ['AGENTS.md', '.augment-guidelines']) expect(find(u, 'augment', p)!.mode, p).toBe('always');
+    expect(find(u, 'augment', 'CLAUDE.md')).toMatchObject({ mode: 'ignored', trigger: 'AGENTS.md takes precedence' });
     expect(find(u, 'augment', 'src/AGENTS.md')!.trigger).toBe('when Augment works on a file in src/');
-    expect(find(u, 'augment', 'src/CLAUDE.md')!.mode).toBe('on-demand');
+    expect(find(u, 'augment', 'src/CLAUDE.md')!.mode).toBe('ignored');
+    expect(find(u, 'augment', 'lib/CLAUDE.md')!.mode).toBe('on-demand');
     const nested = find(u, 'augment', 'src/.augment/rules/nested.md')!;
     expect(nested.mode).toBe('ignored');
     expect(nested.problem).toMatch(/workspace root/);
+  });
+
+  it('reads .mdc rules like .md rules, and flags nested ones', () => {
+    const u = classify(
+      [
+        { path: '.augment/rules/style.mdc', text: '---\ntype: manual\n---\nStyle.' },
+        { path: 'src/.augment/rules/nested.mdc', text: 'Not read.' },
+      ],
+      ['augment'],
+    );
+    expect(find(u, 'augment', '.augment/rules/style.mdc')).toMatchObject({ mode: 'manual', trigger: 'type: manual ($rule-name in the CLI, @-mention in the IDE)' });
+    expect(find(u, 'augment', 'src/.augment/rules/nested.mdc')!.mode).toBe('ignored');
+    expect(isInstructionFile('.augment/rules/style.mdc')).toBe(true);
+    const files = [{ path: '.augment/rules/big.mdc', text: 'x'.repeat(49600) }];
+    const advice = buildAdvice(classify(files, ['augment']), files);
+    expect(advice.find((a) => a.kind === 'size-limit' && a.tools.includes('augment'))!.message).toMatch(/limit 49512/);
+  });
+
+  it('always loads .augment/APPEND_SYSTEM.md and .augment/SYSTEM.md from the root only', () => {
+    const u = classify(
+      [
+        { path: '.augment/APPEND_SYSTEM.md', text: 'Appended.' },
+        { path: '.augment/SYSTEM.md', text: 'Replaces.' },
+        { path: 'pkg/.augment/SYSTEM.md', text: 'Not read.' },
+      ],
+      ['augment'],
+    );
+    expect(find(u, 'augment', '.augment/APPEND_SYSTEM.md')!.mode).toBe('always');
+    expect(find(u, 'augment', '.augment/SYSTEM.md')!.mode).toBe('always');
+    expect(find(u, 'augment', 'pkg/.augment/SYSTEM.md')).toBeUndefined();
+    for (const p of ['.augment/APPEND_SYSTEM.md', '.augment/SYSTEM.md']) expect(isInstructionFile(p), p).toBe(true);
+    expect(isInstructionFile('pkg/.augment/SYSTEM.md')).toBe(false);
   });
 
   it('uses the .augment, then .claude, then .agents copy of a skill name', () => {
@@ -376,6 +411,21 @@ describe('Devin Local / Devin CLI', () => {
     );
     for (const p of ['.devin/skills/review/SKILL.md', '.claude/skills/group/deploy/SKILL.md', '.github/skills/triage/SKILL.md', '.claude/commands/ship.md'])
       expect(find(u, 'devin', p, 'description')!.mode, p).toBe('always');
+  });
+
+  it('lists custom subagents from .devin/agents and .agents/agents, at the root only', () => {
+    const agent = (name: string) => `---\nname: ${name}\ndescription: ${name} agent\n---\nPrompt.`;
+    const paths = ['.devin/agents/reviewer.md', '.devin/agents/triage/AGENT.md', '.agents/agents/docs.md', '.agents/agents/ops/AGENT.md'];
+    const u = classify([...paths.map((path) => ({ path, text: agent(path) })), { path: 'pkg/.devin/agents/x.md', text: agent('x') }], ['devin']);
+    for (const p of paths) {
+      expect(find(u, 'devin', p, 'description')!.mode, p).toBe('always');
+      expect(find(u, 'devin', p, 'body')).toMatchObject({ mode: 'on-demand', trigger: "as the subagent's own prompt when it runs" });
+      expect(isInstructionFile(p), p).toBe(true);
+      // A subagent's AGENT.md is not also read as a nested instruction file.
+      expect(u.filter((x) => x.tool === 'devin' && x.path === p && x.part === 'full'), p).toEqual([]);
+    }
+    expect(find(u, 'devin', 'pkg/.devin/agents/x.md')).toBeUndefined();
+    expect(isInstructionFile('pkg/.devin/agents/x.md')).toBe(false);
   });
 
   it('lists every copy of a skill name, as Devin shows each with its location', () => {

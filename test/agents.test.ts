@@ -2,7 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { buildAdvice } from '../src/core/advice.js';
 import { classify } from '../src/core/classify.js';
+import { getTool } from '../src/core/tools.js';
 import { addImports, isInstructionFile } from '../src/core/files.js';
 import { discover } from '../src/node/discover.js';
 import { find } from './helpers.js';
@@ -57,6 +59,11 @@ describe('Roo Code', () => {
     expect(find(u, 'roo-code', '.roorules')!.mode).toBe('ignored');
     expect(find(u, 'roo-code', 'AGENTS.md')!.mode).toBe('always');
     expect(find(u, 'roo-code', 'AGENT.md')!.mode).toBe('ignored');
+  });
+
+  it('reads AGENTS.md only from the workspace root', () => {
+    const u = classify([{ path: 'AGENTS.md', text: 'Root.' }, { path: 'pkg/AGENTS.md', text: 'Nested.' }], ['roo-code']);
+    expect(find(u, 'roo-code', 'pkg/AGENTS.md')).toMatchObject({ mode: 'ignored', trigger: 'Roo Code reads AGENTS.md only from the workspace root.' });
   });
 
   it('falls back to .roorules when there is no rules folder', () => {
@@ -357,6 +364,31 @@ describe('OpenCode', () => {
     expect(find(u, 'opencode', '.opencode/skills/git-release/SKILL.md', 'description')!.mode).toBe('always');
     expect(find(u, 'opencode', '.agents/skills/git-release/SKILL.md', 'description')!.mode).toBe('ignored');
     expect(find(u, 'opencode', 'pkg/.claude/skills/pkg/SKILL.md', 'description')!.mode).toBe('ignored');
+  });
+});
+
+describe('Claude Code size limits', () => {
+  const flagged = (path: string, chars: number, text = 'x') => {
+    const files = [{ path, text: text.repeat(chars) }];
+    return buildAdvice(classify(files, ['claude-code']), files)
+      .filter((a) => a.kind === 'size-limit' && a.tools.includes('claude-code'))
+      .map((a) => a.message);
+  };
+  const over40k = (path: string, chars: number) => flagged(path, chars).filter((m) => /limit 40000/.test(m));
+
+  it('flags a nested CLAUDE.md or rule over 40,000 characters, not the root files', () => {
+    for (const p of ['pkg/CLAUDE.md', 'pkg/CLAUDE.local.md', 'pkg/.claude/rules/big.md', 'pkg/.claude/CLAUDE.md'])
+      expect(over40k(p, 40001).length, p).toBe(1);
+    expect(over40k('pkg/CLAUDE.md', 40000)).toEqual([]);
+    for (const p of ['CLAUDE.md', '.claude/CLAUDE.md', '.claude/rules/big.md']) expect(over40k(p, 40001), p).toEqual([]);
+  });
+
+  it('limits a root CLAUDE.md to 4 MiB and no other file', () => {
+    // Tokenising a 4 MiB file is too slow for a test, so the limit entry is checked directly.
+    const limit = getTool('claude-code').limits.find((l) => l.unit === 'bytes')!;
+    expect(limit).toMatchObject({ max: 4 * 1024 * 1024, severity: 'limit' });
+    for (const p of ['CLAUDE.md', 'CLAUDE.local.md']) expect(limit.pattern.test(p), p).toBe(true);
+    for (const p of ['pkg/CLAUDE.md', '.claude/CLAUDE.md']) expect(limit.pattern.test(p), p).toBe(false);
   });
 });
 

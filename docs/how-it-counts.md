@@ -13,7 +13,25 @@ Rule folders inside a subdirectory (for example `packages/api/.claude/rules/` or
 
 When an agent reads two skills with the same name at the same level, for example `.agents/skills/deploy/` and `.claude/skills/deploy/` (often symlinked copies), only the one from the folder that takes precedence is counted; the other is ignored with "same skill name as ...". A skill's name is its `name` frontmatter, else its folder name. The order is the agent's documented precedence; where its docs are silent, the order shown below is an assumption. Agents that list both copies (OpenAI Codex, GitHub Copilot, Devin Local / Devin CLI, and Warp, which also lists each skill's path) count both.
 
-The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-10-17, Kilo Code and Devin again on 2026-10-18.
+The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-11-06, except Windsurf Cascade (see its entry).
+
+## Checked against the agents
+
+The rules come from the vendors' docs. [`scripts/observe.mjs`](../scripts/observe.mjs) also checks them against the agents themselves. It writes a small repository in which every file carries a marker made for that run, asks the agent, without tools, which markers are in its context, and compares the answer with what turntax says the agent loads. The answer is the agent's own report: a marker it holds but fails to list would show as a difference.
+
+| Agent | Version | Date | Result |
+| --- | --- | --- | --- |
+| Claude Code | 2.1.296 | 2026-11-06 | 41 of 41 checks as turntax expects, in three setups |
+| OpenAI Codex | | | not run yet |
+
+In Claude Code, started at the root of the repository:
+
+- These load: the root `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`; `@imports` four hops deep and no further; rules without `paths`; and the descriptions of skills, commands and subagents.
+- These do not: their bodies, block-level HTML comments, `AGENTS.md` next to a `CLAUDE.md`, a nested `CLAUDE.md`, and a rule with `paths`.
+
+After Claude reads a file in a subfolder, that folder's `CLAUDE.md` and a rule with `paths` for it load too. With `AGENTS.md` and no `CLAUDE.md`, `AGENTS.md` loads.
+
+To run the check yourself, install and sign in to the agents, then run `npm run build` and `node scripts/observe.mjs`. Each setup is one short prompt on your own account.
 
 ## Claude Code
 
@@ -32,18 +50,20 @@ Sources: [memory](https://code.claude.com/docs/en/memory), [skills](https://code
 
 Claude Code caps the skill listing at 1% of the context window and drops the descriptions of the least-used skills past it; that cap is not applied. Skills with `paths` frontmatter are counted like other skills, since how they are listed is not documented. Claude Code warns at startup when the subagent descriptions together pass 15,000 tokens.
 
+Claude Code skips a `CLAUDE.md` over 4 MiB at launch and loads none of it, and from 2.1.309 gives a `CLAUDE.md` or rule in a subdirectory only its first 40,000 characters on a 200K context window (more on a 1M window); `turntax` flags both. Path-scoped rules at the root are covered by the 40,000 limit in the docs but cannot be told apart by path, so they are not checked. A subdirectory's `AGENTS.md` loads only when that subdirectory has none of `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md`.
+
 ## OpenAI Codex
 
 Sources: [AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md), [skills](https://learn.chatgpt.com/docs/build-skills)
 
 | File | Mode |
 | --- | --- |
-| `AGENTS.override.md`, else `AGENTS.md`, at the root | always; reading stops at 32 KiB (`project_doc_max_bytes`) |
+| `AGENTS.override.md`, else `AGENTS.md`, at the root | always; reading stops once the files together reach 32 KiB (`project_doc_max_bytes`) |
 | The same files in a subdirectory | on-demand: only read when Codex is launched there |
 | `.agents/skills/*/SKILL.md` | name, description and file path always; body when the skill is selected; same-name skills are both listed |
 | `.agents/skills/` in a subdirectory | ignored: Codex reads skills from the launch directory up to the repository root |
 
-The skill list is capped at 2% of the context window (8,000 characters when the window is unknown; `skills.max_context_tokens`); that cap is not applied. `.codex/skills` is not a Codex location.
+The skill list is capped at 2% of the context window (8,000 characters when the window is unknown; `skills.max_context_tokens`); that cap is not applied. The 32 KiB budget is combined across all files, and `turntax` checks each file on its own. `.codex/skills` is not a Codex location.
 
 ## Gemini CLI
 
@@ -53,7 +73,7 @@ Sources: [GEMINI.md](https://geminicli.com/docs/cli/gemini-md/), [imports](https
 | --- | --- |
 | `GEMINI.md` at the root | always, with `@file.md` imports up to five levels |
 | `GEMINI.md` in a subdirectory | on-demand, when a tool accesses that folder |
-| `.agents/skills/*/SKILL.md`, `.gemini/skills/*/SKILL.md` at the root | name and description always (`skills.enabled` is on by default); body when Gemini activates the skill; on a name clash `.agents/skills` wins |
+| `.agents/skills/*/SKILL.md`, `.gemini/skills/*/SKILL.md` at the root | name and description always (on by default); body when Gemini activates the skill; on a name clash `.agents/skills` wins |
 
 `context.fileName` can make Gemini CLI read `AGENTS.md`; that setting is not modelled. Skill folders in subdirectories are not documented and not counted. Antigravity CLI replaced Gemini CLI for unpaid and Google One users on 2026-06-18.
 
@@ -107,7 +127,7 @@ Sources: [rules](https://docs.devin.ai/desktop/cascade/memories), [AGENTS.md](ht
 | `AGENTS.md` or `agents.md` | always at the root; nested ones apply to their folder |
 | `.devin/skills/*/SKILL.md`, `.windsurf/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md` | name and description always; body when Cascade invokes the skill or it is @-mentioned |
 
-Cascade is the legacy agent: new Devin Desktop conversations start on Devin Local, which follows the Devin CLI rules. Workspace rule files are limited to 12,000 characters each and the global rules file to 6,000. Which skill folder wins on a name clash is not documented; the order above is assumed. `.claude/skills` is read only with an opt-in setting whose default is not documented, so it is not counted.
+The cited Cascade pages now redirect to the Devin Local customizations page, and Devin Local disables "the legacy Cascade agent". These rules are the last documented Cascade behaviour (checked 2026-10-17) and were not re-checked. Cascade is the legacy agent: new Devin Desktop conversations start on Devin Local, which follows the Devin CLI rules. Workspace rule files are limited to 12,000 characters each and the global rules file to 6,000. Which skill folder wins on a name clash is not documented; the order above is assumed. `.claude/skills` is read only with an opt-in setting whose default is not documented, so it is not counted.
 
 ## Cline
 
@@ -129,7 +149,7 @@ Sources: [custom instructions](https://roocodeinc.github.io/Roo-Code/features/cu
 | `.roo/rules/**` | always |
 | `.roo/rules-{mode}/**`, `.roorules-{mode}` | on-demand: only in that mode |
 | `.roorules`, then `.clinerules` (order assumed) | always, only when `.roo/rules/` is empty or missing |
-| `AGENTS.md`, else `AGENT.md`, at the root | always (the `roo-cline.useAgentRules` setting turns it off) |
+| `AGENTS.md`, else `AGENT.md`, at the root | always (the `roo-cline.useAgentRules` setting turns it off); copies in subdirectories are ignored, as Roo reads them only from the workspace root |
 | `.roo/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md` | name and description always; body when used; `.roo` wins on a name clash |
 | `.roo/skills-{mode}/*/SKILL.md`, `.agents/skills-{mode}/*/SKILL.md` | on-demand: only in that mode |
 
@@ -272,13 +292,14 @@ Sources: [rules and guidelines](https://docs.augmentcode.com/setup-augment/guide
 
 | File | Mode |
 | --- | --- |
-| `AGENTS.md` and `CLAUDE.md` at the root | always (both are read) |
-| `AGENTS.md` and `CLAUDE.md` in a subdirectory | on-demand, when Augment works on a file there |
+| `AGENTS.md`, else `CLAUDE.md`, at the root | always; `CLAUDE.md` is ignored next to an `AGENTS.md` (from the CLI rules page; the IDE page does not say) |
+| `AGENTS.md`, else `CLAUDE.md`, in a subdirectory | on-demand, when Augment works on a file there |
 | `.augment-guidelines` | always |
-| `.augment/rules/**/*.md` at the root | `type: always_apply` or no type: always; `agent_requested`: description always, body on-demand (flagged without a description); `manual`: manual (the CLI skips it); an unknown type is counted as always and flagged |
+| `.augment/APPEND_SYSTEM.md`, `.augment/SYSTEM.md` at the root | always: the first is appended to Auggie's system prompt, the second replaces it (CLI rules page only; the IDE pages do not mention them) |
+| `.augment/rules/**/*.md` and `*.mdc` at the root | `type: always_apply` or no type: always; `agent_requested`: description always, body on-demand (flagged without a description); `manual`: manual (`$rule-name` in the CLI, @-mention in the IDE); an unknown type is counted as always and flagged |
 | `.augment/rules/` in a subdirectory | ignored and flagged (only the workspace root is read) |
 | `.augment/skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md` | name and description always; body when the skill is activated; a name found in several folders counts once (`.augment` over `.claude` over `.agents`, as documented) |
-| `.augment/agents/*.md` | description always (assumed); body is the subagent's own prompt |
+| `.augment/agents/*.md` | description always; body is the subagent's own prompt |
 | `.augment/commands/`, `.claude/commands/`, `.agents/commands/`, `.cursor/commands/` | manual |
 
 Workspace guidelines and rules are limited to 49,512 characters together; `turntax` flags single files over the limit. VS Code skills are a beta with modes whose default is not documented, so the CLI behaviour is counted. With `--include-user`, `~/.augment/rules/` and `~/.augment/user-guidelines.md` count as always (user rules ignore their frontmatter), plus the user skill and subagent folders.
@@ -323,8 +344,9 @@ New Devin Desktop (Windsurf) conversations start on Devin Local, which follows t
 | `.devin/global_rules.md`, else `.windsurf/global_rules.md` | always |
 | `.cursor/rules/*.mdc` and `.cursor/rules/*.md` | the same as Cursor: `alwaysApply: true` always; `globs` on-demand; `description` only: description always, body on-demand; neither: manual |
 | `.devin/skills/*/SKILL.md`, `.windsurf/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `.claude/skills/**/SKILL.md`, `.github/skills/**/SKILL.md`, `.claude/commands/**/*.md` | name and description always; body when the skill is invoked |
+| `.devin/agents/*.md`, `.devin/agents/*/AGENT.md`, `.agents/agents/*.md`, `.agents/agents/*/AGENT.md` at the root | custom subagents: description always; body is the subagent's own prompt |
 
-Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot are on by default (`read_config_from`); turning one off is not modelled. Nested `.devin/rules` folders are not read when Devin is launched at the root (`.devin` folders are read at the root and in each folder between the root and the working directory); nested `.windsurf/rules` load on demand. Nested `.cursor/rules`, nested `global_rules.md` and nested skill folders are not counted, and a skill with `triggers: [user]` is still counted as listed. Skills with the same name in several folders are all listed, each with a location prefix such as `/agents:foo`; a skill folder reached through a symlink loads once, but `turntax` counts each path. With `--include-user`, `~/.config/devin/` (`%APPDATA%\devin\` on Windows) rule files and skills, `~/.devin/rules/`, `~/.devin/global_rules.md`, `~/.agents/skills/`, `~/.codeium/windsurf/skills/`, `~/.copilot/skills/` and `~/.claude/CLAUDE.md` (which Devin CLI also reads) are counted.
+Imports from the AGENTS.md standard, Cursor, Windsurf, Claude Code and Copilot (skills only) are on by default (`read_config_from`); turning one off is not modelled. Nested `.devin/rules` folders are not read when Devin is launched at the root (`.devin` folders are read at the root and in each folder between the root and the working directory); nested `.windsurf/rules` load on demand. Nested `.cursor/rules`, nested `global_rules.md` and nested skill folders are not counted, and a skill with `triggers: [user]` is still counted as listed. Skills with the same name in several folders are all listed, each with a location prefix such as `/agents:foo`; a skill folder reached through a symlink loads once, but `turntax` counts each path. With `--include-user`, `~/.config/devin/` (`%APPDATA%\devin\` on Windows) rule files and skills, `~/.devin/rules/`, `~/.devin/global_rules.md`, `~/.agents/skills/`, `~/.codeium/windsurf/skills/`, `~/.copilot/skills/` and `~/.claude/CLAUDE.md` (which Devin CLI also reads) are counted.
 
 ## User-level files
 
