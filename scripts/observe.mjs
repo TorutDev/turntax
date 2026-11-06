@@ -143,10 +143,14 @@ function ask(tool, cwd, prompt, toolsAllowed) {
     // Default settings: AGENTS.md is read by a built-in plugin that --setting-sources without "user" turns off.
     const args = ['-p', '--output-format', 'json', '--no-session-persistence'];
     const r = run('claude', args, cwd, prompt);
-    if (r.status !== 0 || !r.stdout.trim()) throw new Error(`claude exited with ${r.status}: ${r.stderr.trim().slice(0, 300)}`);
-    const out = JSON.parse(r.stdout);
+    let out;
+    try {
+      out = JSON.parse(r.stdout);
+    } catch {
+      throw new Error(`claude exited with ${r.status} and no answer: ${r.stderr.trim().slice(0, 300)}`);
+    }
     // A failed run (an expired login, a usage limit) must not read as "no marker loaded".
-    if (out.is_error) throw new Error(`claude: ${out.result}`);
+    if (out.is_error || r.status !== 0) throw new Error(`claude: ${out.result ?? `exited with ${r.status}`}`);
     return { text: String(out.result ?? ''), usedTools: out.num_turns > (toolsAllowed ? 2 : 1) };
   }
   const r = run('codex', ['exec', '--json', '--skip-git-repo-check', '--ephemeral', '-s', 'read-only', '-'], cwd, prompt);
