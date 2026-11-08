@@ -46,6 +46,8 @@ export type FileRule =
       globMentions?: boolean;
       /** Bytes read before the tool stops (content beyond is dropped). */
       maxBytes?: number;
+      /** A root file over this many bytes is skipped whole (Claude Code's 4 MiB). */
+      skipOverBytes?: number;
       /** Only read when the condition holds for the repository. */
       condition?: 'claude-reads-agents-md';
       note?: string;
@@ -212,6 +214,7 @@ export const TOOLS: ToolSpec[] = [
         nestedTrigger: 'when Claude reads or edits a file in',
         stripHtmlComments: true,
         importDepth: 4,
+        skipOverBytes: 4 * 1024 * 1024,
       },
       {
         kind: 'hierarchical',
@@ -448,57 +451,58 @@ export const TOOLS: ToolSpec[] = [
       'https://docs.github.com/en/copilot/reference/custom-instructions-support',
       'https://docs.github.com/en/copilot/concepts/customizations/agent-skills',
     ],
-    checkedAt: '2026-11-06',
-    // Modelled on the VS Code Local harness with default settings; the Copilot harness, Copilot CLI and cloud agent differ (see notes).
+    checkedAt: '2026-11-08',
+    // Modelled on Copilot CLI 1.0.107 as observed with scripts/observe.mjs on 2026-11-08; VS Code's Copilot harness
+    // shares that runtime. The legacy VS Code Local harness differs (see notes).
     rules: [
+      // Copilot CLI does not follow @imports in this file (observed), and a root-file rule follows none.
       { kind: 'root-file', path: '.github/copilot-instructions.md' },
       {
         kind: 'frontmatter',
         pattern: /^\.github\/instructions\/.+\.instructions\.md$/,
         rootPrefixes: ['.github/instructions/'],
         decide: (fm) => {
-          if (has(fm, 'applyTo')) return { mode: 'on-demand', trigger: `applyTo: ${str(fm.applyTo)}` };
-          if (has(fm, 'description'))
-            return {
-              mode: 'on-demand',
-              trigger: 'agent decides from description (VS Code)',
-              descriptionOnly: true,
-              note: 'Description assumed to be in context so the agent can decide (inferred, not documented).',
-            };
-          return { mode: 'manual', trigger: 'attached manually' };
+          const applyTo = str(fm.applyTo).trim();
+          if (!applyTo) return { mode: 'always', trigger: 'no applyTo', note: 'Loaded every turn in Copilot CLI (observed); the docs do not say.' };
+          if (/^\*\*(\/\*)?$/.test(applyTo)) return { mode: 'always', trigger: `applyTo: ${applyTo}` };
+          return { mode: 'on-demand', trigger: `applyTo: ${applyTo}` };
         },
       },
       {
-        // Claude rules: `paths` replaces applyTo and defaults to **.
         kind: 'frontmatter',
         pattern: /^\.claude\/rules\/.+\.md$/,
         rootPrefixes: ['.claude/rules/'],
-        decide: (fm) => ({ mode: 'on-demand', trigger: has(fm, 'paths') ? `paths: ${str(fm.paths)}` : 'paths: ** (default)' }),
+        decide: (fm) =>
+          has(fm, 'paths') ? { mode: 'on-demand', trigger: `paths: ${str(fm.paths)}` } : { mode: 'always', trigger: 'rule without paths' },
+      },
+      {
+        kind: 'ignored',
+        pattern: /^(?:\.claude\/CLAUDE\.md|CLAUDE\.local\.md)$/,
+        reason: 'Copilot CLI reads CLAUDE.md at the root, not .claude/CLAUDE.md or CLAUDE.local.md (observed).',
       },
       {
         kind: 'hierarchical',
-        names: ['AGENTS.md'],
-        nested: 'ignored',
-        nestedTrigger: 'The VS Code Local harness reads nested AGENTS.md only with chat.useNestedAgentsMdFiles, which is off by default.',
+        names: ['AGENTS.md', 'CLAUDE.md'],
+        nested: 'on-demand',
+        nestedTrigger: 'when Copilot works on a file in',
+        // At least six hops were followed when observed; the limit is not documented.
+        importDepth: 6,
       },
       {
-        // chat.useClaudeMdFile (on by default): CLAUDE.md as always-on instructions, together with AGENTS.md.
         kind: 'hierarchical',
-        names: ['CLAUDE.md', 'CLAUDE.local.md'],
-        sameLevelDirs: ['.claude'],
-        nested: 'ignored',
-        nestedTrigger: 'The VS Code Local harness reads CLAUDE.md only at the workspace root.',
+        names: ['GEMINI.md'],
+        nested: 'on-demand',
+        nestedTrigger: 'when Copilot works on a file in',
       },
       ...skillFolders(['.github', '.claude', '.agents'], { hideFlag: 'disable-model-invocation', bodyTrigger: 'when Copilot loads the skill' }),
     ],
     limits: [],
     notes: [
-      'Modelled on the VS Code Local harness with its default settings (chat.useAgentsMdFile and chat.useClaudeMdFile on, chat.useNestedAgentsMdFiles off; VS Code documents these settings for the Local harness only); VS Code does not expand @imports.',
-      "The Copilot harness in VS Code shares a runtime with Copilot CLI and is assumed to read the same files. Copilot CLI reads AGENTS.md, CLAUDE.md, .claude/CLAUDE.md and GEMINI.md together from the repository root, the working directory and the folders between, plus nested copies in the folders of files it works on, and expands @path references in copilot-instructions.md, AGENTS.md and CLAUDE.md. GEMINI.md is read only there, so it is not counted.",
+      "Modelled on Copilot CLI 1.0.107 as observed on 2026-11-08 with scripts/observe.mjs: the root AGENTS.md, CLAUDE.md and GEMINI.md load together, nested copies load when Copilot works on a file there, and .claude/CLAUDE.md and CLAUDE.local.md are not read. VS Code's Copilot harness shares the Copilot CLI runtime and is assumed to read the same files.",
+      'The VS Code Local harness, now a legacy option, reads differently: CLAUDE.md, CLAUDE.local.md and .claude/CLAUDE.md at the root, .claude/rules on demand, no nested AGENTS.md by default (chat.useNestedAgentsMdFiles) and no GEMINI.md.',
       'Copilot cloud agent uses the nearest AGENTS.md, or a single root CLAUDE.md or GEMINI.md instead.',
       'Copilot code review also reads REVIEW.md.',
-      'VS Code now calls the Local harness a legacy editor harness and recommends the Copilot harness. That harness discovers nested AGENTS.md along the paths it works with, and its reference table does not list CLAUDE.md or .claude/rules. turntax still models the Local harness.',
-      'Copilot CLI also reads ~/.copilot/copilot-instructions.md, ~/.copilot/instructions/**/*.instructions.md and folders in COPILOT_CUSTOM_INSTRUCTIONS_DIRS; these are not counted.',
+      'User-level ~/.claude/CLAUDE.md and ~/.claude/rules are read by the legacy VS Code Local harness and are not counted. Copilot CLI also reads ~/.copilot/copilot-instructions.md, ~/.copilot/instructions/**/*.instructions.md and folders in COPILOT_CUSTOM_INSTRUCTIONS_DIRS; these are not counted.',
       'Same-name skills in different folders are not merged (VS Code shows both); both are counted.',
     ],
   },

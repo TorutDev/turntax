@@ -296,19 +296,50 @@ describe('Copilot', () => {
     expect(api.mode).toBe('on-demand');
     expect(api.trigger).toBe('applyTo: packages/api/**');
   });
-  it('reads CLAUDE.md together with AGENTS.md at the root, as the VS Code Local harness does by default', () => {
+  it('reads AGENTS.md, CLAUDE.md and GEMINI.md together at the root and nested copies on demand, as Copilot CLI does', () => {
     expect(find(units, 'copilot', 'AGENTS.md')!.mode).toBe('always');
     expect(find(units, 'copilot', 'CLAUDE.md')!.mode).toBe('always');
-    // Only Copilot CLI and the Copilot harness read GEMINI.md; it is described in a note, not modelled.
-    expect(find(units, 'copilot', 'GEMINI.md')).toBeUndefined();
-    expect(getTool('copilot').notes.join(' ')).toMatch(/GEMINI\.md is read only there/);
-    // The Local harness reads neither nested CLAUDE.md nor (by default) nested AGENTS.md.
-    expect(find(units, 'copilot', 'packages/api/CLAUDE.md')!.mode).toBe('ignored');
-    const nested = classify([{ path: 'AGENTS.md', text: 'Root.' }, { path: 'pkg/AGENTS.md', text: 'Nested.' }], ['copilot']);
-    expect(find(nested, 'copilot', 'pkg/AGENTS.md')!.trigger).toMatch(/chat\.useNestedAgentsMdFiles/);
+    expect(find(units, 'copilot', 'GEMINI.md')!.mode).toBe('always');
+    expect(find(units, 'copilot', 'packages/api/CLAUDE.md')).toMatchObject({ mode: 'on-demand', trigger: 'when Copilot works on a file in packages/api/' });
+    const nested = classify(
+      [
+        { path: 'AGENTS.md', text: 'Root.' },
+        { path: 'pkg/AGENTS.md', text: 'Nested.' },
+        { path: 'pkg/GEMINI.md', text: 'Nested.' },
+      ],
+      ['copilot'],
+    );
+    expect(find(nested, 'copilot', 'pkg/AGENTS.md')!.mode).toBe('on-demand');
+    expect(find(nested, 'copilot', 'pkg/GEMINI.md')!.mode).toBe('on-demand');
   });
 
-  it('reads .claude/CLAUDE.md and CLAUDE.local.md, and .claude/rules on demand with paths defaulting to **', () => {
+  it('follows @imports in AGENTS.md and CLAUDE.md but not in copilot-instructions.md', () => {
+    const u = classify(
+      [
+        { path: 'AGENTS.md', text: 'Root.\n@docs/a.md' },
+        { path: 'docs/a.md', text: 'Imported.' },
+        { path: '.github/copilot-instructions.md', text: 'Repo.\n@docs/b.md' },
+        { path: 'docs/b.md', text: 'Not imported.' },
+      ],
+      ['copilot'],
+    );
+    expect(find(u, 'copilot', 'docs/a.md')!.mode).toBe('always');
+    expect(find(u, 'copilot', 'docs/b.md')).toBeUndefined();
+  });
+
+  it('loads instructions without applyTo or with applyTo ** every turn', () => {
+    const u = classify(
+      [
+        { path: '.github/instructions/plain.instructions.md', text: 'Plain.' },
+        { path: '.github/instructions/all.instructions.md', text: '---\napplyTo: "**"\n---\nAll.' },
+        { path: '.github/instructions/sub/deep.instructions.md', text: '---\napplyTo: "**/*"\n---\nDeep.' },
+      ],
+      ['copilot'],
+    );
+    for (const p of ['plain', 'all', 'sub/deep']) expect(find(u, 'copilot', `.github/instructions/${p}.instructions.md`)!.mode, p).toBe('always');
+  });
+
+  it('does not read .claude/CLAUDE.md or CLAUDE.local.md, and reads .claude/rules every turn without paths', () => {
     const u = classify(
       [
         { path: '.claude/CLAUDE.md', text: 'Team.' },
@@ -318,9 +349,10 @@ describe('Copilot', () => {
       ],
       ['copilot'],
     );
-    expect(find(u, 'copilot', '.claude/CLAUDE.md')!.mode).toBe('always');
-    expect(find(u, 'copilot', 'CLAUDE.local.md')!.mode).toBe('always');
-    expect(find(u, 'copilot', '.claude/rules/all.md')).toMatchObject({ mode: 'on-demand', trigger: 'paths: ** (default)' });
+    expect(find(u, 'copilot', '.claude/CLAUDE.md')!.mode).toBe('ignored');
+    expect(find(u, 'copilot', 'CLAUDE.local.md')!.mode).toBe('ignored');
+    expect(u.filter((x) => x.path === '.claude/CLAUDE.md')).toHaveLength(1);
+    expect(find(u, 'copilot', '.claude/rules/all.md')).toMatchObject({ mode: 'always', trigger: 'rule without paths' });
     expect(find(u, 'copilot', '.claude/rules/ts.md')).toMatchObject({ mode: 'on-demand', trigger: 'paths: src/**/*.ts' });
   });
 

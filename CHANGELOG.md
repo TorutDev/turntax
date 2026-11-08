@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- GitHub Copilot is modelled on what Copilot CLI 1.0.107 loads, checked with `scripts/observe.mjs` (62 of 62 checks), instead of the legacy VS Code Local harness. VS Code's Copilot harness shares that runtime. Counts change:
+  - `GEMINI.md` is read with `AGENTS.md` and `CLAUDE.md`, and nested copies of all three load when Copilot works in their folder.
+  - `@imports` in `AGENTS.md` and `CLAUDE.md` are followed.
+  - `.claude/rules` without `paths` and instructions files without `applyTo` or with `applyTo: **` load every turn.
+  - `.claude/CLAUDE.md` and `CLAUDE.local.md` are not read.
+- A root `CLAUDE.md` over 4 MiB counts as not loaded for Claude Code, which skips it, and the finding says so.
+- `scripts/observe.mjs` checks Copilot CLI too, and `--keep` keeps the fixtures for a closer look.
+
 ## 0.9.0 (2026-11-06)
 
 - Claude Code's rules were also checked against Claude Code 2.1.296 itself. In three setups, the model reported all 41 checks as turntax counts them. `scripts/observe.mjs` runs the check, and [docs/how-it-counts.md](docs/how-it-counts.md) has the results.

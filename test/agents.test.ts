@@ -386,6 +386,19 @@ describe('Claude Code size limits', () => {
     for (const p of ['~/.claude/CLAUDE.md', '~/.claude/rules/big.md']) expect(limit.pattern.test(p), p).toBe(false);
   });
 
+  it('counts a root CLAUDE.md over 4 MiB as not loaded, with the reason as a finding', () => {
+    const big = 'word '.repeat(4 * 1024 * 1024 / 5 + 1);
+    const files = [
+      { path: 'CLAUDE.md', text: big },
+      { path: 'pkg/CLAUDE.md', text: big },
+    ];
+    const units = classify(files, ['claude-code']);
+    expect(units.find((u) => u.path === 'CLAUDE.md')).toMatchObject({ mode: 'ignored', problem: 'Claude Code skips a CLAUDE.md over 4 MiB at launch and loads none of it.' });
+    // Only files read at launch are skipped; a nested file is cut at 40,000 characters instead.
+    expect(units.find((u) => u.path === 'pkg/CLAUDE.md')!.mode).toBe('on-demand');
+    expect(classify([{ path: 'CLAUDE.md', text: 'word '.repeat(1000) }], ['claude-code'])[0]!.mode).toBe('always');
+  });
+
   it('limits a CLAUDE.md read at launch to 4 MiB, and no nested file', () => {
     // Tokenising a 4 MiB file is too slow for a test, so the limit entry is checked directly.
     const limit = getTool('claude-code').limits.find((l) => l.unit === 'bytes')!;

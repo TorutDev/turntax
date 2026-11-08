@@ -24,8 +24,9 @@ describe('user-level files', () => {
   it('classifies each file only for its own agent', () => {
     const units = classifyUser(home.files);
     const who = (path: string) => units.filter((u) => u.path === path && u.mode === 'always').map((u) => u.tool);
-    // VS Code Copilot reads ~/.claude/CLAUDE.md; OpenCode falls back to it because there is no ~/.config/opencode/AGENTS.md.
-    expect(who('~/.claude/CLAUDE.md')).toEqual(['claude-code', 'copilot', 'opencode', 'devin']);
+    // OpenCode falls back to it because there is no ~/.config/opencode/AGENTS.md. Copilot reads it only in the legacy
+    // VS Code Local harness, which is not modelled.
+    expect(who('~/.claude/CLAUDE.md')).toEqual(['claude-code', 'opencode', 'devin']);
     expect(who('~/.claude/rules/style.md')).toEqual(['claude-code']);
     expect(who('~/.codex/AGENTS.md')).toEqual(['codex']);
     expect(who('~/.gemini/GEMINI.md')).toEqual(['gemini-cli']);

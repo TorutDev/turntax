@@ -55,8 +55,6 @@ export const USER_FILES: UserFileRule[] = [
   { tool: 'copilot', pattern: /^\.copilot\/instructions\/.+\.instructions\.md$/, as: moved('.copilot/instructions/', '.github/instructions/'), source: VSCODE_INSTRUCTIONS },
   { tool: 'copilot', pattern: skills('.copilot'), as: moved('.copilot/skills/', '.github/skills/'), source: VSCODE_SKILLS },
   { tool: 'copilot', pattern: skills('.agents|.claude'), as: same, source: VSCODE_SKILLS },
-  { tool: 'copilot', pattern: /^\.claude\/CLAUDE\.md$/, as: same, source: VSCODE_INSTRUCTIONS },
-  { tool: 'copilot', pattern: /^\.claude\/rules\/.+\.md$/, as: same, source: 'https://code.visualstudio.com/docs/agents/reference/ai-settings' },
   // Read through its own rule (6,000-character limit), not as .windsurfrules.
   { tool: 'windsurf', pattern: /^\.codeium\/windsurf\/memories\/global_rules\.md$/, as: same, source: 'https://docs.devin.ai/desktop/cascade/memories' },
   { tool: 'windsurf', pattern: skills('.codeium/windsurf'), as: moved('.codeium/windsurf/skills/', '.windsurf/skills/'), source: WINDSURF_SKILLS },

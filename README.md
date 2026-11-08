@@ -32,7 +32,7 @@ Each agent's documented loading rules decide what is sent on every turn, what lo
 | Devin Local / Devin CLI | `AGENTS.md`, `AGENTS.local.md`, `AGENT.md`, `.windsurfrules`, `CLAUDE.md` at every level, `.devin/rules/`, `.windsurf/rules/`, `.cursor/rules/`, skills |
 | Factory Droid | `AGENTS.md` / `CLAUDE.md` (also in `.factory`, `.agents`, `.agent`), `DESIGN.md`, `.factory/skills`, `.agents/skills`, `.factory/droids` |
 | Gemini CLI | `GEMINI.md`, skills in `.agents` and `.gemini` |
-| GitHub Copilot | `.github/copilot-instructions.md`, `.github/instructions/`, `AGENTS.md`, `CLAUDE.md`, `.claude/rules`, skills in `.github`, `.claude`, `.agents` (VS Code Local harness defaults) |
+| GitHub Copilot | `.github/copilot-instructions.md`, `.github/instructions/`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/rules`, skills in `.github`, `.claude`, `.agents` (as Copilot CLI loads them) |
 | Goose | `.goosehints`, `AGENTS.md`, `@`-included files, skills in `.agents`, `.goose`, `.claude` |
 | Google Jules | root `AGENTS.md` |
 | JetBrains Junie | `.junie/AGENTS.md`, or `AGENTS.md` with `.junie/rules/`, or `.junie/guidelines`; skills in `.junie`, `.agents` |

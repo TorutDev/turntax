@@ -141,8 +141,12 @@ describe('VS Code fix preview', () => {
 
   it('plans the fixes as the MCP fix_preview does and summarises them', async () => {
     const plan = await planWorkspaceFixes(fixture('mixed'));
-    expect(plan.changes.map((c) => [c.renamedFrom, c.path])).toEqual([['.cursor/rules/wrong.md', '.cursor/rules/wrong.mdc']]);
-    expect(fixSummary(plan)).toBe('1 safe fix');
+    expect(plan.changes.map((c) => [c.renamedFrom, c.path])).toEqual([
+      ['.cursor/rules/wrong.md', '.cursor/rules/wrong.mdc'],
+      [undefined, 'CLAUDE.md'],
+      [undefined, 'packages/api/CLAUDE.md'],
+    ]);
+    expect(fixSummary(plan)).toMatch(/^2 safe fixes \(saves ~\d+ o200k tokens\/turn\)$/);
     const scoped = await planWorkspaceFixes(materialize('mixed', { 'turntax.config.json': JSON.stringify({ tools: ['claude-code', 'cursor'] }) }));
     expect(scoped.fixes.length).toBeGreaterThan(plan.fixes.length);
   });
@@ -189,7 +193,7 @@ describe('VS Code CodeLens', () => {
         'Counts are o200k_base estimates, made offline.',
       ].join('\n'),
     });
-    expect(lens('packages/api/CLAUDE.md')?.title).toBe('turntax: on demand in 6 agents · not read by 1');
+    expect(lens('packages/api/CLAUDE.md')?.title).toBe('turntax: on demand in 7 agents');
     expect(lens('.cursor/rules/wrong.md')?.title).toBe('turntax: when referenced in 1 agent · not read by 1');
   });
 
@@ -199,7 +203,7 @@ describe('VS Code CodeLens', () => {
     const [always, onDemand] = skill.tooltip.split('\n');
     expect(always).toMatch(/^Every turn: Warp \(26 tokens, description\); Claude Code, Cursor, [^;]+ \(14 tokens, description\)$/);
     expect(onDemand).toMatch(/^On demand: Claude Code, [^;]*Warp[^;]* \(22 tokens, body\)$/);
-    expect(lens('docs/extra.md')?.tooltip.split('\n')[0]).toBe('Every turn: Claude Code (42 tokens, imported by CLAUDE.md)');
+    expect(lens('docs/extra.md')?.tooltip.split('\n')[0]).toBe('Every turn: Claude Code, GitHub Copilot (42 tokens, imported by CLAUDE.md)');
 
     const rows = [
       row('codex', 'ignored', 5),

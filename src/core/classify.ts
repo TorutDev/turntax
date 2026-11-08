@@ -185,9 +185,10 @@ function applyHierarchical(
   files: RepoFile[],
   byPath: Map<string, RepoFile>,
 ): LoadedUnit[] {
-  // A skill or subagent file of the tool (Devin's agents/<name>/AGENT.md) is not also an instruction file for it.
-  const ownSkill = (path: string) => tool.rules.some((r) => r.kind === 'skill' && r.pattern.test(path));
-  const matches = files.filter((f) => rule.names.includes(basename(f.path)) && !ownSkill(f.path));
+  // A skill or subagent file of the tool (Devin's agents/<name>/AGENT.md), or a file another rule says the tool does
+  // not read (Copilot's .claude/CLAUDE.md), is not also an instruction file for it.
+  const claimed = (path: string) => tool.rules.some((r) => (r.kind === 'skill' || r.kind === 'ignored') && r.pattern.test(path));
+  const matches = files.filter((f) => rule.names.includes(basename(f.path)) && !claimed(f.path));
   if (!matches.length) return [];
 
   let conditionFails: string | null = null;
@@ -220,6 +221,11 @@ function applyHierarchical(
     }
     const level = levelOf(f.path, rule.sameLevelDirs);
     const isRoot = level === '';
+    if (isRoot && rule.skipOverBytes && new TextEncoder().encode(f.text).length > rule.skipOverBytes) {
+      const problem = `${tool.name} skips a ${basename(f.path)} over ${rule.skipOverBytes / 1024 / 1024} MiB at launch and loads none of it.`;
+      out.push(unit(tool.id, f.path, 'ignored', problem, f.text, { problem }));
+      continue;
+    }
     // Claude reads a subdirectory AGENTS.md only when that directory has no CLAUDE.md of its own.
     if (
       rule.condition === 'claude-reads-agents-md' &&
