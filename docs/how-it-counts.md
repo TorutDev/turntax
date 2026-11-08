@@ -13,7 +13,7 @@ Rule folders inside a subdirectory (for example `packages/api/.claude/rules/` or
 
 When an agent reads two skills with the same name at the same level, for example `.agents/skills/deploy/` and `.claude/skills/deploy/` (often symlinked copies), only the one from the folder that takes precedence is counted; the other is ignored with "same skill name as ...". A skill's name is its `name` frontmatter, else its folder name. The order is the agent's documented precedence; where its docs are silent, the order shown below is an assumption. Agents that list both copies (OpenAI Codex, GitHub Copilot, Devin Local / Devin CLI, and Warp, which also lists each skill's path) count both.
 
-The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-11-06, except Windsurf Cascade (see its entry).
+The rules below live in [`src/core/tools.ts`](../src/core/tools.ts). Each entry cites the page it came from; all were checked on 2026-11-06, Copilot on 2026-11-08, except Windsurf Cascade (see its entry).
 
 ## Checked against the agents
 
@@ -22,6 +22,8 @@ The rules come from the vendors' docs. [`scripts/observe.mjs`](../scripts/observ
 | Agent | Version | Date | Result |
 | --- | --- | --- | --- |
 | Claude Code | 2.1.296 | 2026-11-06 | 41 of 41 checks as turntax expects, in three setups |
+| Claude Code | 2.1.296 | 2026-11-08 | 39 of 41: in both setups that list it, a command's description was missing (see below) |
+| GitHub Copilot CLI | 1.0.107 | 2026-11-08 | 62 of 62 in two setups, twice, after turntax took up what the CLI loads |
 | OpenAI Codex | | | not run yet |
 
 In Claude Code, started at the root of the repository:
@@ -31,7 +33,11 @@ In Claude Code, started at the root of the repository:
 
 After Claude reads a file in a subfolder, that folder's `CLAUDE.md` and a rule with `paths` for it load too. With `AGENTS.md` and no `CLAUDE.md`, `AGENTS.md` loads.
 
-To run the check yourself, install and sign in to the agents, then run `npm run build` and `node scripts/observe.mjs`. Each setup is one short prompt on your own account.
+On 2026-11-08 Claude Code listed the command by name with no description, in every run that day. The likely cause, not confirmed: its skill listing is capped at 1% of the context window, and past that it drops the descriptions of the least-used entries, and the account used for the run had many plugin skills. A small fixture with only that command and one skill listed both descriptions. turntax counts every description and does not apply that cap.
+
+Copilot CLI did not list what its instructions say when asked, so each Copilot fixture file gives it a project code to repeat, and the skills it lists are read from the CLI's own `session.skills_loaded` event. The first run disagreed with turntax's model of the VS Code Local harness in 14 of 31 checks at the root; turntax now models what the CLI loads, described under [GitHub Copilot](#github-copilot). Copilot CLI loads repository instructions only in a folder you trust; the script passes `--trust-folder`.
+
+To run the check yourself, install and sign in to the agents, then run `npm run build` and `node scripts/observe.mjs` (`--agents claude-code,copilot,codex` picks some, `--keep` keeps the fixtures). Each setup is one short prompt on your own account.
 
 ## Claude Code
 
@@ -97,24 +103,23 @@ Which skill folder wins on a name clash is not documented; `.agents`, `.cursor`,
 
 Sources: VS Code [custom instructions](https://code.visualstudio.com/docs/agent-customization/custom-instructions), [settings](https://code.visualstudio.com/docs/agents/reference/ai-settings) and [skills](https://code.visualstudio.com/docs/agent-customization/agent-skills); GitHub [repository instructions](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions), [Copilot CLI instructions](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions), [support by surface](https://docs.github.com/en/copilot/reference/custom-instructions-support) and [skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills)
 
-Copilot surfaces read different files. turntax models the defaults of VS Code's Local harness (the `chat.useAgentsMdFile`, `chat.useClaudeMdFile` and `chat.useNestedAgentsMdFiles` settings are documented for Local harness sessions):
+Copilot surfaces read different files. turntax models Copilot CLI 1.0.107 as observed on 2026-11-08 (see [Checked against the agents](#checked-against-the-agents)). VS Code's Copilot harness shares the Copilot CLI runtime ([agent harnesses](https://code.visualstudio.com/docs/agents/concepts/agent-harnesses)), so it is assumed to read the same files.
 
 | File | Mode |
 | --- | --- |
-| `.github/copilot-instructions.md` | always |
-| `.github/instructions/**/*.instructions.md` | `applyTo` on-demand; `description` only: description always, body on-demand; neither: manual |
-| `AGENTS.md` at the root | always (`chat.useAgentsMdFile`, on by default) |
-| `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md` at the root | always (`chat.useClaudeMdFile`, on by default), together with `AGENTS.md` |
-| `.claude/rules/**/*.md` | on-demand: `paths`, which defaults to `**` |
-| `AGENTS.md` or `CLAUDE.md` in a subdirectory | ignored (nested `AGENTS.md` needs `chat.useNestedAgentsMdFiles`, off by default) |
+| `.github/copilot-instructions.md` | always; `@imports` in it are not followed |
+| `.github/instructions/**/*.instructions.md` | always with no front matter or `applyTo: **` (`**/*` is assumed the same); other `applyTo` on-demand; `description` and no `applyTo`: description always, body on-demand |
+| `AGENTS.md`, `CLAUDE.md` and `GEMINI.md` at the root | always, all together; `@imports` in `AGENTS.md` and `CLAUDE.md` are followed (at least six hops were) |
+| `AGENTS.md`, `CLAUDE.md` or `GEMINI.md` in a subdirectory | on-demand, when Copilot works on a file there |
+| `.claude/rules/**/*.md` | always without `paths`; on-demand with `paths` |
+| `.claude/CLAUDE.md`, `CLAUDE.local.md` | ignored |
 | `.github/skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md` | description always; body on-demand; `disable-model-invocation: true` manual; same-name skills in two folders are both counted |
 
-Treating a description-only instructions file's description as always in context is an inference; VS Code says the agent decides from it. VS Code does not expand `@imports`. Other surfaces:
+The docs say less than this, and in places differ: Copilot CLI's page also lists `.claude/CLAUDE.md` and imports in `copilot-instructions.md`, which the CLI did not read when observed, and no page says that an instructions file without front matter loads every turn. VS Code's docs say the agent decides from a `description`; files with one and no `applyTo` were not observed and are counted that way. Other surfaces:
 
-- Copilot CLI reads `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md` and `GEMINI.md` from the repository root, the working directory, the folders between and the folders of files it works on, combines them all, and expands `@path` references in `copilot-instructions.md`, `AGENTS.md` and `CLAUDE.md`.
+- The legacy VS Code Local harness reads `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` at the root, `.claude/rules` on demand, nested `AGENTS.md` only with `chat.useNestedAgentsMdFiles` (off by default), and no `GEMINI.md`. It also reads `~/.claude/CLAUDE.md`, `~/.claude/rules` and `~/.claude/skills`, which are not counted for Copilot.
 - Copilot cloud agent uses the nearest `AGENTS.md`, or a single root `CLAUDE.md` or `GEMINI.md` instead.
-- VS Code's Copilot harness shares the Copilot CLI runtime ([agent harnesses](https://code.visualstudio.com/docs/agents/concepts/agent-harnesses)), so it is assumed to read what the CLI reads, `GEMINI.md` included. `GEMINI.md` is not counted for Copilot, because the Local harness modelled here does not document it.
-- Copilot code review also reads `REVIEW.md` and uses only skills in `.github/skills`.
+- Copilot code review also reads `REVIEW.md`.
 
 ## Windsurf Cascade
 
@@ -360,7 +365,6 @@ With `--include-user`, files in the home directory are classified by the same ru
 | `~/.gemini/GEMINI.md`, `~/.gemini/skills/` | Gemini CLI ([GEMINI.md](https://geminicli.com/docs/cli/gemini-md/), [skills](https://geminicli.com/docs/cli/skills/)) | root `GEMINI.md`, `.gemini/skills` |
 | `~/.cursor/skills/`, `~/.claude/skills/`, `~/.codex/skills/` | Cursor ([skills](https://cursor.com/docs/skills)) | the same folders |
 | `~/.copilot/copilot-instructions.md`, `~/.copilot/instructions/**/*.instructions.md`, `~/.copilot/skills/` | GitHub Copilot ([instructions](https://code.visualstudio.com/docs/agent-customization/custom-instructions), [skills](https://code.visualstudio.com/docs/agent-customization/agent-skills)) | `.github/copilot-instructions.md`, `.github/instructions/`, `.github/skills` |
-| `~/.claude/CLAUDE.md`, `~/.claude/rules/`, `~/.claude/skills/` | GitHub Copilot in VS Code ([instructions](https://code.visualstudio.com/docs/agent-customization/custom-instructions), [settings](https://code.visualstudio.com/docs/agents/reference/ai-settings)) | the same paths |
 | `~/.codeium/windsurf/memories/global_rules.md` | Windsurf Cascade ([rules](https://docs.devin.ai/desktop/cascade/memories)) | always loaded; limited to 6,000 characters |
 | `~/.codeium/windsurf/skills/`, `~/.config/devin/skills/` | Windsurf Cascade ([skills](https://docs.devin.ai/desktop/cascade/skills)) | `.windsurf/skills`, `.devin/skills` |
 | `~/Documents/Cline/Rules/`, `~/Cline/Rules/`, `~/.cline/rules/` | Cline ([rules](https://docs.cline.bot/customization/cline-rules)) | `.clinerules/` |

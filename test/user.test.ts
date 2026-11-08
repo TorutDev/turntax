@@ -24,9 +24,16 @@ describe('user-level files', () => {
   it('classifies each file only for its own agent', () => {
     const units = classifyUser(home.files);
     const who = (path: string) => units.filter((u) => u.path === path && u.mode === 'always').map((u) => u.tool);
-    // VS Code Copilot reads ~/.claude/CLAUDE.md; OpenCode falls back to it because there is no ~/.config/opencode/AGENTS.md.
-    expect(who('~/.claude/CLAUDE.md')).toEqual(['claude-code', 'copilot', 'opencode', 'devin']);
+    // OpenCode falls back to it because there is no ~/.config/opencode/AGENTS.md. Copilot reads it only in the legacy
+    // VS Code Local harness, which is not modelled.
+    expect(who('~/.claude/CLAUDE.md')).toEqual(['claude-code', 'opencode', 'devin']);
     expect(who('~/.claude/rules/style.md')).toEqual(['claude-code']);
+    // Copilot CLI lists personal skills from ~/.agents/skills, not ~/.claude/skills.
+    const skill = (path: string) => ({ path, text: '---\nname: s\ndescription: A skill.\n---\nBody.' });
+    const copilotSkills = (path: string) =>
+      classifyUser([skill(path)]).filter((u) => u.tool === 'copilot' && u.part === 'description').map((u) => u.mode);
+    expect(copilotSkills('~/.claude/skills/s/SKILL.md')).toEqual([]);
+    expect(copilotSkills('~/.agents/skills/s/SKILL.md')).toEqual(['always']);
     expect(who('~/.codex/AGENTS.md')).toEqual(['codex']);
     expect(who('~/.gemini/GEMINI.md')).toEqual(['gemini-cli']);
     // Amp reads both of its user files.

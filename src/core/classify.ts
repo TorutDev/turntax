@@ -3,10 +3,14 @@ import { basename, configList, dirname, findImports, firstParagraph, parseFrontm
 import { TOOLS, type FileRule, type Frontmatter, type ToolSpec } from './tools.js';
 import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
 
+/** Each normalized file's size as on disk, CRLF included: a tool applies its size limits to the file it reads. */
+const RAW_BYTES = new WeakMap<RepoFile, number>();
+
 /** Works out which files each tool loads, when, and with what text. */
 export function classify(input: RepoFile[], toolIds?: ToolId[]): LoadedUnit[] {
   // Same text on every platform: a CRLF checkout must not count or compare differently.
   const files = input.map((f) => ({ path: f.path, text: f.text.replace(/\r\n/g, '\n') }));
+  files.forEach((f, i) => RAW_BYTES.set(f, new TextEncoder().encode(input[i]!.text).length));
   const byPath = new Map(files.map((f) => [f.path, f]));
   const tools = toolIds ? TOOLS.filter((t) => toolIds.includes(t.id)) : TOOLS;
   const units: LoadedUnit[] = [];
@@ -187,7 +191,7 @@ function applyHierarchical(
 ): LoadedUnit[] {
   // A skill or subagent file of the tool (Devin's agents/<name>/AGENT.md) is not also an instruction file for it.
   const ownSkill = (path: string) => tool.rules.some((r) => r.kind === 'skill' && r.pattern.test(path));
-  const matches = files.filter((f) => rule.names.includes(basename(f.path)) && !ownSkill(f.path));
+  const matches = files.filter((f) => rule.names.includes(basename(f.path)) && !ownSkill(f.path) && !rule.exclude?.test(f.path));
   if (!matches.length) return [];
 
   let conditionFails: string | null = null;
@@ -220,6 +224,11 @@ function applyHierarchical(
     }
     const level = levelOf(f.path, rule.sameLevelDirs);
     const isRoot = level === '';
+    if (isRoot && rule.skipOverBytes && (RAW_BYTES.get(f) ?? new TextEncoder().encode(f.text).length) > rule.skipOverBytes) {
+      const problem = `${tool.name} skips a ${basename(f.path)} over ${rule.skipOverBytes / 1024 / 1024} MiB at launch and loads none of it.`;
+      out.push(unit(tool.id, f.path, 'ignored', problem, f.text, { problem }));
+      continue;
+    }
     // Claude reads a subdirectory AGENTS.md only when that directory has no CLAUDE.md of its own.
     if (
       rule.condition === 'claude-reads-agents-md' &&

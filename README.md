@@ -32,7 +32,7 @@ Each agent's documented loading rules decide what is sent on every turn, what lo
 | Devin Local / Devin CLI | `AGENTS.md`, `AGENTS.local.md`, `AGENT.md`, `.windsurfrules`, `CLAUDE.md` at every level, `.devin/rules/`, `.windsurf/rules/`, `.cursor/rules/`, skills |
 | Factory Droid | `AGENTS.md` / `CLAUDE.md` (also in `.factory`, `.agents`, `.agent`), `DESIGN.md`, `.factory/skills`, `.agents/skills`, `.factory/droids` |
 | Gemini CLI | `GEMINI.md`, skills in `.agents` and `.gemini` |
-| GitHub Copilot | `.github/copilot-instructions.md`, `.github/instructions/`, `AGENTS.md`, `CLAUDE.md`, `.claude/rules`, skills in `.github`, `.claude`, `.agents` (VS Code Local harness defaults) |
+| GitHub Copilot | `.github/copilot-instructions.md`, `.github/instructions/`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.claude/rules`, skills in `.github`, `.claude`, `.agents` (as Copilot CLI loads them) |
 | Goose | `.goosehints`, `AGENTS.md`, `@`-included files, skills in `.agents`, `.goose`, `.claude` |
 | Google Jules | root `AGENTS.md` |
 | JetBrains Junie | `.junie/AGENTS.md`, or `AGENTS.md` with `.junie/rules/`, or `.junie/guidelines`; skills in `.junie`, `.agents` |
@@ -215,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TorutDev/turntax@v0.9.0
+      - uses: TorutDev/turntax@v0.10.0
         with:
           max-increase: 500      # optional: fail when an agent grows by more than 500 tokens per turn
           # max-tokens: 8000     # optional: absolute budget
@@ -232,7 +232,7 @@ The repository is also a [pre-commit](https://pre-commit.com) hook, which fails 
 ```yaml
 repos:
   - repo: https://github.com/TorutDev/turntax
-    rev: v0.9.0
+    rev: v0.10.0
     hooks:
       - id: turntax
         args: [--max-tokens, '8000']

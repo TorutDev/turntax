@@ -3,7 +3,7 @@
 - id: turntax
   name: turntax
   description: Fail when an agent's instruction files go over a per-turn token budget (--max-tokens, or maxTokens in turntax.config.json).
-  entry: npx --yes turntax@0.9.0
+  entry: npx --yes turntax@0.10.0
   language: system
   pass_filenames: false
   always_run: true

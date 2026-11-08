@@ -43,17 +43,15 @@ const after = (plan: ReturnType<typeof planFixes>, path: string) => plan.changes
 
 const files = await loadFixture('mixed');
 
-// Copilot in VS Code reads the root CLAUDE.md but no nested instruction file, so the API section can move only
-// for the other agents.
-const MIXED_TOOLS = TOOL_IDS.filter((t) => t !== 'copilot');
+// Every agent that reads the root CLAUDE.md also reads packages/api/CLAUDE.md, so the API section can move.
+const MIXED_TOOLS = TOOL_IDS;
 
 describe('planFixes on the mixed fixture', () => {
   const plan = planFixes(files, { exists: existsIn(fixture('mixed')), tools: MIXED_TOOLS });
 
-  it('keeps the API section where it is for every agent, since Copilot would lose it', () => {
+  it('moves the API section for every agent, since Copilot also reads the nested CLAUDE.md', () => {
     const all = planFixes(files, { exists: existsIn(fixture('mixed')) });
-    expect(all.fixes.map((f) => f.kind)).toEqual(['misconfigured']);
-    expect(all.skipped.find((s) => s.kind === 'scopable-section')!.reason).toMatch(/packages\/api\/CLAUDE\.md \(GitHub Copilot would lose context\)/);
+    expect(all.fixes.map((f) => f.kind)).toEqual(['misconfigured', 'scopable-section']);
   });
 
   it('renames a .md rule in .cursor/rules to .mdc', () => {
@@ -65,7 +63,7 @@ describe('planFixes on the mixed fixture', () => {
   it('moves the API section into the nested CLAUDE.md that Claude Code and Cursor read there', () => {
     const fix = plan.fixes.find((f) => f.kind === 'scopable-section')!;
     expect(fix.paths).toEqual(['CLAUDE.md', 'packages/api/CLAUDE.md']);
-    expect(fix.message).toMatch(/Not kept for GitHub Copilot \(outside --tools\)\.$/);
+    expect(fix.message).not.toMatch(/Not kept for/);
     expect(fix.savingTokens).toBeGreaterThan(100);
     expect(after(plan, 'CLAUDE.md')).not.toContain('## API package');
     // A Windows checkout may have CRLF fixtures; the fix keeps each file's line endings.
@@ -439,13 +437,12 @@ describe('scopable sections', () => {
     const message = planFixes(files, { exists, tools: ['codex', 'cursor', 'claude-code'] }).fixes[0]!.message;
     expect(message).toMatch(/ Not kept for [^.]*\bZed\b[^.]* \(outside --tools\)\.$/);
     expect(message).toMatch(/Not kept for [^.]*JetBrains Junie/);
-    // Agents that read the nested AGENTS.md as well are not named; VS Code Copilot reads no nested AGENTS.md by default.
-    expect(message).not.toMatch(/Not kept for [^.]*(OpenAI Codex|Cursor|Claude Code)/);
-    expect(message).toMatch(/Not kept for [^.]*GitHub Copilot/);
+    // Agents that read the nested AGENTS.md as well are not named.
+    expect(message).not.toMatch(/Not kept for [^.]*(OpenAI Codex|Cursor|Claude Code|GitHub Copilot)/);
     const all = planFixes(files, { exists, tools: ['codex', 'cursor', 'claude-code', 'zed', 'junie'] });
     expect(all.fixes).toEqual([]);
     const other = planFixes([{ path: 'CLAUDE.md', text: `# Rules\n\n${API_SECTION}` }], { exists, tools: ['claude-code', 'cursor'] });
-    expect(other.fixes[0]!.message).toMatch(/Not kept for GitHub Copilot, Zed, OpenCode, Kilo Code \(outside --tools\)\.$/);
+    expect(other.fixes[0]!.message).toMatch(/Not kept for Zed, OpenCode, Kilo Code \(outside --tools\)\.$/);
   });
 
   it('does not count a move as a saving for agents that load nested files every turn', () => {

@@ -27,6 +27,9 @@ export const SKIP_DIRS = new Set([
   '.cache',
 ]);
 
+/** The deepest @import chain any agent follows (Copilot's six hops), at least five; discovery reads that far. */
+const IMPORT_LEVELS = Math.max(5, ...TOOLS.flatMap((t) => t.rules.map((r) => (r.kind === 'hierarchical' ? (r.importDepth ?? 0) : 0))));
+
 /** `.md` files in `.cursor/rules`, which Cursor ignores; `--fix` renames them to `.mdc`. */
 export const CURSOR_MD_RULE = /(^|\/)\.cursor\/rules\/.+\.md$/;
 
@@ -118,7 +121,8 @@ function references(f: RepoFile, paths: string[]): string[] {
 }
 
 /**
- * Adds in-repo files reached through @imports or config read lists (up to five levels) to `found`.
+ * Adds in-repo files reached through @imports or config read lists to `found`, as deep as the deepest import chain any
+ * agent follows.
  * `paths` lists the repository's files, for glob mentions in the files found first (Amp follows mentions one level).
  */
 export async function addImports(
@@ -128,7 +132,7 @@ export async function addImports(
 ): Promise<void> {
   const all = [...paths];
   let queue = [...found.values()];
-  for (let depth = 0; depth < 5 && queue.length; depth++) {
+  for (let depth = 0; depth < IMPORT_LEVELS && queue.length; depth++) {
     const next: RepoFile[] = [];
     for (const f of queue) {
       for (const rel of references(f, depth === 0 ? all : [])) {
