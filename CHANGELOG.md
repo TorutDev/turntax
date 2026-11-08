@@ -7,6 +7,8 @@
   - `@imports` in `AGENTS.md` and `CLAUDE.md` are followed.
   - `.claude/rules` without `paths` and instructions files without `applyTo` or with `applyTo: **` load every turn.
   - `.claude/CLAUDE.md` and `CLAUDE.local.md` are not read.
+  - With `--include-user`, `~/.claude/CLAUDE.md`, `~/.claude/rules` and `~/.claude/skills` no longer count for Copilot; `~/.copilot` and `~/.agents/skills` still do.
+  - An instructions file with a `description` and no `applyTo` keeps its description always and its body on demand; that case was not observed.
 - A root `CLAUDE.md` over 4 MiB counts as not loaded for Claude Code, which skips it, and the finding says so.
 - `scripts/observe.mjs` checks Copilot CLI too, and `--keep` keeps the fixtures for a closer look.
 

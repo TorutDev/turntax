@@ -399,6 +399,21 @@ describe('Claude Code size limits', () => {
     expect(classify([{ path: 'CLAUDE.md', text: 'word '.repeat(1000) }], ['claude-code'])[0]!.mode).toBe('always');
   });
 
+  it('measures the 4 MiB on the file as it is on disk, CRLF included', () => {
+    // Under 4 MiB once \r\n becomes \n, over it as checked out with CRLF.
+    const text = Array.from({ length: 65078 }, () => 'x'.repeat(63)).join('\r\n');
+    expect(classify([{ path: 'CLAUDE.md', text }], ['claude-code'])[0]!.mode).toBe('ignored');
+  });
+
+  it('discovers an @import chain as deep as Copilot follows it', async () => {
+    const texts: Record<string, string> = { 'docs/i6.md': 'Six.' };
+    for (let i = 1; i <= 5; i++) texts[`docs/i${i}.md`] = `Hop ${i}.\n@i${i + 1}.md`;
+    const found = new Map([['AGENTS.md', { path: 'AGENTS.md', text: 'Root.\n@docs/i1.md' }]]);
+    await addImports(found, (p) => texts[p] ?? null, Object.keys(texts));
+    expect(found.has('docs/i6.md')).toBe(true);
+    expect(find(classify([...found.values()], ['copilot']), 'copilot', 'docs/i6.md')!.mode).toBe('always');
+  });
+
   it('limits a CLAUDE.md read at launch to 4 MiB, and no nested file', () => {
     // Tokenising a 4 MiB file is too slow for a test, so the limit entry is checked directly.
     const limit = getTool('claude-code').limits.find((l) => l.unit === 'bytes')!;

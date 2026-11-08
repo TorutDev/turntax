@@ -263,7 +263,7 @@ try {
     const all = markersIn(Object.values(files).join('\n'));
     const rows = all.map((name) => ({ name, expected: expected.includes(name), observed: observed.includes(name) }));
     byId.set(s.id, { files, dir });
-    results.push({ id: s.id, tool: s.tool, title: s.title, usedTools: answer.usedTools, answer: answer.text, rows });
+    results.push({ id: s.id, tool: s.tool, title: s.title, usedTools: answer.usedTools, answer: answer.text, ...(answer.skillFiles ? { skillsListed: answer.skillFiles } : {}), rows });
     const misses = rows.filter((r) => r.expected !== r.observed);
     process.stderr.write(`${s.id}: ${misses.length ? `${misses.length} mismatch(es)` : 'as expected'}${answer.usedTools ? ' (the agent used a tool; rerun)' : ''}\n`);
   }

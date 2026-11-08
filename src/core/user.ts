@@ -50,11 +50,11 @@ export const USER_FILES: UserFileRule[] = [
   { tool: 'gemini-cli', pattern: /^\.gemini\/GEMINI\.md$/, as: () => 'GEMINI.md', source: 'https://geminicli.com/docs/cli/gemini-md/' },
   { tool: 'gemini-cli', pattern: skills('.agents|.gemini'), as: same, source: GEMINI_SKILLS },
   { tool: 'cursor', pattern: skills('.agents|.cursor|.claude|.codex', RECURSIVE), as: same, source: CURSOR_SKILLS },
-  // VS Code: personal Copilot instructions and skills, plus the Claude files it reads by default.
+  // Personal Copilot instructions and skills. Copilot CLI lists ~/.agents/skills but not ~/.claude/skills (observed).
   { tool: 'copilot', pattern: /^\.copilot\/copilot-instructions\.md$/, as: () => '.github/copilot-instructions.md', source: VSCODE_INSTRUCTIONS },
   { tool: 'copilot', pattern: /^\.copilot\/instructions\/.+\.instructions\.md$/, as: moved('.copilot/instructions/', '.github/instructions/'), source: VSCODE_INSTRUCTIONS },
   { tool: 'copilot', pattern: skills('.copilot'), as: moved('.copilot/skills/', '.github/skills/'), source: VSCODE_SKILLS },
-  { tool: 'copilot', pattern: skills('.agents|.claude'), as: same, source: VSCODE_SKILLS },
+  { tool: 'copilot', pattern: skills('.agents'), as: same, source: VSCODE_SKILLS },
   // Read through its own rule (6,000-character limit), not as .windsurfrules.
   { tool: 'windsurf', pattern: /^\.codeium\/windsurf\/memories\/global_rules\.md$/, as: same, source: 'https://docs.devin.ai/desktop/cascade/memories' },
   { tool: 'windsurf', pattern: skills('.codeium/windsurf'), as: moved('.codeium/windsurf/skills/', '.windsurf/skills/'), source: WINDSURF_SKILLS },

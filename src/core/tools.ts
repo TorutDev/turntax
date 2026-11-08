@@ -48,6 +48,8 @@ export type FileRule =
       maxBytes?: number;
       /** A root file over this many bytes is skipped whole (Claude Code's 4 MiB). */
       skipOverBytes?: number;
+      /** Paths with a matching name that the tool does not read this way (Copilot's .claude/CLAUDE.md). */
+      exclude?: RegExp;
       /** Only read when the condition holds for the repository. */
       condition?: 'claude-reads-agents-md';
       note?: string;
@@ -463,6 +465,8 @@ export const TOOLS: ToolSpec[] = [
         rootPrefixes: ['.github/instructions/'],
         decide: (fm) => {
           const applyTo = str(fm.applyTo).trim();
+          if (!applyTo && has(fm, 'description'))
+            return { mode: 'on-demand', trigger: 'agent decides from description', descriptionOnly: true, note: 'Not observed; VS Code says the agent decides from the description.' };
           if (!applyTo) return { mode: 'always', trigger: 'no applyTo', note: 'Loaded every turn in Copilot CLI (observed); the docs do not say.' };
           if (/^\*\*(\/\*)?$/.test(applyTo)) return { mode: 'always', trigger: `applyTo: ${applyTo}` };
           return { mode: 'on-demand', trigger: `applyTo: ${applyTo}` };
@@ -483,6 +487,8 @@ export const TOOLS: ToolSpec[] = [
       {
         kind: 'hierarchical',
         names: ['AGENTS.md', 'CLAUDE.md'],
+        // Reported by the ignored rule above.
+        exclude: /^\.claude\/CLAUDE\.md$/,
         nested: 'on-demand',
         nestedTrigger: 'when Copilot works on a file in',
         // At least six hops were followed when observed; the limit is not documented.
@@ -502,7 +508,7 @@ export const TOOLS: ToolSpec[] = [
       'The VS Code Local harness, now a legacy option, reads differently: CLAUDE.md, CLAUDE.local.md and .claude/CLAUDE.md at the root, .claude/rules on demand, no nested AGENTS.md by default (chat.useNestedAgentsMdFiles) and no GEMINI.md.',
       'Copilot cloud agent uses the nearest AGENTS.md, or a single root CLAUDE.md or GEMINI.md instead.',
       'Copilot code review also reads REVIEW.md.',
-      'User-level ~/.claude/CLAUDE.md and ~/.claude/rules are read by the legacy VS Code Local harness and are not counted. Copilot CLI also reads ~/.copilot/copilot-instructions.md, ~/.copilot/instructions/**/*.instructions.md and folders in COPILOT_CUSTOM_INSTRUCTIONS_DIRS; these are not counted.',
+      'With --include-user, ~/.copilot/copilot-instructions.md, ~/.copilot/instructions, ~/.copilot/skills and ~/.agents/skills are counted. ~/.claude/CLAUDE.md, ~/.claude/rules and ~/.claude/skills, read by the legacy VS Code Local harness, and folders in COPILOT_CUSTOM_INSTRUCTIONS_DIRS are not.',
       'Same-name skills in different folders are not merged (VS Code shows both); both are counted.',
     ],
   },

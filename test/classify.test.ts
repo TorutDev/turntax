@@ -339,6 +339,18 @@ describe('Copilot', () => {
     for (const p of ['plain', 'all', 'sub/deep']) expect(find(u, 'copilot', `.github/instructions/${p}.instructions.md`)!.mode, p).toBe('always');
   });
 
+  it('keeps the description of an instructions file with a description and no applyTo always, and its body on demand', () => {
+    const u = classify([{ path: '.github/instructions/review.instructions.md', text: '---\ndescription: Code review rules\n---\nReview carefully.' }], ['copilot']);
+    expect(find(u, 'copilot', '.github/instructions/review.instructions.md', 'description')!.mode).toBe('always');
+    expect(find(u, 'copilot', '.github/instructions/review.instructions.md', 'body')!.mode).toBe('on-demand');
+  });
+
+  it('leaves the other agents alone where a file of theirs sits in a folder they ignore', () => {
+    // Only Copilot excludes .claude/CLAUDE.md from its hierarchical rule; Cursor still reads an AGENTS.md anywhere.
+    const u = classify([{ path: '.cursor/rules/AGENTS.md', text: 'Odd place.' }], ['cursor']);
+    expect(u.find((x) => x.path === '.cursor/rules/AGENTS.md' && x.part === 'full')!.mode).toBe('on-demand');
+  });
+
   it('does not read .claude/CLAUDE.md or CLAUDE.local.md, and reads .claude/rules every turn without paths', () => {
     const u = classify(
       [
