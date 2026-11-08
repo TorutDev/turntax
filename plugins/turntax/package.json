@@ -4,6 +4,6 @@
   "description": "Pins the turntax package that this plugin's MCP server runs (npx -y turntax@<version> mcp).",
   "license": "MIT",
   "dependencies": {
-    "turntax": "0.9.0"
+    "turntax": "0.10.0"
   }
 }

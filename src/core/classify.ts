@@ -3,13 +3,13 @@ import { basename, configList, dirname, findImports, firstParagraph, parseFrontm
 import { TOOLS, type FileRule, type Frontmatter, type ToolSpec } from './tools.js';
 import type { LoadMode, LoadedUnit, RepoFile, ToolId } from './types.js';
 
-/** Works out which files each tool loads, when, and with what text. */
+/** Each normalized file's size as on disk, CRLF included: a tool applies its size limits to the file it reads. */
 const RAW_BYTES = new WeakMap<RepoFile, number>();
 
+/** Works out which files each tool loads, when, and with what text. */
 export function classify(input: RepoFile[], toolIds?: ToolId[]): LoadedUnit[] {
   // Same text on every platform: a CRLF checkout must not count or compare differently.
   const files = input.map((f) => ({ path: f.path, text: f.text.replace(/\r\n/g, '\n') }));
-  // Sizes as on disk, CRLF included: a tool applies its size limits to the file it reads.
   files.forEach((f, i) => RAW_BYTES.set(f, new TextEncoder().encode(input[i]!.text).length));
   const byPath = new Map(files.map((f) => [f.path, f]));
   const tools = toolIds ? TOOLS.filter((t) => toolIds.includes(t.id)) : TOOLS;

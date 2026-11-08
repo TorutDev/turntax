@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 (2026-11-08)
 
 - GitHub Copilot is modelled on what Copilot CLI 1.0.107 loads, checked with `scripts/observe.mjs` (62 of 62 checks), instead of the legacy VS Code Local harness. VS Code's Copilot harness shares that runtime. Counts change:
   - `GEMINI.md` is read with `AGENTS.md` and `CLAUDE.md`, and nested copies of all three load when Copilot works in their folder.
   - `@imports` in `AGENTS.md` and `CLAUDE.md` are followed.
-  - `.claude/rules` without `paths` and instructions files without `applyTo` or with `applyTo: **` load every turn.
+  - `.claude/rules` without `paths`, instructions files with no front matter (observed) and with `applyTo: **` or `**/*` load every turn.
   - `.claude/CLAUDE.md` and `CLAUDE.local.md` are not read.
   - With `--include-user`, `~/.claude/CLAUDE.md`, `~/.claude/rules` and `~/.claude/skills` no longer count for Copilot; `~/.copilot` and `~/.agents/skills` still do.
   - An instructions file with a `description` and no `applyTo` keeps its description always and its body on demand; that case was not observed.

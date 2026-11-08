@@ -28,6 +28,12 @@ describe('user-level files', () => {
     // VS Code Local harness, which is not modelled.
     expect(who('~/.claude/CLAUDE.md')).toEqual(['claude-code', 'opencode', 'devin']);
     expect(who('~/.claude/rules/style.md')).toEqual(['claude-code']);
+    // Copilot CLI lists personal skills from ~/.agents/skills, not ~/.claude/skills.
+    const skill = (path: string) => ({ path, text: '---\nname: s\ndescription: A skill.\n---\nBody.' });
+    const copilotSkills = (path: string) =>
+      classifyUser([skill(path)]).filter((u) => u.tool === 'copilot' && u.part === 'description').map((u) => u.mode);
+    expect(copilotSkills('~/.claude/skills/s/SKILL.md')).toEqual([]);
+    expect(copilotSkills('~/.agents/skills/s/SKILL.md')).toEqual(['always']);
     expect(who('~/.codex/AGENTS.md')).toEqual(['codex']);
     expect(who('~/.gemini/GEMINI.md')).toEqual(['gemini-cli']);
     // Amp reads both of its user files.

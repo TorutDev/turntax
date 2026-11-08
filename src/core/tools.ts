@@ -467,7 +467,7 @@ export const TOOLS: ToolSpec[] = [
           const applyTo = str(fm.applyTo).trim();
           if (!applyTo && has(fm, 'description'))
             return { mode: 'on-demand', trigger: 'agent decides from description', descriptionOnly: true, note: 'Not observed; VS Code says the agent decides from the description.' };
-          if (!applyTo) return { mode: 'always', trigger: 'no applyTo', note: 'Loaded every turn in Copilot CLI (observed); the docs do not say.' };
+          if (!applyTo) return { mode: 'always', trigger: 'no applyTo', note: 'A file with no front matter loaded every turn in Copilot CLI (observed); the docs do not say.' };
           if (/^\*\*(\/\*)?$/.test(applyTo)) return { mode: 'always', trigger: `applyTo: ${applyTo}` };
           return { mode: 'on-demand', trigger: `applyTo: ${applyTo}` };
         },

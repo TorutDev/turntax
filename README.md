@@ -215,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TorutDev/turntax@v0.9.0
+      - uses: TorutDev/turntax@v0.10.0
         with:
           max-increase: 500      # optional: fail when an agent grows by more than 500 tokens per turn
           # max-tokens: 8000     # optional: absolute budget
@@ -232,7 +232,7 @@ The repository is also a [pre-commit](https://pre-commit.com) hook, which fails 
 ```yaml
 repos:
   - repo: https://github.com/TorutDev/turntax
-    rev: v0.9.0
+    rev: v0.10.0
     hooks:
       - id: turntax
         args: [--max-tokens, '8000']

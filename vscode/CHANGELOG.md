@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+- The engine of turntax 0.10.0: GitHub Copilot is counted as Copilot CLI loads instruction files (checked against Copilot CLI 1.0.107), which VS Code's Copilot harness shares, and a root `CLAUDE.md` over 4 MiB counts as skipped by Claude Code.
+
 ## 0.4.0
 
 - The engine of turntax 0.9.0: loading rules re-checked against every agent's docs on 2026-11-06 (Augment Code reads `AGENTS.md` instead of a `CLAUDE.md` in the same folder, Devin's custom subagents are counted, Claude Code size limits), and duplicate findings and fixes leave table rows alone.
