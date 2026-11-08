@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+- The engine of turntax 0.9.0: loading rules re-checked against every agent's docs on 2026-11-06 (Augment Code reads `AGENTS.md` instead of a `CLAUDE.md` in the same folder, Devin's custom subagents are counted, Claude Code size limits), and duplicate findings and fixes leave table rows alone.
+
 ## 0.3.0
 
 - Safe fixes can link a `CLAUDE.md` that repeats most of the `AGENTS.md` next to it with `@AGENTS.md`, as in turntax 0.8.0.

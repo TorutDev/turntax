@@ -210,6 +210,21 @@ describe('linking CLAUDE.md to AGENTS.md', () => {
     expect(plan.changes).toEqual([]);
   });
 
+  it('treats a table without leading pipes the same way', () => {
+    const table = 'Command with a long name | What the command is for\n--- | ---\nnpm test --workspace=api | Runs the tests of the API';
+    const linked = planFixes([
+      { path: 'AGENTS.md', text: `${rules}\n\n${table}\n` },
+      { path: 'CLAUDE.md', text: `${rules}\n\n${table}\nnpm run e2e | Browser\n` },
+    ]);
+    expect(after(linked, 'CLAUDE.md')).toBe(`@AGENTS.md\n\n${table}\nnpm run e2e | Browser\n`);
+    const row = 'npm test --workspace=api | Runs the tests of the API';
+    const deduped = planFixes([
+      { path: 'AGENTS.md', text: `a | b\n--- | ---\n${row}\n` },
+      { path: '.cursor/rules/always.mdc', text: `---\nalwaysApply: true\n---\n\nc | d\n--- | ---\n${row}\n` },
+    ]);
+    expect(deduped.changes).toEqual([]);
+  });
+
   it('does not bring back a heading from inside a comment', () => {
     const comment = '<!--\n## Old notes\nA note for the maintainers about the old process.\n-->';
     const plan = planFixes([

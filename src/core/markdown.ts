@@ -73,6 +73,27 @@ export function linesWithFences(text: string): Array<{ line: string; inFence: bo
   return out;
 }
 
+const TABLE_DIVIDER = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$/;
+
+/**
+ * Indexes of the lines (as `linesWithFences` splits them) that belong to a Markdown table outside fenced code: rows
+ * that start with a pipe, and tables without one (a header, a `--- | ---` divider, then the rows below it).
+ */
+export function tableLines(text: string): Set<number> {
+  const lines = linesWithFences(text);
+  const out = new Set<number>();
+  const isRow = (i: number) => lines[i] !== undefined && !lines[i].inFence && lines[i].line.includes('|') && lines[i].line.trim() !== '';
+  lines.forEach(({ line, inFence }, i) => {
+    if (inFence) return;
+    if (/^\s*\|/.test(line)) out.add(i);
+    if (TABLE_DIVIDER.test(line) && isRow(i - 1)) {
+      out.add(i - 1);
+      for (let j = i; isRow(j); j++) out.add(j);
+    }
+  });
+  return out;
+}
+
 /** Removes block-level HTML comments outside fenced code, as Claude Code does for CLAUDE.md. */
 export function stripHtmlComments(text: string): string {
   const kept: string[] = [];
