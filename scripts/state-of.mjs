@@ -576,8 +576,11 @@ async function recount(file) {
   const results = await mapLimited(items, REPO_CONCURRENCY, scan);
   const repos = [];
   const failed = [];
+  const empty = [];
   results.forEach((r, i) => {
     if (r.status === 'qualifying') repos.push({ rank: before.repos[i].rank, ...r.record });
+    // Read, but no agent loads anything from it any more: a change the rules made.
+    else if (r.status === 'none') empty.push(items[i].full_name);
     else failed.push(`${items[i].full_name} (${r.status}${r.reason ? `: ${r.reason}` : ''})`);
   });
   const summary = summarize(repos);
@@ -586,11 +589,12 @@ async function recount(file) {
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, `${JSON.stringify({ recountOf: before.edition, countedBefore: before.turntaxVersion, turntaxVersion: version, repos, summary }, null, 1)}\n`);
 
-  const pick = (s) => ({ median: s.maxPerTurnO200kLinksOnce.median, p90: s.maxPerTurnO200kLinksOnce.p90 });
-  const was = pick(before.summary);
-  const now = pick(summary);
   const byName = new Map(before.repos.map((r) => [r.full_name, r]));
   const perTurn = (r) => (r.maxPerTurnLinksOnce ?? r.maxPerTurn).o200k;
+  // Both sides over the repositories read again, so a repository that could not be read does not move the numbers.
+  const pick = (list) => ({ median: percentile(list.map(perTurn), 0.5), p90: percentile(list.map(perTurn), 0.9) });
+  const was = pick(repos.map((r) => byName.get(r.full_name)));
+  const now = pick(repos);
   const moved = repos.map((r) => ({ name: r.full_name, was: perTurn(byName.get(r.full_name)), now: perTurn(r) })).filter((m) => m.was !== m.now);
   // Per agent: how many repositories each agent loads more or less for.
   const agents = {};
@@ -605,7 +609,8 @@ async function recount(file) {
     }
   }
   log(`Recount of ${before.edition} (counted with ${before.turntaxVersion}) with ${version}: ${repos.length} of ${items.length} repositories read again.`);
-  if (failed.length) log(`Not read: ${failed.join(', ')}`);
+  if (failed.length) log(`Not read, and left out of the comparison: ${failed.join(', ')}`);
+  if (empty.length) log(`No longer counted for any agent with these rules: ${empty.join(', ')}`);
   log(`Largest per-turn total, median ${was.median} -> ${now.median}, 90th percentile ${was.p90} -> ${now.p90}.`);
   log(`${moved.length} repositories changed: ${moved.filter((m) => m.now > m.was).length} up, ${moved.filter((m) => m.now < m.was).length} down.`);
   for (const [id, a] of Object.entries(agents).sort((x, y) => Math.abs(y[1].tokens) - Math.abs(x[1].tokens)))

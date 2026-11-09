@@ -7,6 +7,7 @@ import { classify } from '../src/core/classify.js';
 import { getTool } from '../src/core/tools.js';
 import { addImports, isInstructionFile } from '../src/core/files.js';
 import { discover } from '../src/node/discover.js';
+import { classifyUser } from '../src/core/user.js';
 import { find } from './helpers.js';
 
 describe('Cline', () => {
@@ -438,6 +439,14 @@ describe('Claude Code skill listing budget', () => {
     expect(a).toMatchObject({ severity: 'high', tools: ['claude-code'], savingTokens: null });
     expect(a!.message).toMatch(/^160 skill and command descriptions take about 3\d,\d{3} characters, over the listing budget of 30,000\./);
     expect(a!.paths).toHaveLength(3);
+  });
+
+  it('counts only the repository: user skills (--include-user) neither trigger nor add to the finding', () => {
+    const repo = Array.from({ length: 100 }, (_, i) => skill('.claude/skills', i));
+    const user = Array.from({ length: 100 }, (_, i) => skill('~/.claude/skills', i));
+    const units = [...classify(repo, ['claude-code']), ...classifyUser(user).filter((u) => u.tool === 'claude-code')];
+    expect(units.some((u) => u.scope === 'user' && u.part === 'description')).toBe(true);
+    expect(buildAdvice(units, [...repo, ...user]).filter((a) => /listing budget/.test(a.message))).toEqual([]);
   });
 
   it('stays quiet under the budget, and leaves out subagents and skills hidden from the model', () => {

@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 (2026-11-09)
 
-- A finding when a repository's Claude Code skill and command descriptions pass the skill listing budget: 30,000 characters on a 1M-token context window, as Claude Code reports it in its debug log. Past it, Claude Code drops the descriptions of the skills invoked least. turntax counts each entry as Claude Code does, which matched its count for 160 skills to the character.
+- A finding when a repository's Claude Code skill and command descriptions pass the skill listing budget: 30,000 characters on a 1M-token context window, as Claude Code reports it in its debug log. Past it, Claude Code drops the descriptions of the skills invoked least. turntax counts each entry as Claude Code 2.1.296 does, which matched its count for a fixture of 160 skills; user skills are left out.
 - `scripts/state-of.mjs --recount <edition.json> --out <file>` counts an edition's repositories again at the commits it pinned, with the current turntax, and prints how the median, the 90th percentile and each agent move.
 
 ## 0.10.0 (2026-11-08)

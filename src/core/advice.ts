@@ -180,7 +180,9 @@ function listingBudgets(units: LoadedUnit[]): Advice[] {
   for (const tool of TOOLS) {
     const budget = tool.listingBudget;
     if (!budget) continue;
-    const listed = units.filter((u) => u.tool === tool.id && u.part === 'description' && u.mode === 'always' && budget.pattern.test(u.path));
+    // The repository's own skills: user and plugin skills share the budget, but a finding on a repository file must be
+    // about the repository.
+    const listed = units.filter((u) => !u.scope && u.tool === tool.id && u.part === 'description' && u.mode === 'always' && budget.pattern.test(u.path));
     const chars = listed.reduce((n, u) => n + u.text.length + budget.perEntry, 0);
     if (chars <= budget.chars) continue;
     const largest = [...listed].sort((a, b) => b.text.length - a.text.length);
