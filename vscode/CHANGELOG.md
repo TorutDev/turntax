@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+
+- The engine of turntax 0.11.0: a finding when the repository's Claude Code skill and command descriptions pass the skill listing budget (30,000 characters on a 1M-token context window).
+
 ## 0.5.0
 
 - The engine of turntax 0.10.0: GitHub Copilot is counted as Copilot CLI loads instruction files (checked against Copilot CLI 1.0.107), which VS Code's Copilot harness shares, and a root `CLAUDE.md` over 4 MiB counts as skipped by Claude Code.

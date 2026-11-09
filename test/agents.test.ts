@@ -7,6 +7,7 @@ import { classify } from '../src/core/classify.js';
 import { getTool } from '../src/core/tools.js';
 import { addImports, isInstructionFile } from '../src/core/files.js';
 import { discover } from '../src/node/discover.js';
+import { classifyUser } from '../src/core/user.js';
 import { find } from './helpers.js';
 
 describe('Cline', () => {
@@ -420,6 +421,39 @@ describe('Claude Code size limits', () => {
     expect(limit).toMatchObject({ max: 4 * 1024 * 1024, severity: 'limit' });
     for (const p of ['CLAUDE.md', 'CLAUDE.local.md', '.claude/CLAUDE.md', '~/.claude/CLAUDE.md']) expect(limit.pattern.test(p), p).toBe(true);
     for (const p of ['pkg/CLAUDE.md', 'pkg/.claude/CLAUDE.md']) expect(limit.pattern.test(p), p).toBe(false);
+  });
+});
+
+describe('Claude Code skill listing budget', () => {
+  const desc = (i: number) => `Handles workflow ${i} for reports, exports and audits of the billing service; use it when the user asks about ${i}.`.padEnd(190, '.');
+  const skill = (dir: string, i: number, extra = '') => ({ path: `${dir}/s${i}/SKILL.md`, text: `---\nname: s${i}\ndescription: ${desc(i)}\n${extra}---\nBody.` });
+  const budget = (files: Array<{ path: string; text: string }>) =>
+    buildAdvice(classify(files, ['claude-code']), files).filter((a) => a.kind === 'size-limit' && /listing budget/.test(a.message));
+
+  it('flags skill and command descriptions over 30,000 characters', () => {
+    const files = [
+      ...Array.from({ length: 140 }, (_, i) => skill('.claude/skills', i)),
+      ...Array.from({ length: 20 }, (_, i) => ({ path: `.claude/commands/c${i}.md`, text: `---\ndescription: ${desc(i)}\n---\nDo it.` })),
+    ];
+    const [a] = budget(files);
+    expect(a).toMatchObject({ severity: 'high', tools: ['claude-code'], savingTokens: null });
+    expect(a!.message).toMatch(/^160 skill and command descriptions take about 3\d,\d{3} characters, over the listing budget of 30,000\./);
+    expect(a!.paths).toHaveLength(3);
+  });
+
+  it('counts only the repository: user skills (--include-user) neither trigger nor add to the finding', () => {
+    const repo = Array.from({ length: 100 }, (_, i) => skill('.claude/skills', i));
+    const user = Array.from({ length: 100 }, (_, i) => skill('~/.claude/skills', i));
+    const units = [...classify(repo, ['claude-code']), ...classifyUser(user).filter((u) => u.tool === 'claude-code')];
+    expect(units.some((u) => u.scope === 'user' && u.part === 'description')).toBe(true);
+    expect(buildAdvice(units, [...repo, ...user]).filter((a) => /listing budget/.test(a.message))).toEqual([]);
+  });
+
+  it('stays quiet under the budget, and leaves out subagents and skills hidden from the model', () => {
+    expect(budget(Array.from({ length: 100 }, (_, i) => skill('.claude/skills', i)))).toEqual([]);
+    const hidden = Array.from({ length: 200 }, (_, i) => skill('.claude/skills', i, 'disable-model-invocation: true\n'));
+    const agents = Array.from({ length: 200 }, (_, i) => ({ path: `.claude/agents/a${i}.md`, text: `---\nname: a${i}\ndescription: ${desc(i)}\n---\nPrompt.` }));
+    expect(budget([...hidden, ...agents])).toEqual([]);
   });
 });
 
