@@ -144,6 +144,17 @@ export interface SizeLimit {
   source: string;
 }
 
+/** A budget the tool fits its skill listing into, dropping descriptions past it. */
+export interface ListingBudget {
+  /** Description units (by path) that share the budget. */
+  pattern: RegExp;
+  chars: number;
+  /** Characters each entry adds around `name: description`. */
+  perEntry: number;
+  text: string;
+  source: string;
+}
+
 export interface ToolSpec {
   id: ToolId;
   name: string;
@@ -153,6 +164,7 @@ export interface ToolSpec {
   checkedAt: string;
   rules: FileRule[];
   limits: SizeLimit[];
+  listingBudget?: ListingBudget;
   notes: string[];
 }
 
@@ -292,10 +304,19 @@ export const TOOLS: ToolSpec[] = [
         source: 'https://code.claude.com/docs/en/memory',
       },
     ],
+    listingBudget: {
+      // Skills and commands share the listing; subagents are listed apart.
+      pattern: /(?:^|\/)\.claude\/(?:skills|commands)\//,
+      chars: 30000,
+      // "- " and a newline per entry: 160 skills measured 19,190 characters in Claude Code 2.1.296's own count.
+      perEntry: 3,
+      text: "Claude Code fits skill and command descriptions into 1% of the context window, 30,000 characters on a 1M-token window (a 200K window has a fifth of that). Past it, it drops the descriptions of the skills invoked least, and user and plugin skills share the same budget.",
+      source: 'https://code.claude.com/docs/en/skills',
+    },
     notes: [
       'User files (~/.claude/CLAUDE.md, rules, skills, commands, agents) are counted only with --include-user; managed policy and auto-memory files are not counted.',
       'With the "claude-md-and-agents-md" setting Claude Code reads AGENTS.md as well; the default reads it only when no CLAUDE.md exists.',
-      'The skill listing is capped at 1% of the context window (skillListingBudgetFraction); past it, descriptions of the least-used skills are dropped. The cap is not applied here.',
+      'The skill listing is capped at 1% of the context window (skillListingBudgetFraction): 30,000 characters on a 1M-token window, as Claude Code 2.1.296 reported it. Past it, descriptions of the least-used skills are dropped. Every description is still counted here, and a finding says when the repository alone goes over.',
       'The 1,536-character description cap is configurable with skillListingMaxDescChars, and skillOverrides can list a skill by name only; neither is modelled.',
       'Skills with paths frontmatter load automatically only for matching files; how they are listed is not documented, so they are counted like other skills.',
       'Claude Code warns at startup when the combined subagent descriptions pass 15,000 tokens.',

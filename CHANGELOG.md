@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- A finding when a repository's Claude Code skill and command descriptions pass the skill listing budget: 30,000 characters on a 1M-token context window, as Claude Code reports it in its debug log. Past it, Claude Code drops the descriptions of the skills invoked least. turntax counts each entry as Claude Code does, which matched its count for 160 skills to the character.
+- `scripts/state-of.mjs --recount <edition.json> --out <file>` counts an edition's repositories again at the commits it pinned, with the current turntax, and prints how the median, the 90th percentile and each agent move.
+
 ## 0.10.0 (2026-11-08)
 
 - GitHub Copilot is modelled on what Copilot CLI 1.0.107 loads, checked with `scripts/observe.mjs` (62 of 62 checks), instead of the legacy VS Code Local harness. VS Code's Copilot harness shares that runtime. Counts change:

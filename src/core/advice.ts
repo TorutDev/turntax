@@ -45,6 +45,7 @@ export function buildAdvice(units: LoadedUnit[], files: RepoFile[], opts: Advice
   const advice: Advice[] = [
     ...misconfigured(units),
     ...sizeLimits(units, files),
+    ...listingBudgets(units),
     ...duplicates(units),
     ...contradictions(units, raw),
     ...sections(repo, opts.sectionTokens ?? DEFAULT_SECTION_TOKENS, raw, opts.exists),
@@ -169,6 +170,29 @@ function sizeLimits(units: LoadedUnit[], files: RepoFile[]): Advice[] {
         });
       }
     }
+  }
+  return out;
+}
+
+/** A tool's listed skill descriptions over the budget it fits them into. */
+function listingBudgets(units: LoadedUnit[]): Advice[] {
+  const out: Advice[] = [];
+  for (const tool of TOOLS) {
+    const budget = tool.listingBudget;
+    if (!budget) continue;
+    const listed = units.filter((u) => u.tool === tool.id && u.part === 'description' && u.mode === 'always' && budget.pattern.test(u.path));
+    const chars = listed.reduce((n, u) => n + u.text.length + budget.perEntry, 0);
+    if (chars <= budget.chars) continue;
+    const largest = [...listed].sort((a, b) => b.text.length - a.text.length);
+    out.push({
+      kind: 'size-limit',
+      severity: 'high',
+      tools: [tool.id],
+      paths: largest.slice(0, 3).map((u) => u.path),
+      message: `${listed.length} skill and command descriptions take about ${chars.toLocaleString('en-US')} characters, over the listing budget of ${budget.chars.toLocaleString('en-US')}. ${budget.text} Source: ${budget.source}`,
+      savingTokens: null,
+      savingNote: 'Fewer tokens load than counted, but skills past the budget lose the words Claude matches requests on; shorten descriptions or turn skills off.',
+    });
   }
   return out;
 }

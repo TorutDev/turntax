@@ -423,6 +423,31 @@ describe('Claude Code size limits', () => {
   });
 });
 
+describe('Claude Code skill listing budget', () => {
+  const desc = (i: number) => `Handles workflow ${i} for reports, exports and audits of the billing service; use it when the user asks about ${i}.`.padEnd(190, '.');
+  const skill = (dir: string, i: number, extra = '') => ({ path: `${dir}/s${i}/SKILL.md`, text: `---\nname: s${i}\ndescription: ${desc(i)}\n${extra}---\nBody.` });
+  const budget = (files: Array<{ path: string; text: string }>) =>
+    buildAdvice(classify(files, ['claude-code']), files).filter((a) => a.kind === 'size-limit' && /listing budget/.test(a.message));
+
+  it('flags skill and command descriptions over 30,000 characters', () => {
+    const files = [
+      ...Array.from({ length: 140 }, (_, i) => skill('.claude/skills', i)),
+      ...Array.from({ length: 20 }, (_, i) => ({ path: `.claude/commands/c${i}.md`, text: `---\ndescription: ${desc(i)}\n---\nDo it.` })),
+    ];
+    const [a] = budget(files);
+    expect(a).toMatchObject({ severity: 'high', tools: ['claude-code'], savingTokens: null });
+    expect(a!.message).toMatch(/^160 skill and command descriptions take about 3\d,\d{3} characters, over the listing budget of 30,000\./);
+    expect(a!.paths).toHaveLength(3);
+  });
+
+  it('stays quiet under the budget, and leaves out subagents and skills hidden from the model', () => {
+    expect(budget(Array.from({ length: 100 }, (_, i) => skill('.claude/skills', i)))).toEqual([]);
+    const hidden = Array.from({ length: 200 }, (_, i) => skill('.claude/skills', i, 'disable-model-invocation: true\n'));
+    const agents = Array.from({ length: 200 }, (_, i) => ({ path: `.claude/agents/a${i}.md`, text: `---\nname: a${i}\ndescription: ${desc(i)}\n---\nPrompt.` }));
+    expect(budget([...hidden, ...agents])).toEqual([]);
+  });
+});
+
 describe('discovery patterns', () => {
   it('recognises the new agents files', () => {
     for (const p of [

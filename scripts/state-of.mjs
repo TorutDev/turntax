@@ -6,10 +6,13 @@
  *   npm run build
  *   GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs [--limit 100] [--date YYYY-MM-DD] [--out web/state/YYYY-MM.json]
  *   node scripts/state-of.mjs --index-only [--out web/state/YYYY-MM.json]
+ *   GITHUB_TOKEN=$(gh auth token) node scripts/state-of.mjs --recount web/state/YYYY-MM.json --out <file outside web/state>
  *
  * --date reproduces an edition's selection (its selection.date): repositories pushed to in the 92 days before it.
  * After writing, editions.json next to --out is rebuilt from every YYYY-MM.json in that folder;
  * --index-only only rebuilds it, without the network or a token.
+ * --recount counts an edition's repositories again at the commits it pinned, with this turntax, and prints how the
+ * headline numbers move: a change between editions can come from the rules as well as from the repositories.
  *
  * Talks only to api.github.com (with the token) and raw.githubusercontent.com (without it).
  * Every file is read at the default branch's head commit, pinned by SHA.
@@ -49,8 +52,10 @@ const { values: args } = parseArgs({
     date: { type: 'string' },
     out: { type: 'string' },
     'index-only': { type: 'boolean', default: false },
+    recount: { type: 'string' },
   },
 });
+if (args.recount && !args.out) fail('--recount needs --out, outside web/state: a recount is not an edition.');
 const LIMIT = Number(args.limit);
 if (!Number.isInteger(LIMIT) || LIMIT <= 0) fail('--limit must be a positive integer.');
 const DATE = args.date ?? new Date().toISOString().slice(0, 10);
@@ -232,7 +237,7 @@ async function scan(item) {
 
 async function scanRepo(item) {
   const fullName = item.full_name;
-  const sha = (await api(`/repos/${fullName}/commits/${encodeURIComponent(item.default_branch)}`, 'application/vnd.github.sha')).trim();
+  const sha = item.sha ?? (await api(`/repos/${fullName}/commits/${encodeURIComponent(item.default_branch)}`, 'application/vnd.github.sha')).trim();
   const tree = await api(`/repos/${fullName}/git/trees/${sha}?recursive=1`);
   if (tree.truncated) return { status: 'truncated' };
 
@@ -466,6 +471,7 @@ function summarize(repos) {
 }
 
 async function main() {
+  if (args.recount) return recount(args.recount);
   const generatedAt = new Date().toISOString();
   const version = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version;
   const engineCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
@@ -560,6 +566,51 @@ async function main() {
   writeFileSync(OUT, text + '\n');
   log(`Wrote ${OUT}: ${repos.length} repos, ${scanned} scanned, ${skipped.truncated} truncated, ${skipped.errors} errors.`);
   writeIndex(dirname(OUT));
+}
+
+/** Counts an edition's repositories again at their pinned commits and prints how the headline numbers move. */
+async function recount(file) {
+  const before = JSON.parse(readFileSync(file, 'utf8'));
+  if (resolve(dirname(OUT)) === resolve(ROOT, 'web/state')) fail('--out must be outside web/state: a recount is not an edition.');
+  const items = before.repos.map((r) => ({ full_name: r.full_name, stargazers_count: r.stars, language: r.language, default_branch: r.default_branch, sha: r.sha }));
+  const results = await mapLimited(items, REPO_CONCURRENCY, scan);
+  const repos = [];
+  const failed = [];
+  results.forEach((r, i) => {
+    if (r.status === 'qualifying') repos.push({ rank: before.repos[i].rank, ...r.record });
+    else failed.push(`${items[i].full_name} (${r.status}${r.reason ? `: ${r.reason}` : ''})`);
+  });
+  const summary = summarize(repos);
+  for (const r of repos) delete r._rootPair;
+  const version = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version;
+  mkdirSync(dirname(OUT), { recursive: true });
+  writeFileSync(OUT, `${JSON.stringify({ recountOf: before.edition, countedBefore: before.turntaxVersion, turntaxVersion: version, repos, summary }, null, 1)}\n`);
+
+  const pick = (s) => ({ median: s.maxPerTurnO200kLinksOnce.median, p90: s.maxPerTurnO200kLinksOnce.p90 });
+  const was = pick(before.summary);
+  const now = pick(summary);
+  const byName = new Map(before.repos.map((r) => [r.full_name, r]));
+  const perTurn = (r) => (r.maxPerTurnLinksOnce ?? r.maxPerTurn).o200k;
+  const moved = repos.map((r) => ({ name: r.full_name, was: perTurn(byName.get(r.full_name)), now: perTurn(r) })).filter((m) => m.was !== m.now);
+  // Per agent: how many repositories each agent loads more or less for.
+  const agents = {};
+  for (const r of repos) {
+    const old = byName.get(r.full_name).agents;
+    for (const id of new Set([...Object.keys(old), ...Object.keys(r.agents)])) {
+      const d = (r.agents[id] ?? 0) - (old[id] ?? 0);
+      if (!d) continue;
+      const a = (agents[id] ??= { up: 0, down: 0, tokens: 0 });
+      a[d > 0 ? 'up' : 'down']++;
+      a.tokens += d;
+    }
+  }
+  log(`Recount of ${before.edition} (counted with ${before.turntaxVersion}) with ${version}: ${repos.length} of ${items.length} repositories read again.`);
+  if (failed.length) log(`Not read: ${failed.join(', ')}`);
+  log(`Largest per-turn total, median ${was.median} -> ${now.median}, 90th percentile ${was.p90} -> ${now.p90}.`);
+  log(`${moved.length} repositories changed: ${moved.filter((m) => m.now > m.was).length} up, ${moved.filter((m) => m.now < m.was).length} down.`);
+  for (const [id, a] of Object.entries(agents).sort((x, y) => Math.abs(y[1].tokens) - Math.abs(x[1].tokens)))
+    log(`  ${before.agentNames?.[id] ?? id}: ${a.up} up, ${a.down} down, ${a.tokens > 0 ? '+' : ''}${a.tokens} tokens in all`);
+  log(`Wrote ${OUT}.`);
 }
 
 /** The figures of one edition that the trend view compares; per-turn sizes count a symlinked file once, as the report does. */
