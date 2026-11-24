@@ -279,6 +279,8 @@ turntax mcp                 run turntax as an MCP server over stdio (see below)
 
 `turntax mcp` ([MCP Registry](https://registry.modelcontextprotocol.io): `io.github.TorutDev/turntax`) is a read-only MCP server with two tools: `audit` (the report for a folder) and `fix_preview` (the `--fix` diff, never written). It reads `turntax.config.json` like the CLI and does not start MCP servers or call vendor APIs.
 
+[![TorutDev/turntax MCP server](https://glama.ai/mcp/servers/TorutDev/turntax/badges/score.svg)](https://glama.ai/mcp/servers/TorutDev/turntax)
+
 ```bash
 claude mcp add turntax -- npx -y turntax mcp
 ```
